@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment files (Vite loads these; none are used today, but keep secrets out if one appears)
+.env
+.env.*
+!.env.example
+
+# Build / tooling output
+*.tsbuildinfo
+coverage
+
+# Claude Code: personal, per-machine settings (shared project settings in .claude/ can still be committed)
+.claude/settings.local.json
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# A backup downloaded from the app's Settings tab holds your campaign data and portraits: keep it out of the repo
+dnd-companion-backup-*.json

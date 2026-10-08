@@ -8,9 +8,11 @@ export interface Settings {
    * the bonuses and rules around the roll. Dice for monsters are the DM's and can always be rolled in the app.
    */
   allowPlayerAppRolls: boolean
+  /** Monsters of the same kind share one initiative (rolled once, or typed once), the way many tables run big groups */
+  groupInitiative: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false }
+export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false }
 
 const KEY = 'settings'
 

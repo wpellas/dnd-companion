@@ -15,7 +15,7 @@ characters is a setting (`allowPlayerAppRolls`, default **off**); respect it eve
 saves, bonuses), never rolling for a player.
 
 Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): equipment/inventory, gold and XP tracking,
-level-up helper, battle map with tokens, session notes, players logging in as their characters.
+level-up helper, battle map with tokens, players logging in as their characters.
 
 ## Commands
 
@@ -35,11 +35,11 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
 ## Architecture
 
 ### Data and storage
-- `src/types.ts` - all data models. `src/db.ts` - Dexie schema (**v4**). Tables: `characters`, `monsters` (custom monsters only),
+- `src/types.ts` - all data models. `src/db.ts` - Dexie schema (**v5**). Tables: `characters`, `monsters` (custom monsters only),
   `combat` (one record, id `'current'`), `kv` (key/value: `api:*` = cached SRD API responses, plus `settings`, `campaign`,
-  `lastBackup`), `encounters`.
+  `lastBackup`), `encounters`, `journal` (DM-only notes, session recaps, combat summaries).
 - **Migrations:** schema/data changes need a new `this.version(n)` with `.upgrade()` (v2 actions, v3 class/hit dice/resources + `kv`,
-  v4 encounters + save proficiencies + resistances, SRD monsters dropped from the table). Stored records can predate new fields:
+  v4 encounters + save proficiencies + resistances, SRD monsters dropped from the table, v5 journal). Stored records can predate new fields:
   read optional fields defensively (`?? []`) and use `normalizeCharacter` / `normalize()` in `mutateCombat`.
 - Live queries only see writes made through Dexie in the same tab; raw `indexedDB` writes (test scripts) need a page reload.
 
@@ -49,7 +49,8 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
   240 class level tables, 341 monsters, 15 conditions) and writes the `api:sync:library-v3` flag, after which the app makes no API
   requests. Started by `SpellLibraryStatus` (footer), Web-Lock guarded across tabs, retries on `online`. Bump the key's version to
   force a re-download when more data is added.
-- `src/lib/monsters.ts` - `srdToTemplate()` turns an SRD monster into a `MonsterTemplate` (actions with attack/save/DC/area/range,
+- `src/lib/monsters.ts` - `srdToTemplate()` turns an SRD monster into a `MonsterTemplate` (actions with attack/save/DC/area/range, `multiattack` rows from the structured
+  Multiattack list incl. its "choose one of" extras, `spells` + `casting` (DC / attack bonus) from the Spellcasting action,
   multi-type damage via `extraDamage`, optional extras for "if the attack roll had Advantage" and rider saves, recharge / per-day
   `limited`, legendary actions, traits with counters, saves, resistances). Tested on all 341 monsters. `monsterLibrary.ts` has the hooks
   (`useSrdMonsters`, `useCustomMonsters`).
@@ -61,22 +62,34 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
   `startCombat` / `advanceTurn` (resets the next creature's action/bonus/reaction trackers and legendary uses, queues recharge
   prompts), `dealDamage` (temp HP, death-save failures, Unconscious, massive damage, concentration prompts), `healTarget`,
   `applyResolution` / `resolveAction` (multi-target, logs one line, public announcements, trackers, limited-use bookkeeping),
-  `settleConcentration` / `settleRecharge`, `undoCombat`, `endCombat` (writes PC HP back to characters).
+  `settleConcentration` / `settleRecharge`, `undoCombat`, `endCombat` (writes PC HP and Exhaustion back to characters and writes the journal
+  summary). Turn-order extras: `rollAllMonsterInitiative(s, grouped)` / `shareInitiative` (group initiative; kind = `templateRef.name`),
+  `toggleSurprised` (Disadvantage on the initiative roll; cleared at `startCombat`), `delayTurn` (moves the active creature behind a later one by
+  giving it that initiative and a `tieRank` between neighbours; `sortCombatants` breaks ties by `tieRank ?? -initiativeBonus`), `setExhaustion`.
+  `TargetOutcome.action` lets one resolution carry several different attacks (Multiattack, rays) with their own names/conditions;
+  `cast.monsterSpell` counts a monster's per-day casts in `spent['spell:<index>']`.
 - **Undo snapshots are deep copies** (`structuredClone`), with `actions` stripped to stay small (restored from the live combatant, or from
   `restoreActions` for combatants a change removed). A shallow snapshot shares nested objects with live state and silently breaks undo.
   Spell casts store a slot `refund`.
 - `src/lib/resolve.ts` - pure: damage by type adjusted for resistance / immunity / vulnerability (`adjustForTarget`: save-half first, then
   resistances; both resistance and vulnerability = halve then double), `saveBonus`, `buildSaves`, `actionDamageParts`.
+- `src/lib/volley.ts` + `components/turn/AttackSequence.tsx` - several separate attacks (Scorching Ray, Magic Missile, Eldritch Blast via the
+  `VOLLEYS` table in `spells.ts`, and monster Multiattack): `Step`s -> per-row `evaluateRow` (outcome, damage after defences, Exhaustion
+  penalty), one `TargetOutcome` per attack. `Action.volley` / `Action.multiattack` drive it from `TurnPanel`.
 - `src/lib/conditionRules.ts` - pure: effects of the 15 conditions taken from the official condition texts (advantage hints
-  `attackAdvice`, `autoFailsSave`, crit-within-5-ft, Petrified = resist all, reminders). Never rolls.
+  `attackAdvice`, `autoFailsSave`, crit-within-5-ft, Petrified = resist all, reminders) plus Exhaustion (`exhaustionPenalty` = 2 per level, applied by
+  `saveBonus` and the attack resolvers). Never rolls.
 - `src/lib/rules.ts`, `dice.ts` - attack outcome (nat 1/20), d20 rolling with adv/dis, dice expression parse/roll (crit doubles dice only).
 - `src/lib/spells.ts` - `spellToAction()` (API `attack_type` / `damage_at_slot_level`; save ability, half-on-save, healing, condition read
   from the description), cantrip / upcast scaling, slot helpers. Unreadable spells become `kind: 'other'`.
 - `src/lib/character.ts` - proficiency bonus, `deriveAction` (actions "from my stats"), `mergeClassTable` (class table -> slots / limits, only
-  while `spellcasting.auto`), `castingSnapshot`. `rest.ts` + `store.ts` - rest rules and DB mutations (`spendSlot`, rests, campaign counters).
+  while `spellcasting.auto`), `castingSnapshot`. `rest.ts` + `store.ts` - rest rules and DB mutations (`spendSlot`, rests, campaign counters). `shortRestRecoveries` / `RecoveryChoice`:
+  Arcane Recovery, Natural Recovery (slots, budget = half level rounded up, max 5th) and Sorcerous Restoration (points, half level rounded down);
+  a long rest takes one Exhaustion level off. After a rest `store.ts` refreshes the idle fight's PC entries (combatants are snapshots).
+- `src/lib/journal.ts` + `pages/JournalPage.tsx` - the DM journal; `addCombatSummary` runs from `endCombat`. Never sent to the player view.
 - `src/lib/encounters.ts` + `src/data/encounterBudget.ts` - 2024 XP budgets (verified against the published table) and difficulty rating;
   CR -> XP table (defaults for custom monsters). `src/data/classFeatures.ts` - catalog of limited-use SRD class features.
-- `src/lib/settings.ts`, `backup.ts` (whole-app JSON export/import; the SRD library is not included; restore keeps `api:*` and `lastBackup`).
+- `src/lib/settings.ts`, `backup.ts` (whole-app JSON export/import, journal included; the SRD library is not included; restore keeps `api:*` and `lastBackup`).
 
 ### Live view (`server/hubPlugin.ts`, `lib/hub.ts`, `lib/publicState.ts`)
 The DM's browser (`LiveHost`, rendered in `App`) pushes `toPublic(combat)` and shrunken portraits over a WebSocket (`/hub?role=host`) to the
@@ -86,9 +99,9 @@ log, prompts or undo history. Add fields there deliberately. The relay ignores a
 `PlayerView` prefers relay data and falls back to the local database (the DM's second window).
 
 ### UI
-- Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `SettingsPage`, `PlayerView`.
+- Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `JournalPage`, `SettingsPage`, `PlayerView`.
 - `TurnPanel` (+ `components/turn/AttackResolver`, `SaveResolver`, `DamageEntry`, `useDamageEntry`) - action -> target(s) -> d20s -> damage ->
-  `resolveAction`. Mounted with `key={round-turnIndex}` so local state resets each turn; inner resolvers are re-keyed per action/target.
+  `resolveAction`. Mounted with `key={round-turnIndex-activeId}` (the id matters because a delay changes who is up without changing the index) so local state resets each turn; inner resolvers are re-keyed per action/target.
 - Others: `Combobox` (searchable grouped dropdown with keyboard support: use it instead of `<select>` for long lists), `Section` / `CheckField`
   (form building blocks), `ActionsEditor`, `SpellcastingEditor`, `SpellPicker`, `ResourcesEditor`, `RestPanel`, `UsePips`, `DamageTypeList`,
   `Portrait`, `NumberField`, `InitiativeInput`, `SpellLibraryStatus`.
@@ -127,12 +140,14 @@ is CSS variables at the top of `src/index.css`: dragon red, parchment, gold, lea
 No test framework is installed; checks were done with throwaway scripts: pure logic via `pnpm dlx tsx file.mts` (importing from `src/lib/*.ts` with
 `file:///` URLs; avoid importing `db`-touching modules where possible), and the UI by driving headless Edge over the DevTools protocol against
 `pnpm preview` (seed IndexedDB, click through, assert on the DOM / database / relay messages). If a test framework is added, port those checks
-(monster parser on all 341 monsters, class-table merge, rests, damage / resistance / condition rules, undo, relay privacy).
+(monster parser on all 341 monsters incl. Multiattack and spell lists, class-table merge, rests and slot recovery, damage / resistance / condition rules,
+volleys, delay and group initiative, Exhaustion, undo, relay privacy). Headless Edge launched for these tests outlives `proc.kill()`: kill leftover
+`msedge.exe` processes whose command line has your throwaway profile before the next run, or the debugging port will refuse.
 
 ## TODO / ideas
 
 - Longer-term (agreed): equipment and inventory, gold and XP tracking, level-up helper, battle map with tokens, session notes / campaign log,
-  players logging in as their own characters.
-- Monster spellcasting as castable actions; per-ray / per-dart attacks (Scorching Ray, Magic Missile); riders that need a second save as a flow.
-- Exhaustion levels, Arcane Recovery-style slot recovery, subclass-granted spells, ritual casting, non-SRD content import.
-- Group initiative, delaying a turn, surprise.
+  players logging in as their own characters. (Session notes / campaign log is built: the Journal tab.)
+- Riders that need a second save as a flow; monster spells the API can't describe (Shield...).
+- Subclass-granted spells, ritual casting, non-SRD content import, Speed tracking (Exhaustion's speed penalty is only a reminder).
+- More per-attack multi-hit spells can be added to `VOLLEYS` in `spells.ts` (hexblade, Spiritual Weapon etc. aren't).

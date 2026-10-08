@@ -54,6 +54,20 @@ function spellHealing(spell: SrdSpell, slotLevel: number, mod: number): string |
   return /plus your spellcasting ability modifier/i.test(spell.description) ? addToDice(dice, mod) : dice
 }
 
+/**
+ * Spells that make several separate attacks, each with its own roll and target: how many at a slot level (or caster level
+ * for a cantrip). The API describes them only in prose, so they are listed here from the official spell texts.
+ * `autoHit`: no attack roll (Magic Missile's darts always strike).
+ */
+const VOLLEYS: Record<string, { count: (slotLevel: number, casterLevel: number) => number; autoHit?: boolean }> = {
+  'scorching-ray': { count: (slot) => 3 + Math.max(0, slot - 2) },
+  'magic-missile': { count: (slot) => 3 + Math.max(0, slot - 1), autoHit: true },
+  'eldritch-blast': { count: (_slot, caster) => cantripTier(caster) },
+}
+
+/** "1d4 + 1 Force damage" -> "1d4+1" (Magic Missile has no structured damage in the API). */
+const damageInText = (text: string) => text.match(/(\d+d\d+(?:\s*\+\s*\d+)?)\s+\w+\s+damage/i)?.[1].replace(/\s/g, '')
+
 const SAVE_NAME: Record<string, Ability> = {
   strength: 'str',
   dexterity: 'dex',
@@ -79,6 +93,20 @@ export function spellToAction(spell: SrdSpell, slotLevel: number, casting: Casti
     range: spell.range,
     damage: spellDamage(spell, slotLevel, casting.casterLevel),
     damageType: spell.damage?.damage_type?.name.toLowerCase(),
+  }
+  const volley = VOLLEYS[spell.index]
+  if (volley) {
+    const map = spell.damage?.damage_at_slot_level
+    // Eldritch Blast: every beam does the unscaled cantrip damage; the cantrip tier adds beams instead of dice
+    const perRay = spell.level === 0 && map ? map[Object.keys(map)[0]] : base.damage
+    return {
+      ...base,
+      kind: 'attack',
+      attackBonus: casting.attackBonus,
+      damage: perRay ?? damageInText(spell.description),
+      damageType: base.damageType ?? spell.description.match(/\d+d\d+(?:\s*\+\s*\d+)?\s+(\w+)\s+damage/i)?.[1].toLowerCase(),
+      volley: { count: volley.count(slotLevel, casting.casterLevel), autoHit: volley.autoHit },
+    }
   }
   const saveMatch = spell.description.match(/\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) saving throw/i)
   const condition = CONDITIONS.find((c) => new RegExp(`\\b${c} condition`, 'i').test(spell.description))

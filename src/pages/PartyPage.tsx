@@ -125,6 +125,7 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
         <span>Prof {formatMod(proficiencyBonus(c.level))}</span>
         <span>Init {formatMod(c.initiativeBonus)}</span>
         <span>PP {c.passivePerception}</span>
+        {(c.exhaustion ?? 0) > 0 && <span title="-2 to d20 tests and -5 ft Speed per level; a long rest removes one level">Exhaustion {c.exhaustion}</span>}
         <span title="Hit dice remaining">
           HD {hitDiceRemaining(c)}/{c.level} d{c.hitDie}
         </span>
@@ -293,6 +294,7 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
           <NumberField label="Speed" value={c.speed} onChange={(n) => set('speed', n)} />
           <NumberField label="Initiative bonus" value={c.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
           <NumberField label="Passive Perception" value={c.passivePerception} onChange={(n) => set('passivePerception', n)} />
+          <NumberField label="Exhaustion (0-6)" value={c.exhaustion ?? 0} min={0} onChange={(n) => set('exhaustion', Math.min(6, Math.max(0, Math.floor(n))))} />
         </div>
       </Section>
 

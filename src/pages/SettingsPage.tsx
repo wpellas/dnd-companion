@@ -37,14 +37,14 @@ export function SettingsPage() {
   const backup = async () => {
     const { blob, filename, counts } = await exportBackup()
     download(blob, filename)
-    setMsg({ ok: true, text: `Saved ${filename}: ${counts.characters} characters, ${counts.monsters} custom monsters, ${counts.encounters} encounters.` })
+    setMsg({ ok: true, text: `Saved ${filename}: ${counts.characters} characters, ${counts.monsters} custom monsters, ${counts.encounters} encounters, ${counts.journal} journal entries.` })
   }
 
   const restore = async (f: File) => {
-    if (!confirm('Restore this backup? It REPLACES your current characters, custom monsters, encounters and the current fight.')) return
+    if (!confirm('Restore this backup? It REPLACES your current characters, custom monsters, encounters, journal and the current fight.')) return
     try {
       const c = await importBackup(f)
-      setMsg({ ok: true, text: `Restored ${c.characters} characters, ${c.monsters} custom monsters and ${c.encounters} encounters.` })
+      setMsg({ ok: true, text: `Restored ${c.characters} characters, ${c.monsters} custom monsters, ${c.encounters} encounters and ${c.journal} journal entries.` })
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
     }

@@ -40,7 +40,9 @@ actions, spells and limited-use class features. Attack bonuses, damage and spell
 - **Class features:** add limited-use features from the official SRD list (Second Wind, Rage, Action Surge, Channel Divinity, Lay
   On Hands...) or your own. Counts follow level-ups, and rests recharge them, including "one use back per short rest" features.
 - **Rests:** a short rest (spend Hit Dice, type or roll the healing; short-rest features recharge; Warlocks regain slots) and a long
-  rest (full HP, half your Hit Dice, all slots and features). A day counter tracks the campaign.
+  rest (full HP, half your Hit Dice, all slots and features, and one Exhaustion level off). A day counter tracks the campaign.
+- **Slot recovery on a short rest:** Arcane Recovery (Wizard), Natural Recovery (Circle of the Land Druid) and Sorcerous Restoration
+  (Sorcerer) show up in the short-rest panel once per long rest, with a budget so you can't over-recover.
 
 ### The Bestiary 🐉
 All 341 SRD monsters with search, CR / type / size filters, sortable columns and full stat blocks, plus custom monsters. Attacks,
@@ -49,9 +51,19 @@ breathes fire.
 
 ### Combat ⚔️
 - Initiative, turn order, rounds, damage / heal / temp HP, conditions, concentration, death saves.
+- **Initiative extras:** optionally give every monster of the same kind one shared initiative (rolled once or typed once; they still
+  take their turns one after another). Mark a creature **Surprised** before the fight and it rolls with Disadvantage (the app does it
+  for monsters, and reminds you for players). **Delay** a turn to act later this round, just behind someone who hasn't gone yet.
 - **Turn panel:** pick an action (grouped into actions, bonus actions, reactions and legendary) or cast a spell, pick the target(s),
   enter the d20s and damage, apply. Handles crits, multi-type damage ("slashing + fire"), optional extras ("plus 1d4 if
   Advantage"), half-on-save, and each target's resistances, immunities and vulnerabilities.
+- **Several attacks at once:** Scorching Ray, Magic Missile and Eldritch Blast get a ray-by-ray table (each ray picks its own target, d20
+  and damage; Magic Missile's darts always hit), and a monster's **Multiattack** becomes the same table with one row per attack, so a
+  dragon's three Rends or a mage's three Arcane Bursts are one tidy click. Monsters can roll the whole thing for you.
+- **Monster spellcasting:** the Mage, dragons, liches and friends have their spell list in the Spell dropdown, at will or N casts a
+  day (the app counts them), using the stat block's own save DC and spell attack bonus.
+- **Exhaustion:** a level stepper (0-6) on every creature. Each level takes 2 off the creature's attack and save bonuses (the d20 test
+  rule), shows as "Exhaustion N" to the table, level 6 is death, and a long rest removes one level.
 - **Multi-target effects:** Fireball and breath weapons hit several creatures from one damage roll, and each creature gets its own
   save with its own bonus (proficient saves included).
 - **Rules assistance (never rolls for players):** advantage / disadvantage hints from conditions, automatic critical hits against
@@ -62,6 +74,11 @@ breathes fire.
 - **Concentration:** damaging a concentrating creature raises a "CON save DC N" prompt, and failing ends the spell.
 - **Undo** the last change (a cast also hands the spell slot back) and a combat log, for when the table disagrees about what just happened.
 - **Lair actions** marker on initiative 20.
+
+### The Journal 📖
+A private campaign log for you: free-form notes (NPCs, clues, loot), session recaps, and an automatic summary of every fight you end
+(who fought, who fell, XP, the full combat log). Search it, filter it, pin the important bits. Players never see it, and it travels
+with your backups.
 
 ### Encounters 📜
 Save a fight's monsters, build encounters from the bestiary, load them into combat. An XP total and a difficulty rating (Low /
@@ -110,17 +127,18 @@ it on a network you trust.
 ## 🕳️ Known limitations
 
 - Only SRD content; non-SRD spells, monsters and subclasses are manual.
-- Spells the API doesn't describe in a readable way (Magic Missile, Shield) still spend the slot and set concentration, but you apply
-  the effect with the Dmg / Heal / condition controls. Multi-attack monsters list "Multiattack" as a reminder; make each attack
-  separately.
-- Monster spellcasting is shown as text, not as castable actions.
-- Exhaustion levels, equipment, inventory and gold aren't tracked.
+- Spells the API doesn't describe in a readable way (Shield, say) still spend the slot and set concentration, but you apply the
+  effect with the Dmg / Heal / condition controls. Monster spells that need a roll the app can't read work the same way.
+- Monster cantrips scale as if the monster's caster level were its CR (the stat block doesn't say), and its spells are cast at the
+  level the stat block lists. Retype the damage if your table rules differently.
+- Equipment, inventory and gold aren't tracked.
+- Speed isn't tracked, so Exhaustion's speed penalty is only a reminder.
 - Derived action numbers are fixed when a character joins a fight; edit-and-re-add to pick up mid-fight changes.
 
 ## 🔮 On the horizon
 
-Equipment and inventory, gold and XP tracking, a level-up helper, a battle map with tokens, session notes, and players logging in as
-their own characters.
+Equipment and inventory, gold and XP tracking, a level-up helper, a battle map with tokens, and players logging in as their own
+characters.
 
 ## 📖 Changelog
 
@@ -132,3 +150,6 @@ their own characters.
   resistances / immunities / vulnerabilities; undo; concentration, recharge and legendary-action tracking; auto-Unconscious,
   massive damage; condition-driven hints; action / bonus action / reaction trackers; lair actions; saved encounters with XP
   difficulty; backup and restore; settings; player-view announcements; live view on phones with a QR code.
+- **Table-speed update:** group initiative, Surprised, Delay; ray-by-ray Scorching Ray / Magic Missile / Eldritch Blast and monster
+  Multiattack; monster spellcasting with per-day counts; Exhaustion levels; Arcane Recovery-style slot recovery; the campaign journal
+  with automatic combat summaries.

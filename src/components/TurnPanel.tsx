@@ -2,16 +2,18 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { usePromise } from '../hooks'
-import { actionAvailable, advanceTurn, mutateCombat, resolveAction, type TargetOutcome } from '../lib/combat'
+import { actionAvailable, advanceTurn, delayTurn, isDown, mutateCombat, resolveAction, type TargetOutcome } from '../lib/combat'
 import { conditionReminders, isIncapacitated } from '../lib/conditionRules'
 import { formatMod } from '../lib/dice'
 import { canAppRoll, useSettings } from '../lib/settings'
 import { castableLevels, levelLabel, slotsLeft, slotsLeftAtOrAbove, spellToAction } from '../lib/spells'
 import { getSpell } from '../lib/srdApi'
 import { spendSlot } from '../lib/store'
+import { stepsFromMultiattack, stepsFromVolley } from '../lib/volley'
 import type { Action, Combatant, CombatState, KnownSpell, TurnUsed } from '../types'
 import { Combobox } from './Combobox'
 import { AttackResolver } from './turn/AttackResolver'
+import { AttackSequence } from './turn/AttackSequence'
 import { DamageEntry } from './turn/DamageEntry'
 import { useDamageEntry } from './turn/useDamageEntry'
 import { SaveResolver } from './turn/SaveResolver'
@@ -42,6 +44,8 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
   const [freeCast, setFreeCast] = useState(false)
   const [targetIds, setTargetIds] = useState<string[]>([])
   const [nonce, setNonce] = useState(0)
+  const [delaying, setDelaying] = useState(false)
+  const [delayAfter, setDelayAfter] = useState('')
 
   const attacker = combatants.find((c) => c.id === attackerId) ?? active
   // Spell slots live on the character (they persist across fights), not on the combat snapshot.
@@ -50,7 +54,13 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
     [attacker?.characterId],
   )
   const sc = character?.spellcasting
-  const knownSpells: KnownSpell[] = sc ? [...sc.cantrips, ...sc.prepared] : []
+  // Monsters cast from their Spellcasting list: no slots, just "at will" or N per day
+  const monsterCaster = !sc && attacker?.kind === 'monster' && (attacker.spells?.length ?? 0) > 0
+  const knownSpells: KnownSpell[] = sc
+    ? [...sc.cantrips, ...sc.prepared]
+    : monsterCaster
+      ? attacker!.spells!.map((s) => ({ index: s.index, name: s.name, level: s.level }))
+      : []
   const known = knownSpells.find((s) => s.index === spellIndex)
   const spellDetail = usePromise(() => (known ? getSpell(known.index) : Promise.resolve(undefined)), [known?.index])
 
@@ -58,8 +68,10 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
 
   const actions = attacker.actions ?? []
   const castLevels = sc && known ? castableLevels(sc, known.level) : []
-  const slotLevel = !known || known.level === 0 ? 0 : castLevels.includes(slotChoice ?? -1) ? slotChoice! : (castLevels[0] ?? known.level)
-  const slotOk = !known || known.level === 0 || freeCast || castLevels.includes(slotLevel)
+  const slotLevel = !known || known.level === 0 ? 0 : monsterCaster ? known.level : castLevels.includes(slotChoice ?? -1) ? slotChoice! : (castLevels[0] ?? known.level)
+  const monsterSpell = monsterCaster && known ? attacker.spells!.find((s) => s.index === known.index) : undefined
+  const castsLeft = monsterSpell?.times ? monsterSpell.times - (attacker.spent?.[`spell:${monsterSpell.index}`] ?? 0) : Infinity
+  const slotOk = !known || (monsterCaster ? castsLeft > 0 : known.level === 0 || freeCast || castLevels.includes(slotLevel))
 
   let spellAction: Action | undefined
   if (known && attacker.casting) {
@@ -70,6 +82,9 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
   const defaultAction = actions.find((a) => (a.timing ?? 'action') === 'action' && a.kind !== 'other' && actionAvailable(attacker, a).ok) ?? actions[0]
   const action: Action | undefined = spellMode ? spellAction : (actions.find((a) => a.id === actionId) ?? defaultAction)
 
+  // several separate attacks (Scorching Ray, Multiattack...) pick their targets row by row instead of up here
+  const multiSteps = action?.multiattack ? stepsFromMultiattack(action, actions) : undefined
+  const sequence = action?.kind === 'attack' && action.volley ? stepsFromVolley(action) : multiSteps?.steps.length ? multiSteps.steps : undefined
   const multi = !!action && action.kind !== 'attack'
   const pickable = combatants.filter((c) => c.kind !== 'lair' && (multi || c.id !== attacker.id))
   const chosen = targetIds.map((id) => combatants.find((c) => c.id === id)).filter((c): c is Combatant => !!c)
@@ -90,9 +105,14 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
     if (!action) return
     let cast
     if (known) {
-      const spendsSlot = known.level > 0 && !freeCast
+      const spendsSlot = !monsterCaster && known.level > 0 && !freeCast
       if (spendsSlot && attacker.characterId !== undefined) await spendSlot(attacker.characterId, slotLevel)
-      cast = { slotLevel: spendsSlot ? slotLevel : 0, spent: spendsSlot && attacker.characterId !== undefined, concentration: !!spellDetail.data?.concentration }
+      cast = {
+        slotLevel: spendsSlot ? slotLevel : 0,
+        spent: spendsSlot && attacker.characterId !== undefined,
+        concentration: !!spellDetail.data?.concentration,
+        monsterSpell: monsterSpell ? { index: monsterSpell.index, times: monsterSpell.times } : undefined,
+      }
     }
     await resolveAction({ attackerId: attacker.id, action, targets: outcomes, cast, detail })
     setNonce((n) => n + 1)
@@ -109,6 +129,8 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
     setNonce((n) => n + 1)
   }
   const reminders = conditionReminders(attacker)
+  // creatures that haven't acted yet this round and could be waited for (the lair marker and defeated monsters can't)
+  const later = combatants.slice(combat.turnIndex + 1).filter((c) => c.kind !== 'lair' && !(c.kind === 'monster' && isDown(c)))
   const resolverKey = `${nonce}|${action?.id}|${slotLevel}|${targets.map((t) => t.id).join(',')}`
 
   return (
@@ -138,10 +160,32 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
             ))}
           </select>
         </label>
+        {attacker.id === active.id && (
+          <button className="end-turn" disabled={later.length === 0} title="Act later this round, just after someone who hasn't gone yet" onClick={() => setDelaying((d) => !d)}>
+            Delay ⏳
+          </button>
+        )}
         <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, 'End turn')}>
           End turn ▶
         </button>
       </div>
+
+      {delaying && (
+        <div className="row gap wrap delay-row">
+          <label className="field">
+            <span>{active.name} acts after…</span>
+            <select value={delayAfter || later[0]?.id} onChange={(e) => setDelayAfter(e.target.value)}>
+              {later.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} (initiative {c.initiative})</option>
+              ))}
+            </select>
+          </label>
+          <button className="primary" onClick={() => mutateCombat((s) => delayTurn(s, delayAfter || later[0].id), `${active.name} delays`)}>
+            Delay their turn
+          </button>
+          <button onClick={() => setDelaying(false)}>Cancel</button>
+        </div>
+      )}
 
       <div className="economy">
         {ECONOMY.map(({ key, label }) => (
@@ -208,7 +252,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
             )
           })}
 
-          {sc && knownSpells.length > 0 && (
+          {(sc || monsterCaster) && knownSpells.length > 0 && (
             <div className="chips">
               <span className="muted">Spell</span>
               <Combobox
@@ -218,12 +262,19 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                 value={spellIndex}
                 options={[...knownSpells]
                   .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
-                  .map((s) => ({
-                    value: s.index,
-                    label: s.name,
-                    group: s.level === 0 ? 'Cantrips' : `${levelLabel(s.level)} level`,
-                    hint: s.level === 0 ? undefined : `${slotsLeftAtOrAbove(sc, s.level)} slot${slotsLeftAtOrAbove(sc, s.level) === 1 ? '' : 's'}`,
-                  }))}
+                  .map((s) => {
+                    if (!sc) {
+                      const ms = attacker.spells!.find((x) => x.index === s.index)!
+                      const left = ms.times ? ms.times - (attacker.spent?.[`spell:${ms.index}`] ?? 0) : undefined
+                      return { value: s.index, label: s.name, group: ms.times ? `${ms.times}/day each` : 'At will', hint: left === undefined ? levelLabel(s.level) : `${left} left` }
+                    }
+                    return {
+                      value: s.index,
+                      label: s.name,
+                      group: s.level === 0 ? 'Cantrips' : `${levelLabel(s.level)} level`,
+                      hint: s.level === 0 ? undefined : `${slotsLeftAtOrAbove(sc, s.level)} slot${slotsLeftAtOrAbove(sc, s.level) === 1 ? '' : 's'}`,
+                    }
+                  })}
                 onChange={(v) => {
                   setSpellIndex(v)
                   setSlotChoice(undefined)
@@ -231,7 +282,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                   setNonce((n) => n + 1)
                 }}
               />
-              {known && known.level > 0 && (
+              {sc && known && known.level > 0 && (
                 <>
                   <select
                     value={slotLevel}
@@ -252,20 +303,21 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                   </label>
                 </>
               )}
-              {spellMode && !slotOk && <span className="warn">No slots left at that level.</span>}
+              {spellMode && !slotOk && <span className="warn">{monsterCaster ? 'No casts left today.' : 'No slots left at that level.'}</span>}
               {spellMode && spellDetail.loading && <span className="muted">Loading spell…</span>}
             </div>
           )}
 
           {action && (
             <>
-              {action.desc && action.kind !== 'other' && (
+              {action.desc && (action.kind !== 'other' || sequence) && (
                 <details className="rules-text">
                   <summary>Rules text: {action.name}</summary>
                   <p>{action.desc}</p>
                 </details>
               )}
 
+              {!sequence && (
               <div className="chips target-row">
                 <span className="muted">{multi ? 'Targets' : 'Target'}</span>
                 <Combobox
@@ -289,7 +341,8 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                 )}
                 {multi && action.area && <span className="area-hint">Area: {action.area}. Pick everyone in it.</span>}
               </div>
-              {multi && targets.length > 0 && (
+              )}
+              {!sequence && multi && targets.length > 0 && (
                 <div className="spell-chips">
                   {targets.map((t) => (
                     <span className="spell-chip" key={t.id}>
@@ -302,7 +355,23 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                 </div>
               )}
 
-              {action.kind === 'attack' && targets[0] && (
+              {sequence && (
+                <AttackSequence
+                  key={resolverKey}
+                  attacker={attacker}
+                  steps={sequence}
+                  pickable={pickable}
+                  canRoll={canAppRoll(attacker.kind, settings)}
+                  melee={!/range/i.test(action.range ?? sequence[0].actions[0].range ?? '') || /reach/i.test(action.range ?? sequence[0].actions[0].range ?? '')}
+                  onApply={submit}
+                />
+              )}
+              {multiSteps && multiSteps.missing.length > 0 && (
+                <p className="muted">
+                  Multiattack also lists {multiSteps.missing.join(', ')}: use {multiSteps.missing.length === 1 ? 'it' : 'them'} from the {attacker.spells?.length ? 'Spell list' : 'action list'} instead.
+                </p>
+              )}
+              {!sequence && action.kind === 'attack' && targets[0] && (
                 <AttackResolver key={resolverKey} attacker={attacker} action={action} target={targets[0]} canRoll={canAppRoll(attacker.kind, settings)} onApply={submit} />
               )}
               {action.kind === 'save' && targets.length > 0 && (
@@ -319,7 +388,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
               {action.kind === 'heal' && targets.length > 0 && (
                 <HealResolver key={resolverKey} action={action} targets={targets} canRoll={canAppRoll(attacker.kind, settings)} onApply={submit} />
               )}
-              {action.kind === 'other' && (
+              {!sequence && action.kind === 'other' && (
                 <div className="resolve">
                   {action.desc && <p className="rules-text-inline">{action.desc}</p>}
                   <p className="muted">

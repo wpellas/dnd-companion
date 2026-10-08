@@ -8,7 +8,9 @@ import {
   type Action,
   type ActionTiming,
   type Condition,
+  type CastingSnapshot,
   type DamagePart,
+  type MonsterSpell,
   type MonsterTemplate,
   type MonsterTrait,
 } from '../types'
@@ -55,6 +57,23 @@ function conditionIn(text: string): Condition | undefined {
   return CONDITIONS.find((c) => new RegExp(`\\b${c}\\b`).test(text))
 }
 
+/**
+ * The attacks a Multiattack makes, one entry per attack, from the structured list ("Rend x2") plus the "choose one of"
+ * extras some monsters have (the dragon's third attack is a Rend or a spell). The text is the fallback.
+ */
+export function parseMultiattack(a: SrdMonsterAction): { choices: string[] }[] | undefined {
+  const rows: { choices: string[] }[] = []
+  for (const x of a.actions ?? []) {
+    for (let i = 0; i < (Number(x.count) || 1); i++) rows.push({ choices: [x.action_name] })
+  }
+  const opt = a.action_options
+  if (opt?.from?.options?.length) {
+    const names = [...new Set(opt.from.options.map((o) => o.action_name).filter((n): n is string => !!n))]
+    for (let i = 0; i < (opt.choose || 1); i++) rows.push({ choices: names })
+  }
+  return rows.length ? rows : undefined
+}
+
 function toAction(a: SrdMonsterAction, timing: ActionTiming, prefix: string, spellText?: string): Action {
   const parts = parseDamageParts(a)
   const [main, ...extra] = parts
@@ -89,6 +108,8 @@ function toAction(a: SrdMonsterAction, timing: ActionTiming, prefix: string, spe
     if (cond) base.condition = cond
   }
 
+  if (a.name === 'Multiattack') base.multiattack = parseMultiattack(a)
+
   const u = a.usage
   if (u?.type === 'recharge on roll' && u.min_value) base.limited = { kind: 'recharge', min: u.min_value }
   else if (u?.type === 'per day' && u.times) base.limited = { kind: 'day', times: u.times }
@@ -106,6 +127,25 @@ function spellListText(a: SrdMonsterAction & { spellcasting?: { spells?: { name:
     groups.set(label, [...(groups.get(label) ?? []), s.name])
   }
   return 'Spells - ' + [...groups].map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')
+}
+
+/** The spells and numbers from a monster's Spellcasting action(s). Slots aren't tracked: casts are at will or N per day. */
+function parseSpellcasting(m: SrdMonster, abilities: MonsterTemplate['abilities']): { spells?: MonsterSpell[]; casting?: CastingSnapshot } {
+  const spells: MonsterSpell[] = []
+  let casting: CastingSnapshot | undefined
+  for (const a of m.actions) {
+    const sc = a.spellcasting
+    if (!sc) continue
+    const ability = (ABILITIES as readonly string[]).includes(sc.ability.index) ? (sc.ability.index as Ability) : 'int'
+    const mod = abilityMod(abilities[ability])
+    const dc = sc.dc ?? 10
+    casting ??= { ability, mod, saveDc: dc, attackBonus: sc.modifier ?? dc - 8, casterLevel: Math.max(1, Math.round(m.challenge_rating)) }
+    for (const s of sc.spells ?? []) {
+      if (spells.some((x) => x.index === s.index)) continue
+      spells.push({ index: s.index, name: s.name, level: s.level, times: s.usage?.type === 'per day' ? s.usage.times : undefined })
+    }
+  }
+  return { spells: spells.length ? spells : undefined, casting }
 }
 
 /** Resistances etc. come as lowercase damage-type words; ignore the odd free-text entries. */
@@ -155,6 +195,7 @@ export function srdToTemplate(m: SrdMonster): MonsterTemplate {
       .filter((c): c is Condition => !!c),
     traits,
     legendaryUses: m.legendary_actions.length ? 3 : undefined,
+    ...parseSpellcasting(m, abilities),
   }
 }
 

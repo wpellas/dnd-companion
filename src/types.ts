@@ -156,6 +156,10 @@ export interface Action {
   area?: string
   /** Monsters: recharge on a d6 roll, N uses per day, or one use per rest */
   limited?: { kind: 'recharge'; min: number } | { kind: 'day'; times: number } | { kind: 'rest' }
+  /** Attack actions that make several separate attacks (Scorching Ray, Magic Missile, Eldritch Blast): one roll per ray */
+  volley?: { count: number; autoHit?: boolean }
+  /** Multiattack: the attacks it makes, in order; each lists the actions of the creature it may be (usually just one) */
+  multiattack?: { choices: string[] }[]
 }
 
 export interface Character {
@@ -187,6 +191,8 @@ export interface Character {
   hitDiceUsed: number
   resources: Resource[]
   spellcasting?: Spellcasting
+  /** Exhaustion level 0-6 (2024 rules); a long rest removes one */
+  exhaustion?: number
   image?: Blob
 }
 
@@ -206,6 +212,14 @@ export interface MonsterTrait {
   desc: string
   /** Limited uses per day, if any */
   uses?: number
+}
+
+/** A spell on a monster's Spellcasting list. `times` unset = at will; otherwise that many casts per day. */
+export interface MonsterSpell {
+  index: string
+  name: string
+  level: number
+  times?: number
 }
 
 export interface MonsterTemplate {
@@ -235,6 +249,9 @@ export interface MonsterTemplate {
   traits?: MonsterTrait[]
   /** Legendary actions per round (3, or 4 in the lair) when the monster has any */
   legendaryUses?: number
+  /** Spells from its Spellcasting action and the numbers they use */
+  spells?: MonsterSpell[]
+  casting?: CastingSnapshot
 }
 
 /** Per-turn economy trackers (reset at the start of the creature's own turn). */
@@ -268,8 +285,16 @@ export interface Combatant {
   deathSaves: { successes: number; failures: number }
   /** Snapshot of the creature's actions when it joined the fight. */
   actions: Action[]
-  /** PCs with spellcasting only */
+  /** Spellcasters: PCs with spellcasting, and monsters with a Spellcasting action */
   casting?: CastingSnapshot
+  /** Monsters: the spells it can cast (slots aren't used; per-day casts are counted in `spent`) */
+  spells?: MonsterSpell[]
+  /** Exhaustion level 0-6: -2 per level on every d20 test */
+  exhaustion?: number
+  /** Surprised creatures roll Initiative with Disadvantage; only matters before combat starts */
+  surprised?: boolean
+  /** Tie-break among equal initiatives (lower acts first); set when a turn is delayed. Defaults to minus the initiative bonus */
+  tieRank?: number
   /** Total saving-throw bonus per ability (proficiency included) */
   saves?: Record<Ability, number>
   resistances?: string[]
@@ -350,4 +375,17 @@ export interface Encounter {
   name: string
   notes: string
   entries: EncounterEntry[]
+}
+
+/** A DM-only entry in the campaign journal: a note, a session recap, or an automatic combat summary. */
+export interface JournalEntry {
+  id?: number
+  kind: 'note' | 'session' | 'combat'
+  title: string
+  body: string
+  /** In-world campaign day when it was written */
+  day: number
+  createdAt: number
+  updatedAt: number
+  pinned?: boolean
 }

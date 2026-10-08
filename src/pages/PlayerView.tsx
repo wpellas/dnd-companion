@@ -118,7 +118,7 @@ export function PlayerView() {
                       {c.concentrating && <span className="badge">◎ Concentrating</span>}
                       {c.conditions.map((cond) => (
                         <span className="badge" key={cond}>
-                          {cond}
+                          {cond === 'Exhaustion' && c.exhaustion ? `Exhaustion ${c.exhaustion}` : cond}
                         </span>
                       ))}
                     </div>

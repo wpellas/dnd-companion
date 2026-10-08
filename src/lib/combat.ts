@@ -12,7 +12,9 @@ import type {
 } from '../types'
 import { XP_BY_CR } from '../data/encounterBudget'
 import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
+import { exhaustionLevel } from './conditionRules'
 import { rollInitiative } from './dice'
+import { addCombatSummary } from './journal'
 import { buildSaves, isConditionImmune, type DamageAmount } from './resolve'
 import { concentrationDc } from './rules'
 
@@ -128,7 +130,7 @@ export function pcCombatant(c: Character): Combatant {
     hp: c.currentHp,
     maxHp: c.maxHp,
     tempHp: 0,
-    conditions: [],
+    conditions: c.exhaustion ? ['Exhaustion'] : [],
     concentrating: false,
     deathSaves: { successes: 0, failures: 0 },
     actions: resolveCharacterActions(c),
@@ -138,6 +140,7 @@ export function pcCombatant(c: Character): Combatant {
     immunities: c.immunities ?? [],
     vulnerabilities: c.vulnerabilities ?? [],
     turn: freshTurn(),
+    exhaustion: c.exhaustion ?? 0,
   }
 }
 
@@ -166,6 +169,8 @@ export function monsterCombatants(t: MonsterTemplate, count: number, existing: C
       vulnerabilities: t.vulnerabilities ?? [],
       conditionImmunities: t.conditionImmunities ?? [],
       turn: freshTurn(),
+      casting: t.casting,
+      spells: t.spells?.length ? structuredClone(t.spells) : undefined,
       legendary: t.legendaryUses ? { max: t.legendaryUses, used: 0 } : undefined,
       counters: counters.length ? counters : undefined,
       spent: {},
@@ -265,10 +270,13 @@ export function settleRecharge(s: CombatState, promptId: string, roll: number) {
 /* Turn order                                                                                                    */
 /* ------------------------------------------------------------------------------------------------------------ */
 
-/** Sort by initiative (desc), ties broken by bonus, keeping the active combatant active. */
+/** Where a creature sits among equal initiatives: lower acts first. A delayed turn sets this by hand; otherwise the bonus decides. */
+const tieRankOf = (c: Combatant) => c.tieRank ?? -c.initiativeBonus
+
+/** Sort by initiative (desc), ties broken by bonus (or by hand after a delay), keeping the active combatant active. */
 export function sortCombatants(s: CombatState) {
   const currentId = s.combatants[s.turnIndex]?.id
-  s.combatants.sort((a, b) => (b.initiative ?? -Infinity) - (a.initiative ?? -Infinity) || b.initiativeBonus - a.initiativeBonus)
+  s.combatants.sort((a, b) => (b.initiative ?? -Infinity) - (a.initiative ?? -Infinity) || tieRankOf(a) - tieRankOf(b))
   const idx = s.combatants.findIndex((c) => c.id === currentId)
   s.turnIndex = idx === -1 ? 0 : idx
 }
@@ -286,7 +294,10 @@ function beginTurn(s: CombatState, c: Combatant) {
 }
 
 export function startCombat(s: CombatState) {
-  s.combatants.forEach((c) => (c.initiative ??= 0))
+  s.combatants.forEach((c) => {
+    c.initiative ??= 0
+    delete c.surprised // it only affects the initiative roll
+  })
   s.turnIndex = 0
   sortCombatants(s)
   s.started = true
@@ -443,6 +454,8 @@ export interface TargetOutcome {
   notes?: string[]
   /** Id of a counter on the target (Legendary Resistance) to spend: a failed save was turned into a success */
   spendCounter?: string
+  /** For attacks inside a Multiattack or a volley of rays: the attack actually made, used for its name and condition */
+  action?: Action
 }
 
 export interface ActionResolution {
@@ -450,7 +463,7 @@ export interface ActionResolution {
   action: Action
   targets: TargetOutcome[]
   /** Set when the action is a spell: slot level spent (0 = cantrip / free), whether a slot was actually spent, and concentration */
-  cast?: { slotLevel: number; spent: boolean; concentration: boolean }
+  cast?: { slotLevel: number; spent: boolean; concentration: boolean; monsterSpell?: { index: string; times?: number } }
   /** Extra text for the log shared by every target (e.g. the damage roll) */
   detail?: string
 }
@@ -465,13 +478,13 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
   {
     const attacker = s.combatants.find((c) => c.id === r.attackerId)
     if (!attacker) return
-    const { action } = r
     const lines: string[] = []
     const publicLines: string[] = []
 
     for (const o of r.targets) {
       const target = s.combatants.find((c) => c.id === o.targetId)
       if (!target) continue
+      const action = o.action ?? r.action
       const notes: string[] = [...(o.notes ?? [])]
       const total = o.parts.reduce((n, p) => n + p.amount, 0)
       const dmgText = fmtParts(o.parts)
@@ -527,6 +540,11 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
     const extra: string[] = []
     if (r.cast) {
       if (r.cast.spent && r.cast.slotLevel > 0) extra.push(`level ${r.cast.slotLevel} slot`)
+      if (r.cast.monsterSpell?.times) {
+        attacker.spent ??= {}
+        const key = `spell:${r.cast.monsterSpell.index}`
+        attacker.spent[key] = (attacker.spent[key] ?? 0) + 1
+      }
       if (r.cast.concentration) {
         if (attacker.concentrating) extra.push('drops previous concentration')
         attacker.concentrating = true
@@ -535,6 +553,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
     }
     if (r.detail) extra.unshift(r.detail)
 
+    const action = r.action
     if (lines.length === 0) {
       lines.push(`${attacker.name} uses ${action.name}`)
       publicLines.push(`${attacker.name} uses ${action.name}`)
@@ -575,11 +594,80 @@ export type HpStatus = 'Healthy' | 'Bloodied' | 'Defeated'
 /** What the players see for monsters instead of exact HP. */
 export const hpStatus = (c: Combatant): HpStatus => (c.hp === 0 ? 'Defeated' : c.hp * 2 <= c.maxHp ? 'Bloodied' : 'Healthy')
 
-export function rollAllMonsterInitiative(s: CombatState) {
+/** Monsters count as the same kind when they came from the same template ("Goblin Warrior 1" and "...2"). */
+const kindOf = (c: Combatant) => c.templateRef?.name ?? c.name.replace(/ \d+$/, '')
+
+/** Roll initiative for every monster (Surprised ones with Disadvantage). Grouped: one roll per kind of monster. */
+export function rollAllMonsterInitiative(s: CombatState, grouped = false) {
+  const shared = new Map<string, number>()
   s.combatants.forEach((c) => {
-    if (c.kind === 'monster') c.initiative = rollInitiative(c.initiativeBonus)
+    if (c.kind !== 'monster') return
+    const key = kindOf(c)
+    if (grouped && shared.has(key)) c.initiative = shared.get(key)!
+    else {
+      c.initiative = rollInitiative(c.initiativeBonus, !!c.surprised)
+      shared.set(key, c.initiative)
+    }
   })
   sortCombatants(s)
+}
+
+/** Give every monster of the same kind the same initiative as `c` (group initiative). */
+export function shareInitiative(s: CombatState, c: Combatant) {
+  if (c.kind !== 'monster' || c.initiative === null) return
+  const key = kindOf(c)
+  s.combatants.forEach((x) => {
+    if (x.kind === 'monster' && kindOf(x) === key) x.initiative = c.initiative
+  })
+  sortCombatants(s)
+}
+
+export function toggleSurprised(_s: CombatState, c: Combatant) {
+  if (c.surprised) delete c.surprised
+  else c.surprised = true
+}
+
+/**
+ * The active creature delays: it acts later this round, just after `afterId` (who must still be due to act this round).
+ * Its initiative becomes that creature's, so the new place sticks in later rounds, and play moves on to whoever was next.
+ */
+export function delayTurn(s: CombatState, afterId: string) {
+  const idx = s.turnIndex
+  const me = s.combatants[idx]
+  const after = s.combatants.findIndex((c) => c.id === afterId)
+  if (!me || after <= idx) return
+  const anchor = s.combatants[after]
+  me.initiative = anchor.initiative
+  // slot into the tie order right behind the anchor: halfway to whoever follows it in the same initiative, or one step behind
+  const next = s.combatants.slice(after + 1).find((c) => c.initiative === anchor.initiative)
+  me.tieRank = next ? (tieRankOf(anchor) + tieRankOf(next)) / 2 : tieRankOf(anchor) + 1
+  const [moved] = s.combatants.splice(idx, 1)
+  s.combatants.splice(after, 0, moved) // removing it shifted the anchor to `after - 1`, so this puts it right behind the anchor
+  s.turnIndex = idx - 1 // advanceTurn steps onto the creature that moved into this slot
+  logEvent(s, `${me.name} delays their turn until after ${anchor.name}`)
+  announce(s, `${me.name} delays their turn`)
+  advanceTurn(s)
+}
+
+/**
+ * Set the Exhaustion level (0-6). The Exhaustion condition follows it; level 6 is death.
+ */
+export function setExhaustion(s: CombatState, c: Combatant, level: number) {
+  const n = Math.max(0, Math.min(6, Math.round(level)))
+  c.exhaustion = n
+  c.conditions = n > 0 ? (c.conditions.includes('Exhaustion') ? c.conditions : [...c.conditions, 'Exhaustion']) : c.conditions.filter((x) => x !== 'Exhaustion')
+  if (n >= 6 && c.hp > 0) {
+    c.hp = 0
+    c.concentrating = false
+    if (c.kind === 'pc') {
+      c.deathSaves.failures = 3
+      if (!c.conditions.includes('Unconscious')) c.conditions.push('Unconscious')
+    }
+    logEvent(s, `${c.name} dies of exhaustion (level 6)`)
+    announce(s, `${c.name} has died`)
+  } else if (n > 0) {
+    logEvent(s, `${c.name} is at Exhaustion level ${n}`)
+  }
 }
 
 /** Is this action available (not spent / out of daily uses)? */
@@ -599,16 +687,20 @@ export async function endCombat() {
     await Promise.all(
       state.combatants
         .filter((c) => c.kind === 'pc' && c.characterId !== undefined)
-        .map((c) => db.characters.update(c.characterId!, { currentHp: c.hp })),
+        .map((c) => db.characters.update(c.characterId!, { currentHp: c.hp, exhaustion: exhaustionLevel(c) })),
     )
+    // a fight that actually happened goes into the campaign journal
+    if (state.started && state.round > 0) await addCombatSummary(state)
   }
   await db.transaction('rw', db.combat, async () => {
     const s = normalize(structuredClone((await db.combat.get('current')) ?? EMPTY))
     s.combatants = s.combatants.filter((c) => c.kind === 'pc')
     s.combatants.forEach((c) => {
       c.initiative = null
+      delete c.tieRank
+      delete c.surprised
       c.tempHp = 0
-      c.conditions = []
+      c.conditions = exhaustionLevel(c) > 0 ? ['Exhaustion'] : []
       c.concentrating = false
       c.deathSaves = { successes: 0, failures: 0 }
       c.turn = freshTurn()

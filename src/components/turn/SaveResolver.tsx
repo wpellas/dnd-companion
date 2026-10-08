@@ -99,7 +99,10 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
                 <strong>{r.t.name}</strong>
                 {r.dis && <div className="dis small">Disadvantage (conditions)</div>}
               </td>
-              <td>{formatMod(r.bonus)}</td>
+              <td>
+                {formatMod(r.bonus)}
+                {(r.t.exhaustion ?? 0) > 0 && <div className="muted small">Exhaustion -{2 * (r.t.exhaustion ?? 0)}</div>}
+              </td>
               <td>
                 {r.auto ? (
                   <span className="muted">auto-fail</span>

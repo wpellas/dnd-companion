@@ -6,7 +6,9 @@ export const formatMod = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
 
 export const rollDie = (sides: number) => Math.floor(Math.random() * sides) + 1
 
-export const rollInitiative = (bonus: number) => rollDie(20) + bonus
+/** Initiative roll; a Surprised creature rolls with Disadvantage (2024 rules). */
+export const rollInitiative = (bonus: number, disadvantage = false) =>
+  (disadvantage ? Math.min(rollDie(20), rollDie(20)) : rollDie(20)) + bonus
 
 interface Dice {
   count: number

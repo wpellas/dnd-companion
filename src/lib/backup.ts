@@ -1,8 +1,8 @@
 import { db } from '../db'
 
 /**
- * Whole-app backup as one JSON file: characters (with portraits), custom monsters, saved encounters, the current
- * fight, settings and the campaign counters. The downloaded SRD reference library is *not* included - it is
+ * Whole-app backup as one JSON file: characters (with portraits), custom monsters, saved encounters, the journal, the
+ * current fight, settings and the campaign counters. The downloaded SRD reference library is *not* included - it is
  * re-downloaded on first launch - so backups stay small.
  */
 const FORMAT = 'dnd-companion-backup'
@@ -38,12 +38,13 @@ async function mapBlobs(value: unknown, toData: boolean): Promise<unknown> {
 export const BACKUP_KEY = 'lastBackup'
 
 export async function exportBackup(): Promise<{ blob: Blob; filename: string; counts: Record<string, number> }> {
-  const [characters, monsters, encounters, combat, kv] = await Promise.all([
+  const [characters, monsters, encounters, combat, kv, journal] = await Promise.all([
     db.characters.toArray(),
     db.monsters.where('source').equals('custom').toArray(),
     db.encounters.toArray(),
     db.combat.toArray(),
     db.kv.toArray(),
+    db.journal.toArray(),
   ])
   const data = {
     format: FORMAT,
@@ -53,6 +54,7 @@ export async function exportBackup(): Promise<{ blob: Blob; filename: string; co
     monsters,
     encounters,
     combat,
+    journal,
     kv: kv.filter((r) => !r.key.startsWith('api:') && r.key !== BACKUP_KEY),
   }
   const json = JSON.stringify(await mapBlobs(data, true))
@@ -61,7 +63,7 @@ export async function exportBackup(): Promise<{ blob: Blob; filename: string; co
   return {
     blob: new Blob([json], { type: 'application/json' }),
     filename: `dnd-companion-backup-${stamp}.json`,
-    counts: { characters: characters.length, monsters: monsters.length, encounters: encounters.length },
+    counts: { characters: characters.length, monsters: monsters.length, encounters: encounters.length, journal: journal.length },
   }
 }
 
@@ -78,8 +80,9 @@ export async function importBackup(file: File): Promise<Record<string, number>> 
   const data = (await mapBlobs(raw, false)) as Record<string, unknown[]>
   const arr = (k: string) => (Array.isArray(data[k]) ? (data[k] as never[]) : [])
 
-  await db.transaction('rw', [db.characters, db.monsters, db.encounters, db.combat, db.kv], async () => {
+  await db.transaction('rw', [db.characters, db.monsters, db.encounters, db.combat, db.kv, db.journal], async () => {
     await db.characters.clear()
+    await db.journal.clear()
     await db.monsters.where('source').equals('custom').delete()
     await db.encounters.clear()
     await db.combat.clear()
@@ -91,9 +94,10 @@ export async function importBackup(file: File): Promise<Record<string, number>> 
     await db.monsters.bulkPut(arr('monsters'))
     await db.encounters.bulkPut(arr('encounters'))
     await db.combat.bulkPut(arr('combat'))
+    await db.journal.bulkPut(arr('journal'))
     await db.kv.bulkPut(arr('kv'))
   })
-  return { characters: arr('characters').length, monsters: arr('monsters').length, encounters: arr('encounters').length }
+  return { characters: arr('characters').length, monsters: arr('monsters').length, encounters: arr('encounters').length, journal: arr('journal').length }
 }
 
 /** Trigger a browser download of a blob. */

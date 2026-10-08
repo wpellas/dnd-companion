@@ -97,8 +97,19 @@ export const CONDITION_EFFECTS: Record<Condition, ConditionEffect> = {
 
 const effects = (c: Pick<Combatant, 'conditions'>) => (c.conditions ?? []).map((k) => ({ name: k, fx: CONDITION_EFFECTS[k] })).filter((e) => e.fx)
 
+/** Exhaustion level 0-6. Each level takes 2 off every D20 Test and 5 ft off Speed; level 6 is death. */
+export const exhaustionLevel = (c: Pick<Combatant, 'exhaustion'>) => Math.max(0, Math.min(6, c.exhaustion ?? 0))
+export const exhaustionPenalty = (c: Pick<Combatant, 'exhaustion'>) => 2 * exhaustionLevel(c)
+
 /** Short reminder lines for a creature's conditions (shown at the start of its turn). */
-export const conditionReminders = (c: Pick<Combatant, 'conditions'>) => effects(c).map((e) => ({ name: e.name, text: e.fx.reminder }))
+export const conditionReminders = (c: Pick<Combatant, 'conditions' | 'exhaustion'>) =>
+  effects(c).map((e) => ({
+    name: e.name,
+    text:
+      e.name === 'Exhaustion' && exhaustionLevel(c) > 0
+        ? `Level ${exhaustionLevel(c)}: -${exhaustionPenalty(c)} to every D20 Test (the app applies it to attack and save bonuses) and -${5 * exhaustionLevel(c)} ft Speed. Dies at level 6.`
+        : e.fx.reminder,
+  }))
 
 export const isIncapacitated = (c: Pick<Combatant, 'conditions'>) => effects(c).some((e) => e.fx.incapacitated)
 

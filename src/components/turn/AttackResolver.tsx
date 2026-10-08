@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { attackAdvice } from '../../lib/conditionRules'
+import { attackAdvice, exhaustionPenalty } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
 import { adjustForTarget } from '../../lib/resolve'
 import { attackOutcome, rollD20, type RollMode } from '../../lib/rules'
@@ -29,7 +29,8 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
   const [d20Note, setD20Note] = useState('')
   const mode = pickedMode ?? advice.mode // the DM can override the suggestion
 
-  const bonus = action.attackBonus ?? 0
+  const penalty = exhaustionPenalty(attacker)
+  const bonus = (action.attackBonus ?? 0) - penalty
   const roll = d20 === '' ? undefined : Number(d20)
   const base = roll === undefined ? null : attackOutcome(roll, bonus, target.ac)
   // a hit that the rules turn into a crit (Paralyzed / Unconscious target within 5 ft)
@@ -43,7 +44,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
 
   const apply = () => {
     if (!outcome) return
-    const detail = `d20 ${roll} ${formatMod(bonus)} = ${(roll ?? 0) + bonus} vs AC ${target.ac}${mode !== 'normal' ? ` (${MODE_LABEL[mode].toLowerCase()})` : ''}${advice.critOnHit && base === 'hit' ? ` - crit: ${advice.critOnHit}` : ''}`
+    const detail = `d20 ${roll} ${formatMod(bonus)} = ${(roll ?? 0) + bonus} vs AC ${target.ac}${mode !== 'normal' ? ` (${MODE_LABEL[mode].toLowerCase()})` : ''}${penalty ? ` (Exhaustion -${penalty})` : ''}${advice.critOnHit && base === 'hit' ? ` - crit: ${advice.critOnHit}` : ''}`
     onApply(
       [
         {
@@ -88,6 +89,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
         </label>
         <span className="muted bonus-note">
           {formatMod(bonus)} to hit vs AC {target.ac}
+          {penalty > 0 && <> (Exhaustion -{penalty})</>}
         </span>
         {canRoll ? (
           <>

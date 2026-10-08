@@ -16,15 +16,19 @@ import {
   pcCombatant,
   rollAllMonsterInitiative,
   setDeathSaves,
+  setExhaustion,
   settleConcentration,
   settleRecharge,
+  shareInitiative,
   sortCombatants,
   startCombat,
+  toggleSurprised,
   undoCombat,
 } from '../lib/combat'
 import { formatMod, rollDie, rollInitiative } from '../lib/dice'
-import { canAppRoll, useSettings, type Settings } from '../lib/settings'
+import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/settings'
 import { saveBonus } from '../lib/resolve'
+import { exhaustionLevel } from '../lib/conditionRules'
 import { CONDITIONS, type Combatant, type Condition, type Prompt, type TurnUsed } from '../types'
 
 export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
@@ -63,7 +67,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
       <div className="toolbar">
         <h2>Combat {started && <span className="muted">· Round {combat?.round}</span>}</h2>
         <button onClick={addParty}>+ Add party</button>
-        <button onClick={() => mutateCombat(rollAllMonsterInitiative, 'Rolled monster initiative')}>🎲 Roll monster initiative</button>
+        <button onClick={() => mutateCombat((s) => rollAllMonsterInitiative(s, settings.groupInitiative), 'Rolled monster initiative')}>🎲 Roll monster initiative</button>
         {!started ? (
           <button className="primary" disabled={!allSet} onClick={() => mutateCombat(startCombat, 'Combat started')}>
             Start combat
@@ -92,6 +96,10 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
           💾 Save monsters as an encounter
         </button>
         {goTo && <button onClick={() => goTo('encounters')}>📜 Saved encounters</button>}
+        <label className="check small" title="Monsters of the same kind share one initiative: rolled once, or typed once. They still act one after another.">
+          <input type="checkbox" checked={settings.groupInitiative} onChange={(e) => updateSettings({ groupInitiative: e.target.checked })} />
+          <span>Group same monsters' initiative</span>
+        </label>
         {rating && (
           <span className="difficulty" title={`Encounter XP ${xp} against budgets: Low ${rating.budget.low}, Moderate ${rating.budget.moderate}, High ${rating.budget.high}`}>
             {xp} XP · <strong className={`diff ${rating.difficulty?.replace(' ', '-').toLowerCase()}`}>{rating.difficulty}</strong> for this party
@@ -106,11 +114,11 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
       {!started && combatants.length > 0 && !allSet && <p className="muted">Enter an initiative for everyone (typed or rolled) to start.</p>}
       {combatants.length === 0 && <p className="muted">Add your party above, then add monsters from the Bestiary tab or load a saved encounter.</p>}
 
-      {started && combat && <TurnPanel key={`${combat.round}-${combat.turnIndex}`} combat={combat} />}
+      {started && combat && <TurnPanel key={`${combat.round}-${combat.turnIndex}-${combat.combatants[combat.turnIndex]?.id}`} combat={combat} />}
 
       <div className="combatants">
         {combatants.map((c, i) => (
-          <CombatantRow key={c.id} c={c} active={started && i === combat?.turnIndex} image={imageFor(c)} settings={settings} />
+          <CombatantRow key={c.id} c={c} active={started && i === combat?.turnIndex} started={started} image={imageFor(c)} settings={settings} />
         ))}
       </div>
     </div>
@@ -163,7 +171,7 @@ const ECON: { key: keyof TurnUsed; letter: string; title: string }[] = [
   { key: 'reaction', letter: 'R', title: 'Reaction' },
 ]
 
-function CombatantRow({ c, active, image, settings }: { c: Combatant; active: boolean; image?: Blob; settings: Settings }) {
+function CombatantRow({ c, active, started, image, settings }: { c: Combatant; active: boolean; started: boolean; image?: Blob; settings: Settings }) {
   const [amount, setAmount] = useState('')
   const update = (fn: (c: Combatant) => void, resort = false, label?: string) =>
     mutateCombat((s) => {
@@ -206,9 +214,9 @@ function CombatantRow({ c, active, image, settings }: { c: Combatant; active: bo
 
   return (
     <div className={`combatant ${c.kind} ${active ? 'active' : ''} ${down ? 'down' : ''}`}>
-      <InitiativeInput value={c.initiative} onCommit={(n) => update((t) => (t.initiative = n), true, `${c.name}: initiative`)} />
+      <InitiativeInput value={c.initiative} onCommit={(n) => withState((s, t) => { t.initiative = n; if (settings.groupInitiative) shareInitiative(s, t); else sortCombatants(s) }, `${c.name}: initiative`)} />
       {canAppRoll(c.kind, settings) ? (
-        <button title="Roll initiative" onClick={() => update((t) => (t.initiative = rollInitiative(t.initiativeBonus)), true, `${c.name}: rolled initiative`)}>
+        <button title={c.surprised ? 'Roll initiative (Surprised: Disadvantage)' : 'Roll initiative'} onClick={() => withState((s, t) => { t.initiative = rollInitiative(t.initiativeBonus, !!t.surprised); if (settings.groupInitiative) shareInitiative(s, t); else sortCombatants(s) }, `${c.name}: rolled initiative`)}>
           🎲
         </button>
       ) : (
@@ -225,6 +233,12 @@ function CombatantRow({ c, active, image, settings }: { c: Combatant; active: bo
             </span>
           ) : null}
         </span>
+        {!started && (
+          <label className="check small surprised" title="Surprised creatures roll Initiative with Disadvantage (2024 rules)">
+            <input type="checkbox" checked={!!c.surprised} onChange={() => withState((_s, t) => toggleSurprised(_s, t), `${c.name}: surprised`)} />
+            <span>Surprised{c.surprised ? (canAppRoll(c.kind, settings) ? ': rolls with Disadvantage' : ': roll initiative with Disadvantage') : ''}</span>
+          </label>
+        )}
         {active && (
           <span className="econ">
             {ECON.map(({ key, letter, title }) => (
@@ -290,7 +304,7 @@ function CombatantRow({ c, active, image, settings }: { c: Combatant; active: bo
 
       <details className="conditions">
         <summary title={[...c.conditions, c.concentrating ? 'Concentrating' : ''].filter(Boolean).join(', ')}>
-          {c.conditions.length ? c.conditions.join(', ') : 'Conditions'}
+          {c.conditions.length ? c.conditions.map((x) => (x === 'Exhaustion' ? `Exhaustion ${exhaustionLevel(c)}` : x)).join(', ') : 'Conditions'}
           {c.concentrating && ' · ◎ Concentrating'}
         </summary>
         <div className="popover">
@@ -298,7 +312,13 @@ function CombatantRow({ c, active, image, settings }: { c: Combatant; active: bo
             <input type="checkbox" checked={c.concentrating} onChange={(e) => update((t) => (t.concentrating = e.target.checked), false, `${c.name}: concentration`)} />
             Concentrating
           </label>
-          {CONDITIONS.map((cond) => (
+          <div className="exhaustion" title="Each level: -2 to every d20 test and -5 ft Speed; level 6 is death">
+            <span>Exhaustion</span>
+            <button aria-label="Lower exhaustion" disabled={exhaustionLevel(c) === 0} onClick={() => withState((s, t) => setExhaustion(s, t, exhaustionLevel(t) - 1), `${c.name}: exhaustion`)}>−</button>
+            <strong>{exhaustionLevel(c)}</strong>
+            <button aria-label="Raise exhaustion" disabled={exhaustionLevel(c) >= 6} onClick={() => withState((s, t) => setExhaustion(s, t, exhaustionLevel(t) + 1), `${c.name}: exhaustion`)}>+</button>
+          </div>
+          {CONDITIONS.filter((cond) => cond !== 'Exhaustion').map((cond) => (
             <label key={cond}>
               <input type="checkbox" checked={c.conditions.includes(cond)} onChange={() => toggleCondition(cond)} />
               {cond}

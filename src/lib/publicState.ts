@@ -18,6 +18,8 @@ export interface PublicCombatant {
   deathSaves?: { successes: number; failures: number }
   status: HpStatus
   conditions: Condition[]
+  /** Exhaustion level 1-6, if any */
+  exhaustion?: number
   concentrating: boolean
 }
 
@@ -45,6 +47,7 @@ export function toPublic(s: CombatState | undefined): PublicCombat | undefined {
         initiative: c.initiative,
         status: hpStatus(c),
         conditions: c.conditions ?? [],
+        exhaustion: c.exhaustion || undefined,
         concentrating: c.concentrating,
       }
       return c.kind === 'pc' ? { ...base, hp: c.hp, maxHp: c.maxHp, tempHp: c.tempHp, deathSaves: c.hp === 0 ? c.deathSaves : undefined } : base

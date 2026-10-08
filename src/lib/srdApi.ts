@@ -80,6 +80,17 @@ export interface SrdMonsterAction {
   damage?: { damage_type?: { index: string }; damage_dice: string }[]
   dc?: { dc_type: { index: string }; dc_value: number; success_type: string }
   usage?: { type: string; times?: number; min_value?: number }
+  /** Multiattack: the attacks it makes (counts arrive as strings or numbers) and, if any, one more chosen from a list */
+  multiattack_type?: string
+  actions?: { action_name: string; count: number | string }[]
+  action_options?: { choose: number; from?: { options?: { action_name?: string; count?: number | string }[] } }
+  /** Spellcasting actions */
+  spellcasting?: {
+    ability: { index: string }
+    dc?: number
+    modifier?: number
+    spells?: { index: string; name: string; level: number; usage?: { type: string; times?: number } }[]
+  }
 }
 
 export interface SrdMonster {

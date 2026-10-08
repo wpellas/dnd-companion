@@ -6,17 +6,19 @@ import { LiveHost, useHubStatus } from './lib/hub'
 import { BestiaryPage } from './pages/BestiaryPage'
 import { CombatPage } from './pages/CombatPage'
 import { EncountersPage } from './pages/EncountersPage'
+import { JournalPage } from './pages/JournalPage'
 import { PartyPage } from './pages/PartyPage'
 import { PlayerView } from './pages/PlayerView'
 import { SettingsPage } from './pages/SettingsPage'
 
-type Tab = 'combat' | 'party' | 'bestiary' | 'encounters' | 'settings'
+type Tab = 'combat' | 'party' | 'bestiary' | 'encounters' | 'journal' | 'settings'
 
 const TAB_LABEL: Record<Tab, string> = {
   combat: '⚔ Combat',
   party: '🛡 Party',
   bestiary: '🐉 Bestiary',
   encounters: '📜 Encounters',
+  journal: '📖 Journal',
   settings: '⚙ Settings',
 }
 
@@ -50,6 +52,7 @@ export default function App() {
       {tab === 'party' && <PartyPage />}
       {tab === 'bestiary' && <BestiaryPage />}
       {tab === 'encounters' && <EncountersPage goTo={(t) => setTab(t)} />}
+      {tab === 'journal' && <JournalPage />}
       {tab === 'settings' && <SettingsPage />}
       <footer className="attribution">
         <div className="sync-status">

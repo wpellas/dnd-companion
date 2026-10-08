@@ -1,4 +1,4 @@
-import { resistsAllDamage } from './conditionRules'
+import { exhaustionPenalty, resistsAllDamage } from './conditionRules'
 import { abilityMod } from './dice'
 import { ABILITIES, type Ability, type AbilityScores, type Action, type Combatant, type Condition, type DamagePart } from '../types'
 
@@ -76,8 +76,8 @@ export function actionDamageParts(a: Action): DamagePart[] {
   return [...main, ...(a.extraDamage ?? [])]
 }
 
-/** A creature's total saving-throw bonus for an ability (falls back to 0 for old combat records). */
-export const saveBonus = (c: Pick<Combatant, 'saves'>, ability: Ability) => c.saves?.[ability] ?? 0
+/** A creature's total saving-throw bonus for an ability (falls back to 0 for old combat records), less 2 per Exhaustion level. */
+export const saveBonus = (c: Pick<Combatant, 'saves' | 'exhaustion'>, ability: Ability) => (c.saves?.[ability] ?? 0) - exhaustionPenalty(c)
 
 /**
  * Saving-throw bonuses for a creature: the ability modifier plus proficiency for proficient saves. Monsters list the

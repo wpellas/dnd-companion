@@ -43,10 +43,13 @@ export function parseDamageParts(a: SrdMonsterAction): DamagePart[] {
       const after = desc.slice(m.index + m[0].length).split(/[.(]/)[0]
       const cond = after.match(/\bif\b(.*)$/i)
       if (cond) return { dice, type, note: cond[1].trim() }
-      if (riderAt >= 0 && m.index > riderAt && a.attack_bonus !== undefined) return { dice, type, note: 'rider effect, see the action text' }
+      if (riderAt >= 0 && m.index > riderAt && a.attack_bonus !== undefined) return { dice, type, note: RIDER_NOTE }
       return { dice, type }
     })
 }
+
+/** Note put on a damage part that only applies through a rider effect; shown translated (see `de.rider`). */
+export const RIDER_NOTE = 'rider effect, see the action text'
 
 const num = (s: string | undefined) => {
   const m = s?.match(/\d+/)

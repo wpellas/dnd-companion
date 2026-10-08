@@ -5,8 +5,9 @@ import { usePromise } from '../hooks'
 import { actionAvailable, advanceTurn, delayTurn, isDown, mutateCombat, resolveAction, type TargetOutcome } from '../lib/combat'
 import { conditionReminders, isIncapacitated } from '../lib/conditionRules'
 import { formatMod } from '../lib/dice'
+import { possessive, t, tAbility, tDamage, tn } from '../lib/i18n'
 import { canAppRoll, useSettings } from '../lib/settings'
-import { castableLevels, levelLabel, slotsLeft, slotsLeftAtOrAbove, spellToAction } from '../lib/spells'
+import { castableLevels, levelLabel, levelName, slotsLeft, slotsLeftAtOrAbove, spellToAction } from '../lib/spells'
 import { getSpell } from '../lib/srdApi'
 import { spendSlot } from '../lib/store'
 import { stepsFromMultiattack, stepsFromVolley } from '../lib/volley'
@@ -19,11 +20,11 @@ import { useDamageEntry } from './turn/useDamageEntry'
 import { SaveResolver } from './turn/SaveResolver'
 import { UsePips } from './UsePips'
 
-const TIMING_LABEL = { action: 'Actions', bonus: 'Bonus actions', reaction: 'Reactions', legendary: 'Legendary' } as const
-const ECONOMY: { key: keyof TurnUsed; label: string }[] = [
-  { key: 'action', label: 'Action' },
-  { key: 'bonus', label: 'Bonus' },
-  { key: 'reaction', label: 'Reaction' },
+const TIMING_LABEL = { action: 'turn.timing.action', bonus: 'turn.timing.bonus', reaction: 'turn.timing.reaction', legendary: 'turn.timing.legendary' } as const
+const ECONOMY: { key: keyof TurnUsed; label: 'turn.pillAction' | 'turn.pillBonus' | 'turn.pillReaction' }[] = [
+  { key: 'action', label: 'turn.pillAction' },
+  { key: 'bonus', label: 'turn.pillBonus' },
+  { key: 'reaction', label: 'turn.pillReaction' },
 ]
 
 /**
@@ -93,13 +94,13 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
   const toggleTurn = (key: keyof TurnUsed) => mutateCombat((s) => {
     const a = s.combatants.find((c) => c.id === attacker.id)
     if (a) a.turn = { action: false, bonus: false, reaction: false, ...a.turn, [key]: !(a.turn?.[key] ?? false) }
-  }, `${attacker.name}: ${key} tracker`)
+  }, t('lbl.tracker', { name: attacker.name, what: key }))
   const setCounter = (kind: 'legendary' | string, used: number) => mutateCombat((s) => {
     const a = s.combatants.find((c) => c.id === attacker.id)
     if (!a) return
     if (kind === 'legendary' && a.legendary) a.legendary.used = used
     else a.counters?.forEach((k) => k.id === kind && (k.used = used))
-  }, `${attacker.name}: counter`)
+  }, t('lbl.counter', { name: attacker.name }))
 
   const submit = async (outcomes: TargetOutcome[], detail: string) => {
     if (!action) return
@@ -125,23 +126,20 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
   }
   const addTarget = (id: string | undefined) => {
     if (!id) return
-    setTargetIds((t) => (multi ? (t.includes(id) ? t : [...t, id]) : [id]))
+    setTargetIds((ids) => (multi ? (ids.includes(id) ? ids : [...ids, id]) : [id]))
     setNonce((n) => n + 1)
   }
   const reminders = conditionReminders(attacker)
   // creatures that haven't acted yet this round and could be waited for (the lair marker and defeated monsters can't)
   const later = combatants.slice(combat.turnIndex + 1).filter((c) => c.kind !== 'lair' && !(c.kind === 'monster' && isDown(c)))
-  const resolverKey = `${nonce}|${action?.id}|${slotLevel}|${targets.map((t) => t.id).join(',')}`
+  const resolverKey = `${nonce}|${action?.id}|${slotLevel}|${targets.map((tg) => tg.id).join(',')}`
 
   return (
     <div className="turn-panel">
       <div className="row gap wrap">
-        <h3>
-          {attacker.name}
-          {attacker.id === active.id ? "'s turn" : ' acts out of turn'}
-        </h3>
+        <h3>{attacker.id === active.id ? t('turn.heading', { who: possessive(attacker.name) }) : t('turn.outOfTurn', { name: attacker.name })}</h3>
         <label className="field">
-          <span>Acting</span>
+          <span>{t('turn.acting')}</span>
           <select
             value={attacker.id}
             onChange={(e) => {
@@ -161,41 +159,41 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
           </select>
         </label>
         {attacker.id === active.id && (
-          <button className="end-turn" disabled={later.length === 0} title="Act later this round, just after someone who hasn't gone yet" onClick={() => setDelaying((d) => !d)}>
-            Delay ⏳
+          <button className="end-turn" disabled={later.length === 0} title={t('turn.delayTitle')} onClick={() => setDelaying((d) => !d)}>
+            {t('turn.delay')}
           </button>
         )}
-        <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, 'End turn')}>
-          End turn ▶
+        <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, t('lbl.endTurn'))}>
+          {t('turn.endTurn')}
         </button>
       </div>
 
       {delaying && (
         <div className="row gap wrap delay-row">
           <label className="field">
-            <span>{active.name} acts after…</span>
+            <span>{t('turn.delayAfter', { name: active.name })}</span>
             <select value={delayAfter || later[0]?.id} onChange={(e) => setDelayAfter(e.target.value)}>
               {later.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} (initiative {c.initiative})</option>
+                <option key={c.id} value={c.id}>{t('turn.delayOption', { name: c.name, n: c.initiative ?? 0 })}</option>
               ))}
             </select>
           </label>
-          <button className="primary" onClick={() => mutateCombat((s) => delayTurn(s, delayAfter || later[0].id), `${active.name} delays`)}>
-            Delay their turn
+          <button className="primary" onClick={() => mutateCombat((s) => delayTurn(s, delayAfter || later[0].id), t('lbl.delays', { name: active.name }))}>
+            {t('turn.delayGo')}
           </button>
-          <button onClick={() => setDelaying(false)}>Cancel</button>
+          <button onClick={() => setDelaying(false)}>{t('common.cancel')}</button>
         </div>
       )}
 
       <div className="economy">
         {ECONOMY.map(({ key, label }) => (
-          <button key={key} className={`pill ${attacker.turn?.[key] ? 'used' : ''}`} onClick={() => toggleTurn(key)} title={`Click to mark the ${label.toLowerCase()} as ${attacker.turn?.[key] ? 'available' : 'used'}`}>
-            {attacker.turn?.[key] ? '✕' : '○'} {label}
+          <button key={key} className={`pill ${attacker.turn?.[key] ? 'used' : ''}`} onClick={() => toggleTurn(key)} title={t('turn.pillTitle', { what: t(label).toLowerCase(), state: t(attacker.turn?.[key] ? 'econ.available' : 'econ.used') })}>
+            {attacker.turn?.[key] ? '✕' : '○'} {t(label)}
           </button>
         ))}
         {attacker.legendary && (
           <span className="counter">
-            Legendary actions <UsePips max={attacker.legendary.max} used={attacker.legendary.used} label="legendary actions" onChange={(u) => setCounter('legendary', u)} />
+            {t('turn.legendary')} <UsePips max={attacker.legendary.max} used={attacker.legendary.used} label={t('turn.legendaryLabel')} onChange={(u) => setCounter('legendary', u)} />
           </span>
         )}
         {(attacker.counters ?? []).map((k) => (
@@ -207,17 +205,15 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
 
       {reminders.length > 0 && (
         <div className="reminders">
-          {isIncapacitated(attacker) && <div className="warn">⚠ {attacker.name} is Incapacitated and can't take actions, bonus actions or reactions.</div>}
+          {isIncapacitated(attacker) && <div className="warn">{t('turn.incapacitated', { name: attacker.name })}</div>}
           {reminders.map((r) => (
-            <div key={r.name}><strong>{r.name}:</strong> {r.text}</div>
+            <div key={r.name}><strong>{r.label}:</strong> {r.text}</div>
           ))}
         </div>
       )}
 
       {actions.length === 0 && knownSpells.length === 0 ? (
-        <p className="muted">
-          {attacker.name} has no actions. Add some on the {attacker.kind === 'pc' ? 'Party' : 'Bestiary'} tab, or use the Dmg / Heal buttons on the rows below.
-        </p>
+        <p className="muted">{t('turn.noActions', { name: attacker.name, tab: attacker.kind === 'pc' ? t('turn.tabParty') : t('turn.tabBestiary') })}</p>
       ) : (
         <>
           {(['action', 'bonus', 'reaction', 'legendary'] as const).map((timing) => {
@@ -225,7 +221,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
             if (!list.length) return null
             return (
               <div className="chips" key={timing}>
-                <span className="muted">{TIMING_LABEL[timing]}</span>
+                <span className="muted">{t(TIMING_LABEL[timing])}</span>
                 {list.map((a) => {
                   const avail = actionAvailable(attacker, a)
                   return (
@@ -236,10 +232,10 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                       title={avail.why}
                       onClick={() => chooseAction(a.id)}
                     >
-                      {a.name || 'Unnamed'}
+                      {a.name || t('common.unnamed')}
                       <small>
                         {a.kind === 'attack' && ` ${formatMod(a.attackBonus ?? 0)}`}
-                        {a.kind === 'save' && ` DC ${a.saveDc ?? 10} ${(a.saveAbility ?? 'dex').toUpperCase()}`}
+                        {a.kind === 'save' && ` DC ${a.saveDc ?? 10} ${tAbility(a.saveAbility ?? 'dex')}`}
                         {a.damage && ` · ${a.damage}`}
                         {a.limited?.kind === 'recharge' && ` · ↻${a.limited.min}${a.limited.min < 6 ? '-6' : ''}`}
                         {a.limited?.kind === 'day' && ` · ${(a.limited.times ?? 1) - (attacker.spent?.[a.id] ?? 0)}/${a.limited.times}`}
@@ -254,11 +250,11 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
 
           {(sc || monsterCaster) && knownSpells.length > 0 && (
             <div className="chips">
-              <span className="muted">Spell</span>
+              <span className="muted">{t('turn.spell')}</span>
               <Combobox
                 className={`target-select ${spellMode ? 'selected-select' : ''}`}
-                placeholder="Search spells…"
-                clearLabel="- no spell -"
+                placeholder={t('turn.searchSpells')}
+                clearLabel={t('turn.noSpell')}
                 value={spellIndex}
                 options={[...knownSpells]
                   .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
@@ -266,13 +262,13 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                     if (!sc) {
                       const ms = attacker.spells!.find((x) => x.index === s.index)!
                       const left = ms.times ? ms.times - (attacker.spent?.[`spell:${ms.index}`] ?? 0) : undefined
-                      return { value: s.index, label: s.name, group: ms.times ? `${ms.times}/day each` : 'At will', hint: left === undefined ? levelLabel(s.level) : `${left} left` }
+                      return { value: s.index, label: s.name, group: ms.times ? t('turn.perDayEach', { n: ms.times }) : t('turn.atWill'), hint: left === undefined ? levelLabel(s.level) : t('turn.left', { n: left }) }
                     }
                     return {
                       value: s.index,
                       label: s.name,
-                      group: s.level === 0 ? 'Cantrips' : `${levelLabel(s.level)} level`,
-                      hint: s.level === 0 ? undefined : `${slotsLeftAtOrAbove(sc, s.level)} slot${slotsLeftAtOrAbove(sc, s.level) === 1 ? '' : 's'}`,
+                      group: s.level === 0 ? t('spell.cantrips') : levelName(s.level),
+                      hint: s.level === 0 ? undefined : tn('turn.slots', slotsLeftAtOrAbove(sc, s.level)),
                     }
                   })}
                 onChange={(v) => {
@@ -294,17 +290,17 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                   >
                     {(castLevels.length ? castLevels : [known.level]).map((l) => (
                       <option key={l} value={l}>
-                        {levelLabel(l)} slot ({slotsLeft(sc, l)} left){l > known.level ? ' ↑' : ''}
+                        {t('spell.slot', { level: levelLabel(l) })} ({t('turn.left', { n: slotsLeft(sc, l) })}){l > known.level ? ' ↑' : ''}
                       </option>
                     ))}
                   </select>
-                  <label className="row gap" title="Ritual, a feature, or a free cast: don't spend a slot">
-                    <input type="checkbox" checked={freeCast} onChange={(e) => setFreeCast(e.target.checked)} /> No slot
+                  <label className="row gap" title={t('turn.noSlotTitle')}>
+                    <input type="checkbox" checked={freeCast} onChange={(e) => setFreeCast(e.target.checked)} /> {t('turn.noSlot')}
                   </label>
                 </>
               )}
-              {spellMode && !slotOk && <span className="warn">{monsterCaster ? 'No casts left today.' : 'No slots left at that level.'}</span>}
-              {spellMode && spellDetail.loading && <span className="muted">Loading spell…</span>}
+              {spellMode && !slotOk && <span className="warn">{monsterCaster ? t('turn.noCasts') : t('turn.noSlotsLeft')}</span>}
+              {spellMode && spellDetail.loading && <span className="muted">{t('turn.loadingSpell')}</span>}
             </div>
           )}
 
@@ -312,42 +308,42 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
             <>
               {action.desc && (action.kind !== 'other' || sequence) && (
                 <details className="rules-text">
-                  <summary>Rules text: {action.name}</summary>
+                  <summary>{t('turn.rulesText', { name: action.name })}</summary>
                   <p>{action.desc}</p>
                 </details>
               )}
 
               {!sequence && (
               <div className="chips target-row">
-                <span className="muted">{multi ? 'Targets' : 'Target'}</span>
+                <span className="muted">{multi ? t('turn.targets') : t('turn.target')}</span>
                 <Combobox
                   className="target-select"
-                  placeholder={multi ? 'Add a target…' : 'Choose a target…'}
+                  placeholder={multi ? t('turn.addTarget') : t('turn.chooseTarget')}
                   value={multi ? undefined : targets[0]?.id}
                   options={pickable.map((c) => ({
                     value: c.id,
                     label: c.name,
-                    group: c.kind === 'pc' ? 'Party' : 'Enemies',
-                    hint: `AC ${c.ac} · ${c.hp}/${c.maxHp}${c.hp === 0 ? ' (down)' : ''}`,
+                    group: c.kind === 'pc' ? t('turn.groupParty') : t('turn.groupEnemies'),
+                    hint: `${t('turn.targetHint', { ac: c.ac, hp: c.hp, max: c.maxHp })}${c.hp === 0 ? t('turn.down') : ''}`,
                   }))}
                   onChange={addTarget}
                 />
                 {multi && (
                   <>
-                    <button onClick={() => { setTargetIds(pickable.filter((c) => c.kind === 'monster' && c.hp > 0 && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>All enemies</button>
-                    <button onClick={() => { setTargetIds(pickable.filter((c) => c.kind === 'pc' && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>All party</button>
-                    {targets.length > 0 && <button onClick={() => { setTargetIds([]); setNonce((n) => n + 1) }}>Clear</button>}
+                    <button onClick={() => { setTargetIds(pickable.filter((c) => c.kind === 'monster' && c.hp > 0 && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>{t('turn.allEnemies')}</button>
+                    <button onClick={() => { setTargetIds(pickable.filter((c) => c.kind === 'pc' && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>{t('turn.allParty')}</button>
+                    {targets.length > 0 && <button onClick={() => { setTargetIds([]); setNonce((n) => n + 1) }}>{t('common.clear')}</button>}
                   </>
                 )}
-                {multi && action.area && <span className="area-hint">Area: {action.area}. Pick everyone in it.</span>}
+                {multi && action.area && <span className="area-hint">{t('turn.areaHint', { area: action.area })}</span>}
               </div>
               )}
               {!sequence && multi && targets.length > 0 && (
                 <div className="spell-chips">
-                  {targets.map((t) => (
-                    <span className="spell-chip" key={t.id}>
-                      {t.name}
-                      <button className="x" aria-label={`Remove ${t.name}`} onClick={() => { setTargetIds((ids) => ids.filter((x) => x !== t.id)); setNonce((n) => n + 1) }}>
+                  {targets.map((tg) => (
+                    <span className="spell-chip" key={tg.id}>
+                      {tg.name}
+                      <button className="x" aria-label={t('ui.remove', { what: tg.name })} onClick={() => { setTargetIds((ids) => ids.filter((x) => x !== tg.id)); setNonce((n) => n + 1) }}>
                         ✕
                       </button>
                     </span>
@@ -368,7 +364,10 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
               )}
               {multiSteps && multiSteps.missing.length > 0 && (
                 <p className="muted">
-                  Multiattack also lists {multiSteps.missing.join(', ')}: use {multiSteps.missing.length === 1 ? 'it' : 'them'} from the {attacker.spells?.length ? 'Spell list' : 'action list'} instead.
+                  {tn('turn.multiMissing', multiSteps.missing.length, {
+                    names: multiSteps.missing.join(', '),
+                    where: attacker.spells?.length ? t('turn.whereSpells') : t('turn.whereActions'),
+                  })}
                 </p>
               )}
               {!sequence && action.kind === 'attack' && targets[0] && (
@@ -392,17 +391,18 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                 <div className="resolve">
                   {action.desc && <p className="rules-text-inline">{action.desc}</p>}
                   <p className="muted">
-                    {action.name} has no attack roll, save or healing the app can read. Using it
-                    {known ? ' spends the slot and sets concentration if needed' : ''}; apply any damage or effects with the controls on the rows below.
-                    {action.damage ? ` (damage: ${action.damage}${action.damageType ? ` ${action.damageType}` : ''})` : ''}
+                    {t('turn.otherA', { name: action.name })}
+                    {known ? t('turn.otherSlot') : ''}
+                    {t('turn.otherB')}
+                    {action.damage ? t('turn.otherDamage', { dmg: `${action.damage}${action.damageType ? ` ${tDamage(action.damageType)}` : ''}` }) : ''}
                   </p>
                   <div className="row gap">
                     <button
                       className="primary"
                       disabled={!slotOk}
-                      onClick={() => submit(targets.map((t): TargetOutcome => ({ targetId: t.id, result: 'cast', parts: [], applyCondition: false })), '')}
+                      onClick={() => submit(targets.map((tg): TargetOutcome => ({ targetId: tg.id, result: 'cast', parts: [], applyCondition: false })), '')}
                     >
-                      {known ? 'Cast' : 'Use'}
+                      {known ? t('turn.cast') : t('turn.use')}
                     </button>
                   </div>
                 </div>
@@ -431,14 +431,15 @@ function HealResolver({ action, targets, canRoll, onApply }: { action: Action; t
   const amount = entry.out.reduce((n, p) => n + p.amount, 0)
   return (
     <div className="resolve">
-      <DamageEntry entry={entry} label="Healing" canRoll={canRoll} />
+      <DamageEntry entry={entry} label={t('act.healing')} canRoll={canRoll} />
       <div className="row gap">
         <button
           className="primary"
           disabled={!entry.complete}
-          onClick={() => onApply(targets.map((t): TargetOutcome => ({ targetId: t.id, result: 'heal', parts: [{ type: '', amount }], applyCondition: false })), entry.detail)}
+          onClick={() => onApply(targets.map((tg): TargetOutcome => ({ targetId: tg.id, result: 'heal', parts: [{ type: '', amount }], applyCondition: false })), entry.detail)}
         >
-          Heal {amount} {targets.length > 1 ? `each (${targets.length})` : ''}
+          {t('turn.healBtn', { n: amount })}
+          {targets.length > 1 ? t('turn.healEach', { n: targets.length }) : ''}
         </button>
       </div>
     </div>
@@ -450,19 +451,19 @@ function LairPanel({ combat, lair }: { combat: CombatState; lair: Combatant }) {
   return (
     <div className="turn-panel">
       <div className="row gap wrap">
-        <h3>Lair actions (initiative 20)</h3>
-        <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, 'End turn')}>
-          End turn ▶
+        <h3>{t('turn.lairTitle')}</h3>
+        <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, t('lbl.endTurn'))}>
+          {t('turn.endTurn')}
         </button>
       </div>
-      <p className="muted">A creature that fights in its lair can take one lair action now. Describe it to the table and apply the effect with the controls on the rows below.</p>
+      <p className="muted">{t('turn.lairNote')}</p>
       <label className="field">
-        <span>Notes</span>
+        <span>{t('common.notes')}</span>
         <textarea
           rows={2}
           value={lair.notes ?? ''}
-          placeholder="Lair action options for this fight"
-          onChange={(e) => mutateCombat((s) => { const l = s.combatants.find((c) => c.id === lair.id); if (l) l.notes = e.target.value }, 'Lair notes')}
+          placeholder={t('turn.lairNotes')}
+          onChange={(e) => mutateCombat((s) => { const l = s.combatants.find((c) => c.id === lair.id); if (l) l.notes = e.target.value }, t('lbl.notesLair'))}
         />
       </label>
       {combat.log.length > 0 && (

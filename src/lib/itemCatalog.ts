@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
-import { equipmentGroup, itemFromEquipment, itemFromMagicItem } from './inventory'
+import { equipmentGroup, itemFromEquipment, itemFromMagicItem, type CatalogGroup } from './inventory'
 import { getEquipment, getMagicItem, LIBRARY_SYNC_KEY, readCachedEquipment, readCachedMagicItems } from './srdApi'
 import type { Item } from '../types'
 
@@ -10,8 +10,10 @@ export interface CatalogEntry {
   source: 'equipment' | 'magic-items'
   index: string
   name: string
-  group: string
+  group: CatalogGroup
   hint?: string
+  /** Weapons: the damage type, shown translated after the hint */
+  damageType?: string
 }
 
 let cache: { count: number; list: CatalogEntry[] } | null = null
@@ -22,7 +24,7 @@ export async function loadCatalog(): Promise<CatalogEntry[]> {
   if (cache?.count === eq.length + magic.length) return cache.list
   const list: CatalogEntry[] = [
     ...eq.map((e): CatalogEntry => ({ source: 'equipment', index: e.index, name: e.name, ...equipmentGroup(e) })),
-    ...magic.map((m): CatalogEntry => ({ source: 'magic-items', index: m.index, name: m.name, group: 'Magic items', hint: m.rarity?.name })),
+    ...magic.map((m): CatalogEntry => ({ source: 'magic-items', index: m.index, name: m.name, group: 'magic', hint: m.rarity?.name })),
   ].sort((a, b) => a.name.localeCompare(b.name))
   cache = { count: eq.length + magic.length, list }
   return list

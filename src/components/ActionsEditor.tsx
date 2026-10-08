@@ -1,6 +1,7 @@
 import { CheckField, Section } from './Section'
 import { NumberField } from './NumberField'
 import { newId } from '../lib/id'
+import { t, tAbility, tCondition, tDamage } from '../lib/i18n'
 import { deriveAction, proficiencyBonus } from '../lib/character'
 import { formatMod } from '../lib/dice'
 import {
@@ -24,12 +25,7 @@ interface Props {
   owner?: { level: number; abilities: AbilityScores }
 }
 
-const KIND_LABEL: Record<ActionKind, string> = {
-  attack: 'Attack roll',
-  save: 'Saving throw',
-  heal: 'Healing',
-  other: 'Other (rules note)',
-}
+const KIND_KEY = { attack: 'act.kind.attack', save: 'act.kind.save', heal: 'act.kind.heal', other: 'act.kind.rules' } as const
 
 const newAction = (): Action => ({
   id: newId(),
@@ -40,11 +36,12 @@ const newAction = (): Action => ({
   damageType: 'slashing',
 })
 
-const abilityOptions = ABILITIES.map((ab) => (
-  <option key={ab} value={ab}>
-    {ab.toUpperCase()}
-  </option>
-))
+const abilityOptions = () =>
+  ABILITIES.map((ab) => (
+    <option key={ab} value={ab}>
+      {tAbility(ab)}
+    </option>
+  ))
 
 export function ActionsEditor({ actions, onChange, owner }: Props) {
   const patch = (id: string, p: Partial<Action>) => onChange(actions.map((a) => (a.id === id ? { ...a, ...p } : a)))
@@ -72,36 +69,36 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
   }
 
   return (
-    <Section title="Actions" action={<button onClick={() => onChange([...actions, newAction()])}>+ Add action</button>}>
-      {actions.length === 0 && <p className="muted empty-note">No actions yet. Add attacks, save effects or healing.</p>}
+    <Section title={t('act.title')} action={<button onClick={() => onChange([...actions, newAction()])}>{t('act.add')}</button>}>
+      {actions.length === 0 && <p className="muted empty-note">{t('act.empty')}</p>}
       {actions.map((a) => {
         const derived = owner && a.ability ? deriveAction(a, owner) : null
         return (
           <div className="item-card" key={a.id}>
             <div className="item-top">
               <label className="field grow">
-                <span>Name</span>
+                <span>{t('common.name')}</span>
                 <input value={a.name} onChange={(e) => patch(a.id, { name: e.target.value })} placeholder="Longsword" />
               </label>
               <label className="field">
-                <span>Type</span>
+                <span>{t('act.type')}</span>
                 <select value={a.kind} onChange={(e) => patch(a.id, { kind: e.target.value as ActionKind })}>
-                  {Object.entries(KIND_LABEL).map(([k, label]) => (
+                  {(Object.keys(KIND_KEY) as ActionKind[]).map((k) => (
                     <option key={k} value={k}>
-                      {label}
+                      {t(KIND_KEY[k])}
                     </option>
                   ))}
                 </select>
               </label>
               {owner && (
                 <CheckField
-                  label="From my stats"
-                  title="Work out the numbers from this character's ability scores and proficiency"
+                  label={t('act.fromStats')}
+                  title={t('act.fromStatsTitle')}
                   checked={!!a.ability}
                   onChange={(on) => setDerived(a, on)}
                 />
               )}
-              <button className="danger icon-btn" title="Remove action" onClick={() => onChange(actions.filter((x) => x.id !== a.id))}>
+              <button className="danger icon-btn" title={t('act.removeAction')} onClick={() => onChange(actions.filter((x) => x.id !== a.id))}>
                 ✕
               </button>
             </div>
@@ -110,42 +107,42 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
               {a.ability ? (
                 <>
                   <label className="field">
-                    <span>{a.kind === 'attack' ? 'Attack ability' : 'Spell ability'}</span>
+                    <span>{a.kind === 'attack' ? t('act.attackAbility') : t('act.spellAbility')}</span>
                     <select value={a.ability} onChange={(e) => patch(a.id, { ability: e.target.value as Ability })}>
-                      {abilityOptions}
+                      {abilityOptions()}
                     </select>
                   </label>
                   {a.kind === 'attack' && (
                     <>
-                      <CheckField label="Proficient" checked={a.proficient ?? false} onChange={(v) => patch(a.id, { proficient: v })} />
-                      <NumberField label="Magic bonus" value={a.magicBonus ?? 0} onChange={(n) => patch(a.id, { magicBonus: n })} />
+                      <CheckField label={t('act.proficient')} checked={a.proficient ?? false} onChange={(v) => patch(a.id, { proficient: v })} />
+                      <NumberField label={t('act.magicBonus')} value={a.magicBonus ?? 0} onChange={(n) => patch(a.id, { magicBonus: n })} />
                     </>
                   )}
                 </>
               ) : (
                 <>
                   {a.kind === 'attack' && (
-                    <NumberField label="Attack bonus" value={a.attackBonus ?? 0} onChange={(n) => patch(a.id, { attackBonus: n })} />
+                    <NumberField label={t('act.attackBonus')} value={a.attackBonus ?? 0} onChange={(n) => patch(a.id, { attackBonus: n })} />
                   )}
-                  {a.kind === 'save' && <NumberField label="Save DC" value={a.saveDc ?? 10} onChange={(n) => patch(a.id, { saveDc: n })} />}
+                  {a.kind === 'save' && <NumberField label={t('act.saveDc')} value={a.saveDc ?? 10} onChange={(n) => patch(a.id, { saveDc: n })} />}
                 </>
               )}
 
               {a.kind === 'save' && (
                 <>
                   <label className="field">
-                    <span>Target saves with</span>
+                    <span>{t('act.targetSaves')}</span>
                     <select value={a.saveAbility ?? 'dex'} onChange={(e) => patch(a.id, { saveAbility: e.target.value as Ability })}>
-                      {abilityOptions}
+                      {abilityOptions()}
                     </select>
                   </label>
-                  <CheckField label="Half on save" checked={a.halfOnSave ?? false} onChange={(v) => patch(a.id, { halfOnSave: v })} />
+                  <CheckField label={t('act.halfOnSave')} checked={a.halfOnSave ?? false} onChange={(v) => patch(a.id, { halfOnSave: v })} />
                 </>
               )}
 
               {a.kind !== 'other' && (
               <label className="field">
-                <span>{a.kind === 'heal' ? 'Healing' : 'Damage'}</span>
+                <span>{a.kind === 'heal' ? t('act.healing') : t('act.damage')}</span>
                 <input
                   value={a.damage ?? ''}
                   onChange={(e) => patch(a.id, { damage: e.target.value })}
@@ -157,7 +154,7 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
                       patch(a.id, { damage: m[1].trim(), damageType: type })
                     }
                   }}
-                  placeholder={a.ability ? '2d6 (modifier added)' : '2d6+2 slashing'}
+                  placeholder={a.ability ? t('act.dmgPlaceholderStats') : t('act.dmgPlaceholder')}
                 />
               </label>
               )}
@@ -165,30 +162,30 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
               {a.kind !== 'heal' && a.kind !== 'other' && (
                 <>
                   <label className="field">
-                    <span>Damage type</span>
+                    <span>{t('act.damageType')}</span>
                     <select value={a.damageType ?? ''} onChange={(e) => patch(a.id, { damageType: e.target.value })}>
                       <option value="">-</option>
                       {/* keep any older free-text value selectable so it isn't silently lost */}
                       {a.damageType && !(DAMAGE_TYPES as readonly string[]).includes(a.damageType) && (
-                        <option value={a.damageType}>{a.damageType}</option>
+                        <option value={a.damageType}>{tDamage(a.damageType)}</option>
                       )}
-                      {DAMAGE_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
+                      {DAMAGE_TYPES.map((d) => (
+                        <option key={d} value={d}>
+                          {tDamage(d)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="field">
-                    <span>Applies condition</span>
+                    <span>{t('act.appliesCondition')}</span>
                     <select
                       value={a.condition ?? ''}
                       onChange={(e) => patch(a.id, { condition: (e.target.value || undefined) as Condition | undefined })}
                     >
-                      <option value="">None</option>
+                      <option value="">{t('act.noCondition')}</option>
                       {CONDITIONS.map((c) => (
                         <option key={c} value={c}>
-                          {c}
+                          {tCondition(c)}
                         </option>
                       ))}
                     </select>
@@ -202,7 +199,7 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
                 {(a.extraDamage ?? []).map((p, i) => (
                   <div className="extra-part" key={i}>
                     <label className="field">
-                      <span>Extra damage</span>
+                      <span>{t('act.extraDamage')}</span>
                       <input
                         value={p.dice}
                         placeholder="2d4"
@@ -210,7 +207,7 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
                       />
                     </label>
                     <label className="field">
-                      <span>Type</span>
+                      <span>{t('act.type')}</span>
                       <select
                         value={p.type}
                         onChange={(e) => patch(a.id, { extraDamage: (a.extraDamage ?? []).map((x, j) => (j === i ? { ...x, type: e.target.value } : x)) })}
@@ -218,46 +215,46 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
                         <option value="">-</option>
                         {DAMAGE_TYPES.map((d) => (
                           <option key={d} value={d}>
-                            {d}
+                            {tDamage(d)}
                           </option>
                         ))}
                       </select>
                     </label>
                     <label className="field grow">
-                      <span>Only if (optional)</span>
+                      <span>{t('act.onlyIf')}</span>
                       <input
                         value={p.note ?? ''}
-                        placeholder="e.g. the attack roll had Advantage"
+                        placeholder={t('act.onlyIfPlaceholder')}
                         onChange={(e) => patch(a.id, { extraDamage: (a.extraDamage ?? []).map((x, j) => (j === i ? { ...x, note: e.target.value || undefined } : x)) })}
                       />
                     </label>
-                    <button className="danger icon-btn" title="Remove" onClick={() => patch(a.id, { extraDamage: (a.extraDamage ?? []).filter((_, j) => j !== i) })}>
+                    <button className="danger icon-btn" title={t('common.remove')} onClick={() => patch(a.id, { extraDamage: (a.extraDamage ?? []).filter((_, j) => j !== i) })}>
                       ✕
                     </button>
                   </div>
                 ))}
                 <button className="link-btn" onClick={() => patch(a.id, { extraDamage: [...(a.extraDamage ?? []), { dice: '1d6', type: 'fire' }] })}>
-                  + Extra damage type
+                  {t('act.addExtra')}
                 </button>
               </div>
             )}
 
             <label className="field">
-              <span>{a.kind === 'other' ? 'Description' : 'Notes (optional)'}</span>
+              <span>{a.kind === 'other' ? t('act.description') : t('act.notesOptional')}</span>
               <textarea
                 rows={a.kind === 'other' ? 3 : 1}
                 value={a.desc ?? ''}
-                placeholder={a.kind === 'other' ? 'What it does, as written in the stat block' : 'Rider effects or reminders shown on the turn panel'}
+                placeholder={a.kind === 'other' ? t('act.descPlaceholder') : t('act.notesPlaceholder')}
                 onChange={(e) => patch(a.id, { desc: e.target.value || undefined })}
               />
             </label>
 
             {derived && owner && (
               <div className="derived">
-                {a.kind === 'attack' && <>To hit <strong>{formatMod(derived.attackBonus ?? 0)}</strong> · </>}
-                {a.kind === 'save' && <>Save DC <strong>{derived.saveDc}</strong> · </>}
-                {derived.damage && <>{a.kind === 'heal' ? 'Heals' : 'Damage'} <strong>{derived.damage}</strong></>}
-                <span className="muted"> (proficiency {formatMod(proficiencyBonus(owner.level))} at level {owner.level})</span>
+                {a.kind === 'attack' && <>{t('act.toHit')} <strong>{formatMod(derived.attackBonus ?? 0)}</strong> · </>}
+                {a.kind === 'save' && <>{t('act.derivedDc')} <strong>{derived.saveDc}</strong> · </>}
+                {derived.damage && <>{a.kind === 'heal' ? t('act.heals') : t('act.damage')} <strong>{derived.damage}</strong></>}
+                <span className="muted">{t('act.proficiencyAt', { n: formatMod(proficiencyBonus(owner.level)), level: owner.level })}</span>
               </div>
             )}
           </div>

@@ -104,6 +104,9 @@ Vite relay, which keeps the latest of each in memory and forwards to viewers (`/
 **`toPublic()` is the privacy boundary:** monsters carry only a status (Healthy / Bloodied / Defeated) - never HP, AC, saves, actions, the DM
 log, prompts or undo history. Add fields there deliberately. The relay ignores any URL but `/hub` so Vite's own HMR socket keeps working.
 `PlayerView` prefers relay data and falls back to the local database (the DM's second window).
+**Spotlight** (`lib/spotlight.ts`, kv `spotlight`): the DM can show one character's `PublicSheet` (`toPublicSheet` in `publicState.ts` - also part of the privacy
+boundary: a player's own numbers only, inventory optional) as a third relay message type; `PlayerView` renders `CharacterSheetView` instead of the feed while it is set.
+It never touches combat state. `SpotlightBar` (in `App`) keeps a reminder on every DM tab.
 
 ### UI
 - Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `JournalPage`, `SettingsPage`, `PlayerView`.
@@ -122,12 +125,28 @@ log, prompts or undo history. Add fields there deliberately. The relay ignores a
 - Editing an SRD monster saves a custom copy; the SRD library is never modified.
 - Resolution helpers return log text AND player-safe "events" (`announce`): public lines mention damage numbers only for PC targets.
 
+## Languages (i18n)
+
+English and Swedish. The DM picks the language in Settings (`settings.language`, kv) and **everyone sees it**: `LiveHost` pushes a `lang` message
+over the relay and `useRemoteView` / `PlayerView` apply it (a phone has no saved settings; the DM's own second window reads the saved one).
+- `src/lib/i18n.ts` - `t(key, params)` (reads the current language at call time, so it also works in the combat engine), `tn(base, count)`
+  (`.one` / `.other` keys), `possessive(name)` ("Merlin's" / "Merlins", no extra s after s/x/z), and `tCondition` / `tAbility` / `tClass` /
+  `tDamage` / `tMonsterType` / `tSize` for rules vocabulary (the stored values stay English; these give the words shown).
+- Messages live in `src/i18n/*.ts`, one file per area, as `'key': [english, swedish]` tuples merged in `messages.ts`. `{name}` marks a value;
+  use `<Rich text={t(...)} parts={{ name: <strong>..</strong> }} />` when a sentence contains an element. Keys are type-checked, and
+  `pnpm dlx tsx` the dictionary checks (every key has both languages, same placeholders, no orphans) before committing.
+- **Never put English text straight into the UI, the log or an announcement**: add a key. Do not call `t()` at module load (constants must hold
+  keys, not text) because the language can change; `Root` re-creates the whole tree when it does, which re-runs every `t()`.
+- **Not translated on purpose:** spell, monster, item and class-feature names and rules text (from the SRD), action names, `HP` / `AC` / `DC`.
+- Log lines, announcements and journal entries are written in the language that is active when they happen; they are not re-translated later.
+- To add a language: add it to `LANGUAGES` and `INDEX` in `i18n.ts`, extend the `Msg` tuple type, and fill every entry (TypeScript lists the gaps).
+
 ## Look & feel
 
 RPG theme from `src/assets/images/logo.png` (don't import the 2.3 MB original; use `logo-128.png` / `logo-360.png`, `public/favicon.png`). Palette
 is CSS variables at the top of `src/index.css`: dragon red, parchment, gold, leather brown on dark wood.
 - DM screens are a parchment `.page`; the player view is the inverse (parchment cards on wood) for TV readability and phones (it has a mobile layout).
-- Fonts are bundled via `@fontsource` (Cinzel, Alegreya) so the app works offline. No CDN fonts.
+- Fonts are bundled via `@fontsource` (Cinzel, Alegreya) so the app works offline. No CDN fonts (their Latin subset covers å ä ö).
 - Reuse classes (`.card`, `.chip`, `.primary`, `.danger`, `.field`) rather than one-off colours. Inside `.card`, `<strong>` is coloured dark red:
   badges need an explicit rule (see `strong.diff`).
 - **Forms:** `Section` + `.field-grid` (`span-2` to widen) + `CheckField` for checkboxes (a bare checkbox inside `.field` is stretched). Repeating rows are

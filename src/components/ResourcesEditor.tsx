@@ -1,6 +1,7 @@
 import { Combobox, type ComboOption } from './Combobox'
 import { NumberField } from './NumberField'
 import { newId } from '../lib/id'
+import { t } from '../lib/i18n'
 import { Section } from './Section'
 import { featureById, featuresFor, resourceFromFeature, type FeatureCtx } from '../data/classFeatures'
 import type { AbilityScores, ClassIndex, Recharge, Resource } from '../types'
@@ -12,12 +13,8 @@ interface Props {
   owner: { classIndex?: ClassIndex; level: number; abilities: AbilityScores; table?: Record<string, unknown> }
 }
 
-const RECHARGE_LABEL: Record<Recharge, string> = {
-  short: 'Short or long rest (all uses)',
-  'short-one': 'Short rest: 1 use, long rest: all',
-  long: 'Long rest only',
-}
-const RECHARGE_SHORT: Record<Recharge, string> = { short: 'short rest', 'short-one': '1/short rest', long: 'long rest' }
+const RECHARGE_LABEL = { short: 'res.rechargeAll', 'short-one': 'res.rechargeOne', long: 'res.rechargeLong' } as const
+const RECHARGE_SHORT = { short: 'res.hintShort', 'short-one': 'res.hintOne', long: 'res.hintLong' } as const
 
 const CUSTOM = '__custom'
 
@@ -34,9 +31,9 @@ export function ResourcesEditor({ resources, onChange, owner }: Props) {
       .filter((f) => !have.has(f.id))
       .map((f): ComboOption => {
         const rc = typeof f.recharge === 'function' ? f.recharge(ctx) : f.recharge
-        return { value: f.id, label: f.name, group: f.subclass ?? 'Class features', hint: `${f.uses(ctx)} · ${RECHARGE_SHORT[rc]}` }
+        return { value: f.id, label: f.name, group: f.subclass ?? t('res.classFeatures'), hint: `${f.uses(ctx)} · ${t(RECHARGE_SHORT[rc])}` }
       }),
-    { value: CUSTOM, label: 'Custom feature (type your own)', group: 'Manual' },
+    { value: CUSTOM, label: t('res.custom'), group: t('res.manual') },
   ]
 
   const add = (value: string | undefined) => {
@@ -67,11 +64,11 @@ export function ResourcesEditor({ resources, onChange, owner }: Props) {
 
   return (
     <Section
-      title="Class features & limited uses"
+      title={t('res.title')}
       action={
         <Combobox
           className="add-feature"
-          placeholder={owner.classIndex ? 'Add a feature…' : 'Pick a class to see its features…'}
+          placeholder={owner.classIndex ? t('res.addPlaceholder') : t('res.pickClass')}
           options={options}
           onChange={add}
         />
@@ -79,9 +76,7 @@ export function ResourcesEditor({ resources, onChange, owner }: Props) {
     >
       {resources.length === 0 && (
         <p className="muted empty-note">
-          {owner.classIndex
-            ? 'Add limited-use features like Second Wind or Rage from the official list, or create your own. Rests recharge them.'
-            : 'Choose a class above to get its official feature list, or add a custom feature.'}
+          {owner.classIndex ? t('res.emptyClass') : t('res.emptyNoClass')}
         </p>
       )}
       {resources.map((r) => {
@@ -91,27 +86,27 @@ export function ResourcesEditor({ resources, onChange, owner }: Props) {
             <div className="item-top">
               <label className="field grow">
                 <span>
-                  Name {official && <span className="tag">SRD</span>}
+                  {t('common.name')} {official && <span className="tag">SRD</span>}
                 </span>
                 <input value={r.name} onChange={(e) => patch(r.id, { name: e.target.value })} placeholder="Second Wind" />
               </label>
-              <NumberField label="Uses" value={r.max} min={1} onChange={(n) => patch(r.id, { max: Math.max(1, Math.floor(n)) })} />
+              <NumberField label={t('res.uses')} value={r.max} min={1} onChange={(n) => patch(r.id, { max: Math.max(1, Math.floor(n)) })} />
               <label className="field">
-                <span>Recharges</span>
+                <span>{t('res.recharges')}</span>
                 <select value={r.recharge} onChange={(e) => patch(r.id, { recharge: e.target.value as Recharge })}>
                   {(Object.keys(RECHARGE_LABEL) as Recharge[]).map((k) => (
                     <option key={k} value={k}>
-                      {RECHARGE_LABEL[k]}
+                      {t(RECHARGE_LABEL[k])}
                     </option>
                   ))}
                 </select>
               </label>
               {official && !r.auto && (
-                <button title="Go back to the official count and recharge, and follow level-ups again" onClick={() => reset(r)}>
-                  ↺ Official
+                <button title={t('res.officialTitle')} onClick={() => reset(r)}>
+                  {t('res.official')}
                 </button>
               )}
-              <button className="danger icon-btn" title="Remove" onClick={() => onChange(resources.filter((x) => x.id !== r.id))}>
+              <button className="danger icon-btn" title={t('common.remove')} onClick={() => onChange(resources.filter((x) => x.id !== r.id))}>
                 ✕
               </button>
             </div>

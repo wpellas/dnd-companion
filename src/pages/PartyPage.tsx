@@ -15,21 +15,19 @@ import { SpellcastingEditor } from '../components/SpellcastingEditor'
 import { UsePips } from '../components/UsePips'
 import { refreshResources } from '../data/classFeatures'
 import { className, CLASS_SAVES } from '../lib/classes'
+import { t, tAbility, tClass, tn } from '../lib/i18n'
 import { mergeClassTable, normalizeCharacter, proficiencyBonus } from '../lib/character'
 import { abilityMod, defaultAbilities, formatMod } from '../lib/dice'
 import { canLevelUp, levelForXp, totalGp, withGearAc, xpForNextLevel } from '../lib/inventory'
 import { hitDiceRemaining } from '../lib/rest'
 import { levelLabel } from '../lib/spells'
 import { getClass, getClassLevel } from '../lib/srdApi'
+import { showToPlayers, stopShowing, useSpotlight } from '../lib/spotlight'
 import { getCampaign, updateCharacter } from '../lib/store'
 import { ABILITIES, CLASSES, type Character, type ClassIndex } from '../types'
 
 const RECHARGE_ICON = { short: '☾', 'short-one': '☾¹', long: '☀' } as const
-const RECHARGE_TITLE = {
-  short: 'All uses back on a short or long rest',
-  'short-one': '1 use back on a short rest, all on a long rest',
-  long: 'Long rest',
-} as const
+const RECHARGE_TITLE = { short: 'party.rt.short', 'short-one': 'party.rt.shortOne', long: 'party.rt.long' } as const
 
 const blank = (): Character => ({
   name: '',
@@ -66,31 +64,31 @@ export function PartyPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <h2>Party</h2>
+        <h2>{t('party.title')}</h2>
         {campaign && (
-          <span className="campaign-badge" title="A long rest advances the day">
-            Day {campaign.day} · {campaign.shortRestsSinceLong} short rest{campaign.shortRestsSinceLong === 1 ? '' : 's'} since last long rest
+          <span className="campaign-badge" title={t('party.campaignTitle')}>
+            {tn('party.campaign', campaign.shortRestsSinceLong, { day: campaign.day })}
           </span>
         )}
         <button
           disabled={inCombat || !characters?.length}
-          title={inCombat ? 'Finish the fight first' : undefined}
+          title={inCombat ? t('party.finishFirst') : undefined}
           onClick={() => setResting('short')}
         >
-          ☾ Short rest
+          {t('rest.short')}
         </button>
         <button
           disabled={inCombat || !characters?.length}
-          title={inCombat ? 'Finish the fight first' : undefined}
+          title={inCombat ? t('party.finishFirst') : undefined}
           onClick={() => setResting('long')}
         >
-          ☀ Long rest
+          {t('rest.long')}
         </button>
         <button disabled={!characters?.length} onClick={() => setAwarding(true)}>
-          ✦ Award XP &amp; gold
+          {t('award.button')}
         </button>
         <button className="primary" onClick={() => setEditing(blank())}>
-          + New character
+          {t('party.new')}
         </button>
       </div>
 
@@ -104,7 +102,7 @@ export function PartyPage() {
         {characters?.map(normalizeCharacter).map((c) => (
           <CharacterCard key={c.id} c={c} onEdit={() => setEditing(c)} />
         ))}
-        {characters?.length === 0 && <p className="muted">No characters yet. Add your party to get started.</p>}
+        {characters?.length === 0 && <p className="muted">{t('party.empty')}</p>}
       </div>
     </div>
   )
@@ -112,6 +110,8 @@ export function PartyPage() {
 
 function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
   const [showItems, setShowItems] = useState(false)
+  const spotlight = useSpotlight()
+  const shown = spotlight?.characterId === c.id
   const sc = c.spellcasting
   const xp = c.xp ?? 0
   const nextXp = xpForNextLevel(c.level)
@@ -125,7 +125,7 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
         <div>
           <strong>{c.name}</strong>
           <div className="muted">
-            {className(c.classIndex) ?? c.className} {c.level}
+            {tClass(c.classIndex) ?? c.className} {c.level}
             {c.subclass && ` (${c.subclass})`}
             {c.playerName && ` · ${c.playerName}`}
           </div>
@@ -136,33 +136,31 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
         <span>
           HP {c.currentHp}/{c.maxHp}
         </span>
-        <span>Prof {formatMod(proficiencyBonus(c.level))}</span>
-        <span>Init {formatMod(c.initiativeBonus)}</span>
-        <span>PP {c.passivePerception}</span>
-        {(c.exhaustion ?? 0) > 0 && <span title="-2 to d20 tests and -5 ft Speed per level; a long rest removes one level">Exhaustion {c.exhaustion}</span>}
-        <span title="Hit dice remaining">
-          HD {hitDiceRemaining(c)}/{c.level} d{c.hitDie}
-        </span>
+        <span>{t('party.prof', { n: formatMod(proficiencyBonus(c.level)) })}</span>
+        <span>{t('party.init', { n: formatMod(c.initiativeBonus) })}</span>
+        <span>{t('party.pp', { n: c.passivePerception })}</span>
+        {(c.exhaustion ?? 0) > 0 && <span title={t('party.exhaustionTitle')}>{t('party.exhaustion', { n: c.exhaustion ?? 0 })}</span>}
+        <span title={t('party.hdTitle')}>{t('party.hd', { left: hitDiceRemaining(c), level: c.level, die: c.hitDie })}</span>
       </div>
 
       <div className="wealth">
-        <span title="Everything the coins are worth, in gold pieces">💰 {Math.floor(totalGp(c.coins)).toLocaleString()} gp</span>
-        <span title="Experience points and the XP needed for the next level">
+        <span title={t('wealth.gpTitle')}>💰 {Math.floor(totalGp(c.coins)).toLocaleString()} gp</span>
+        <span title={t('wealth.xpTitle')}>
           XP {xp.toLocaleString()}
           {nextXp !== undefined ? ` / ${nextXp.toLocaleString()}` : ''}
         </span>
-        {canLevelUp(c) && <span className="levelup-badge">⬆ Level {levelForXp(xp)} ready</span>}
+        {canLevelUp(c) && <span className="levelup-badge">{t('wealth.ready', { n: levelForXp(xp) })}</span>}
       </div>
 
       {slotRows.length > 0 && (
-        <div className="slot-rows" title="Click a pip to spend or recover a slot">
+        <div className="slot-rows" title={t('party.slotsTitle')}>
           {slotRows.map((s) => (
             <div key={s.level} className="slot-row">
               <span className="muted">{levelLabel(s.level)}</span>
               <UsePips
                 max={s.max}
                 used={s.used}
-                label={`${levelLabel(s.level)} slots`}
+                label={t('spell.slots', { level: levelLabel(s.level) })}
                 onChange={(used) =>
                   update({ spellcasting: { ...sc!, slots: sc!.slots.map((x, i) => (i === s.level - 1 ? { ...x, used } : x)) } })
                 }
@@ -173,7 +171,7 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
       )}
       {sc && (
         <div className="muted spell-count">
-          Spells: {sc.cantrips.length}/{sc.cantripLimit} cantrips · {sc.prepared.length}/{sc.preparedLimit} prepared
+          {t('party.spellCount', { c: sc.cantrips.length, cl: sc.cantripLimit, p: sc.prepared.length, pl: sc.preparedLimit })}
         </div>
       )}
 
@@ -181,8 +179,8 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
         <div className="slot-rows">
           {c.resources.map((r) => (
             <div key={r.id} className="slot-row">
-              <span className="muted" title={RECHARGE_TITLE[r.recharge]}>
-                {r.name || 'Feature'} {RECHARGE_ICON[r.recharge]}
+              <span className="muted" title={t(RECHARGE_TITLE[r.recharge])}>
+                {r.name || t('party.feature')} {RECHARGE_ICON[r.recharge]}
               </span>
               <UsePips
                 max={r.max}
@@ -197,11 +195,18 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
 
       {showItems && <InventoryEditor c={c} onChange={(patch) => updateCharacter(c.id!, patch)} />}
 
-      <div className="row gap">
-        <button onClick={() => setShowItems((v) => !v)}>🎒 Items{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
-        <button onClick={onEdit}>Edit</button>
-        <button className="danger" onClick={() => confirm(`Delete ${c.name}?`) && db.characters.delete(c.id!)}>
-          Delete
+      <div className="card-actions">
+        <button
+          className={shown ? 'selected' : ''}
+          title={shown ? t('party.showTitleOn') : t('party.showTitle')}
+          onClick={() => (shown ? stopShowing() : showToPlayers(c.id!))}
+        >
+          📺 {shown ? t('party.showcasing') : t('party.showcase')}
+        </button>
+        <button onClick={() => setShowItems((v) => !v)}>{t('inv.items')}{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
+        <button onClick={onEdit}>{t('common.edit')}</button>
+        <button className="danger" onClick={() => confirm(t('party.deleteConfirm', { name: c.name })) && db.characters.delete(c.id!)}>
+          {t('common.delete')}
         </button>
       </div>
     </div>
@@ -239,7 +244,7 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
           setClassTable(row.class_specific)
           update((p) => (p.classIndex === classIndex ? mergeClassTable(p, cls, row) : p))
         })
-        .catch(() => !cancelled && setSyncError("Couldn't reach the SRD API, so class slots weren't filled in. Set them by hand, or retry when online."))
+        .catch(() => !cancelled && setSyncError(t('form.syncError')))
     }, 300)
     return () => {
       cancelled = true
@@ -257,18 +262,18 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
 
   return (
     <div className="card form">
-      <Section title={initial.id === undefined ? 'New character' : 'Edit character'}>
+      <Section title={initial.id === undefined ? t('form.new') : t('form.edit')}>
         <div className="field-grid identity">
           <label className="field span-2">
-            <span>Name</span>
+            <span>{t('common.name')}</span>
             <input value={c.name} onChange={(e) => set('name', e.target.value)} autoFocus />
           </label>
           <label className="field span-2">
-            <span>Player</span>
+            <span>{t('form.player')}</span>
             <input value={c.playerName} onChange={(e) => set('playerName', e.target.value)} />
           </label>
           <label className="field">
-            <span>Class</span>
+            <span>{t('form.class')}</span>
             <select
               value={c.classIndex ?? ''}
               onChange={(e) => {
@@ -282,61 +287,61 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
                 }))
               }}
             >
-              {!c.classIndex && <option value="">{c.className ? `${c.className} (pick a class)` : 'Choose a class…'}</option>}
+              {!c.classIndex && <option value="">{c.className ? t('form.pickClass', { name: c.className }) : t('form.chooseClass')}</option>}
               {CLASSES.map((k) => (
                 <option key={k.index} value={k.index}>
-                  {k.name}
+                  {tClass(k.index)}
                 </option>
               ))}
             </select>
           </label>
           <label className="field span-2">
-            <span>Subclass</span>
-            <input value={c.subclass} onChange={(e) => set('subclass', e.target.value)} placeholder="e.g. Battle Master" />
+            <span>{t('form.subclass')}</span>
+            <input value={c.subclass} onChange={(e) => set('subclass', e.target.value)} placeholder={t('form.subclassPlaceholder')} />
           </label>
         </div>
         {syncError && <p className="warn">{syncError}</p>}
       </Section>
 
-      <Section title="Combat stats">
+      <Section title={t('form.combatStats')}>
         <div className="field-grid">
-          <NumberField label="Level" value={c.level} min={1} onChange={(n) => set('level', Math.min(20, Math.max(1, Math.floor(n))))} />
-          <div className="field" title="Derived from level">
-            <span>Proficiency</span>
+          <NumberField label={t('form.level')} value={c.level} min={1} onChange={(n) => set('level', Math.min(20, Math.max(1, Math.floor(n))))} />
+          <div className="field" title={t('form.derivedLevel')}>
+            <span>{t('form.proficiency')}</span>
             <strong className="static-value">{formatMod(proficiencyBonus(c.level))}</strong>
           </div>
-          <div className="field" title="From the class">
-            <span>Hit die</span>
+          <div className="field" title={t('form.fromClass')}>
+            <span>{t('form.hitDie')}</span>
             <strong className="static-value">d{c.hitDie}</strong>
           </div>
           {c.acFromGear ? (
-            <div className="field" title="Worked out from the equipped armor (Equipment & gold section)">
-              <span>Armor class</span>
+            <div className="field" title={t('form.acFromGearTitle')}>
+              <span>{t('form.ac')}</span>
               <strong className="static-value">{c.ac}</strong>
             </div>
           ) : (
-            <NumberField label="Armor class" value={c.ac} onChange={(n) => set('ac', n)} />
+            <NumberField label={t('form.ac')} value={c.ac} onChange={(n) => set('ac', n)} />
           )}
           <NumberField
-            label="Max HP"
+            label={t('form.maxHp')}
             value={c.maxHp}
             min={1}
             onChange={(n) => update((p) => ({ ...p, maxHp: n, currentHp: p.currentHp === p.maxHp ? n : p.currentHp }))}
           />
-          <NumberField label="Current HP" value={c.currentHp} min={0} onChange={(n) => set('currentHp', n)} />
-          <NumberField label="Speed" value={c.speed} onChange={(n) => set('speed', n)} />
-          <NumberField label="Initiative bonus" value={c.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
-          <NumberField label="Passive Perception" value={c.passivePerception} onChange={(n) => set('passivePerception', n)} />
-          <NumberField label="Exhaustion (0-6)" value={c.exhaustion ?? 0} min={0} onChange={(n) => set('exhaustion', Math.min(6, Math.max(0, Math.floor(n))))} />
+          <NumberField label={t('form.currentHp')} value={c.currentHp} min={0} onChange={(n) => set('currentHp', n)} />
+          <NumberField label={t('form.speed')} value={c.speed} onChange={(n) => set('speed', n)} />
+          <NumberField label={t('form.initBonus')} value={c.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
+          <NumberField label={t('form.passive')} value={c.passivePerception} onChange={(n) => set('passivePerception', n)} />
+          <NumberField label={t('form.exhaustion')} value={c.exhaustion ?? 0} min={0} onChange={(n) => set('exhaustion', Math.min(6, Math.max(0, Math.floor(n))))} />
         </div>
       </Section>
 
-      <Section title="Ability scores">
+      <Section title={t('form.abilities')}>
         <div className="ability-row">
           {ABILITIES.map((a) => (
             <div key={a} className="ability">
               <NumberField
-                label={a.toUpperCase()}
+                label={tAbility(a)}
                 value={c.abilities[a]}
                 onChange={(n) => update((p) => ({ ...p, abilities: { ...p.abilities, [a]: n } }))}
               />
@@ -346,7 +351,7 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
         </div>
       </Section>
 
-      <Section title="Saving throws & defences">
+      <Section title={t('form.savesDefences')}>
         <div className="field-grid saves-grid">
           {ABILITIES.map((a) => {
             const proficient = c.saveProficiencies.includes(a)
@@ -354,8 +359,8 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
             return (
               <CheckField
                 key={a}
-                label={`${a.toUpperCase()} save ${formatMod(bonus)}`}
-                title="Tick the saves this character is proficient in (the class grants two)"
+                label={t('form.saveLabel', { abil: tAbility(a), n: formatMod(bonus) })}
+                title={t('form.saveTitle')}
                 checked={proficient}
                 onChange={(on) => set('saveProficiencies', on ? [...c.saveProficiencies, a] : c.saveProficiencies.filter((x) => x !== a))}
               />
@@ -363,9 +368,9 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
           })}
         </div>
         <div className="defence-grid">
-          <DamageTypeList label="Resistances" hint="Half damage from these types" value={c.resistances} onChange={(v) => set('resistances', v)} />
-          <DamageTypeList label="Immunities" hint="No damage from these types" value={c.immunities} onChange={(v) => set('immunities', v)} />
-          <DamageTypeList label="Vulnerabilities" hint="Double damage from these types" value={c.vulnerabilities} onChange={(v) => set('vulnerabilities', v)} />
+          <DamageTypeList label={t('form.resistances')} hint={t('form.resistancesHint')} value={c.resistances} onChange={(v) => set('resistances', v)} />
+          <DamageTypeList label={t('form.immunities')} hint={t('form.immunitiesHint')} value={c.immunities} onChange={(v) => set('immunities', v)} />
+          <DamageTypeList label={t('form.vulnerabilities')} hint={t('form.vulnerabilitiesHint')} value={c.vulnerabilities} onChange={(v) => set('vulnerabilities', v)} />
         </div>
       </Section>
 
@@ -377,26 +382,26 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
         owner={{ classIndex: c.classIndex, level: c.level, abilities: c.abilities, table: classTable }}
       />
 
-      <Section title="Equipment & gold">
+      <Section title={t('form.equipment')}>
         <InventoryEditor c={c} onChange={(patch) => update((p) => ({ ...p, ...patch }))} />
       </Section>
 
-      <Section title="Portrait">
+      <Section title={t('form.portrait')}>
         <div className="row gap-lg">
           <Portrait name={c.name} image={c.image} size={72} />
           <label className="field grow">
-            <span>Image file</span>
+            <span>{t('form.imageFile')}</span>
             <input type="file" accept="image/*" onChange={(e) => set('image', e.target.files?.[0] ?? c.image)} />
           </label>
-          {c.image && <button onClick={() => set('image', undefined)}>Remove image</button>}
+          {c.image && <button onClick={() => set('image', undefined)}>{t('form.removeImage')}</button>}
         </div>
       </Section>
 
       <div className="form-actions">
         <button className="primary" onClick={save} disabled={!c.name.trim()}>
-          Save character
+          {t('form.saveCharacter')}
         </button>
-        <button onClick={onClose}>Cancel</button>
+        <button onClick={onClose}>{t('common.cancel')}</button>
       </div>
     </div>
   )

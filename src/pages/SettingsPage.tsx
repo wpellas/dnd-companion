@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import QRCode from 'qrcode'
 import { db } from '../db'
+import { Rich } from '../components/Rich'
 import { CheckField, Section } from '../components/Section'
 import { BACKUP_KEY, download, exportBackup, importBackup } from '../lib/backup'
 import { useHubStatus } from '../lib/hub'
+import { getLang, LANGUAGES, setLang, t, tn, type Lang } from '../lib/i18n'
 import { updateSettings, useSettings } from '../lib/settings'
 import { LIBRARY_SYNC_KEY } from '../lib/srdApi'
 
@@ -37,84 +39,93 @@ export function SettingsPage() {
   const backup = async () => {
     const { blob, filename, counts } = await exportBackup()
     download(blob, filename)
-    setMsg({ ok: true, text: `Saved ${filename}: ${counts.characters} characters, ${counts.monsters} custom monsters, ${counts.encounters} encounters, ${counts.journal} journal entries.` })
+    setMsg({ ok: true, text: t('settings.saved', { file: filename, ...counts }) })
   }
 
   const restore = async (f: File) => {
-    if (!confirm('Restore this backup? It REPLACES your current characters, custom monsters, encounters, journal and the current fight.')) return
+    if (!confirm(t('settings.restoreConfirm'))) return
     try {
       const c = await importBackup(f)
-      setMsg({ ok: true, text: `Restored ${c.characters} characters, ${c.monsters} custom monsters, ${c.encounters} encounters and ${c.journal} journal entries.` })
+      setMsg({ ok: true, text: t('settings.restored', { ...c }) })
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
     }
     if (file.current) file.current.value = ''
   }
 
+  // saved first, then applied: the UI is rebuilt when the language changes and must find the new value already stored
+  const chooseLanguage = async (code: Lang) => {
+    await updateSettings({ language: code })
+    setLang(code)
+  }
+
   return (
     <div className="page">
       <div className="toolbar">
-        <h2>Settings</h2>
+        <h2>{t('settings.title')}</h2>
       </div>
 
       <div className="form settings">
-        <Section title="Dice">
+        <Section title={t('settings.language')}>
+          <label className="inline-field">
+            {t('settings.languageLabel')}
+            <select value={getLang()} onChange={(e) => chooseLanguage(e.target.value as Lang)} aria-label={t('settings.languageLabel')}>
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="muted note-line">{t('settings.languageNote')}</p>
+        </Section>
+
+        <Section title={t('settings.dice')}>
           <CheckField
-            label="Let the app roll dice for player characters"
-            title="Off: players roll their own dice and tell you the number"
+            label={t('settings.diceLabel')}
+            title={t('settings.diceTitle')}
             checked={settings.allowPlayerAppRolls}
             onChange={(v) => updateSettings({ allowPlayerAppRolls: v })}
           />
-          <p className="muted note-line">
-            {settings.allowPlayerAppRolls
-              ? 'On: roll buttons also appear for player characters (attacks, damage, saves, initiative, hit dice).'
-              : 'Off (recommended): players always throw their own dice. The app only shows their bonuses and DCs, and you type in the number they rolled. Monsters are yours, so their dice can always be rolled in the app.'}
-          </p>
+          <p className="muted note-line">{settings.allowPlayerAppRolls ? t('settings.diceOn') : t('settings.diceOff')}</p>
         </Section>
 
-        <Section title="Backup & restore">
-          <p className="muted note-line">
-            Everything lives in this browser. A backup is one file with your characters (with portraits), custom monsters, saved encounters and campaign
-            progress. Keep a copy somewhere safe.
-          </p>
+        <Section title={t('settings.backup')}>
+          <p className="muted note-line">{t('settings.backupNote')}</p>
           <div className="row gap wrap">
             <button className="primary" onClick={backup}>
-              ⬇ Download backup
+              {t('settings.download')}
             </button>
             <label className="file-button">
               <input ref={file} type="file" accept="application/json,.json" onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
-              ⬆ Restore from a backup…
+              {t('settings.restore')}
             </label>
             {days !== undefined && (
               <span className={days === null || days > 7 ? 'warn' : 'muted'}>
-                {days === null ? 'You have never made a backup.' : days === 0 ? 'Last backup: today.' : `Last backup: ${days} day${days === 1 ? '' : 's'} ago.`}
+                {days === null ? t('settings.neverBackedUp') : days === 0 ? t('settings.backupToday') : tn('settings.backupDays', days)}
               </span>
             )}
           </div>
           {msg && <p className={msg.ok ? 'adv-text' : 'warn'}>{msg.text}</p>}
         </Section>
 
-        <Section title="Live view on phones & TV">
+        <Section title={t('settings.live')}>
           {hub.state === 'off' && hub.urls.length === 0 ? (
             <p className="muted note-line">
-              The live relay isn't available here. Start the app with <code>pnpm dev</code> (or <code>pnpm live</code> for a faster, built copy) on the computer you run
-              the game from and open it in your browser.
+              <Rich text={t('settings.liveOff')} parts={{ dev: <code>pnpm dev</code>, live: <code>pnpm live</code> }} />
             </p>
           ) : (
             <>
-              <p className="muted note-line">
-                Anyone on the same Wi-Fi who opens the address below sees the player view live: the turn order, the party's HP, the
-                monsters' status (never their exact HP or AC), conditions, and short announcements like "Goblin 1 hits Xaroz".
-              </p>
+              <p className="muted note-line">{t('settings.liveNote')}</p>
               <div className="live-box">
                 <div>
                   <div className={`live-state ${hub.state}`}>
-                    {hub.state === 'live' ? '● Live' : hub.state === 'connecting' ? '… Connecting' : '○ Not connected'} ·{' '}
-                    {hub.viewers} viewer{hub.viewers === 1 ? '' : 's'} connected
+                    {hub.state === 'live' ? t('settings.liveOn') : hub.state === 'connecting' ? t('settings.liveConnecting') : t('settings.liveNot')} ·{' '}
+                    {tn('settings.viewers', hub.viewers)}
                   </div>
                   {hub.urls.length > 1 && (
                     <label className="inline-field">
-                      Network
+                      {t('settings.network')}
                       <select value={urlIndex} onChange={(e) => setUrlIndex(Number(e.target.value))}>
                         {hub.urls.map((u, i) => (
                           <option key={u} value={i}>
@@ -126,24 +137,20 @@ export function SettingsPage() {
                   )}
                   {url && (
                     <p>
-                      Open <strong className="live-url">{url}</strong> on a phone, tablet or TV connected to the same Wi-Fi.
+                      <Rich text={t('settings.openUrl')} parts={{ url: <strong className="live-url">{url}</strong> }} />
                     </p>
                   )}
-                  <p className="muted note-line">
-                    If a device can't connect, allow Node.js through the Windows firewall for private networks. There is no password: only use this on a network you trust.
-                  </p>
+                  <p className="muted note-line">{t('settings.firewall')}</p>
                 </div>
-                {qr && <img className="qr" src={qr} alt={`QR code for ${url}`} />}
+                {qr && <img className="qr" src={qr} alt={t('settings.qrAlt', { url: url ?? '' })} />}
               </div>
             </>
           )}
         </Section>
 
-        <Section title="Reference library">
+        <Section title={t('settings.library')}>
           <p className="muted note-line">
-            {library
-              ? `Saved on this device: ${library.spells ?? 0} spells, ${library.monsters ?? 0} monsters, every class table and the condition rules. It works offline.`
-              : 'Downloading the spell, monster and class library in the background (first launch only)…'}
+            {library ? t('settings.libraryStored', { spells: library.spells ?? 0, monsters: library.monsters ?? 0 }) : t('settings.libraryLoading')}
           </p>
         </Section>
       </div>

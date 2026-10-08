@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
+import { t } from '../lib/i18n'
 import { ensureLibrary, LIBRARY_SYNC_KEY } from '../lib/srdApi'
 
 /**
@@ -33,9 +34,9 @@ export function SpellLibraryStatus() {
   if (record === undefined) return null
   if (record) {
     const spells = (record.value as { spells?: number }).spells
-    return <span>Spell and class library saved offline{spells ? ` (${spells} spells)` : ''}.</span>
+    return <span>{spells ? t('lib.savedSpells', { spells }) : t('lib.saved.plain')}</span>
   }
-  if (failed) return <span className="warn-soft">Spell and class library not downloaded yet (offline?). It will retry when you're back online.</span>
-  if (progress) return <span>Downloading the spell and class library… {Math.round((progress.done / progress.total) * 100)}%</span>
-  return <span>Preparing the spell and class library…</span>
+  if (failed) return <span className="warn-soft">{t('lib.failed')}</span>
+  if (progress) return <span>{t('lib.downloading', { pct: Math.round((progress.done / progress.total) * 100) })}</span>
+  return <span>{t('lib.preparing')}</span>
 }

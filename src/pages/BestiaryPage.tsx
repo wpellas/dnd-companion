@@ -8,9 +8,10 @@ import { Section } from '../components/Section'
 import { XP_BY_CR } from '../data/encounterBudget'
 import { monsterCombatants, mutateCombat, sortCombatants } from '../lib/combat'
 import { abilityMod, defaultAbilities, formatMod } from '../lib/dice'
+import { t, tAbility, tCondition, tDamage, tMonsterType, tn, tSize } from '../lib/i18n'
 import { crValue } from '../lib/monsters'
 import { useCustomMonsters, useSrdMonsters } from '../lib/monsterLibrary'
-import { ABILITIES, type Action, type MonsterTemplate } from '../types'
+import { ABILITIES, type Ability, type Action, type MonsterTemplate } from '../types'
 
 const CR_OPTIONS = ['0', '1/8', '1/4', '1/2', ...Array.from({ length: 30 }, (_, i) => String(i + 1))]
 const PAGE = 60
@@ -77,9 +78,9 @@ export function BestiaryPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <h2>Bestiary</h2>
+        <h2>{t('bestiary.title')}</h2>
         <button className="primary" onClick={() => setEditing(blank())}>
-          + Custom monster
+          {t('bestiary.custom')}
         </button>
       </div>
 
@@ -88,7 +89,7 @@ export function BestiaryPage() {
       <div className="filter-bar">
         <input
           className="grow"
-          placeholder="Search monsters…"
+          placeholder={t('bestiary.search')}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)
@@ -96,53 +97,52 @@ export function BestiaryPage() {
           }}
         />
         <label className="inline-field">
-          CR
+          {t('bestiary.cr')}
           <select value={crMin} onChange={(e) => { setCrMin(e.target.value); setLimit(PAGE) }}>
             {CR_OPTIONS.map((c) => <option key={c}>{c}</option>)}
           </select>
-          to
+          {t('bestiary.to')}
           <select value={crMax} onChange={(e) => { setCrMax(e.target.value); setLimit(PAGE) }}>
             {CR_OPTIONS.map((c) => <option key={c}>{c}</option>)}
           </select>
         </label>
-        <select value={type} onChange={(e) => { setType(e.target.value); setLimit(PAGE) }} aria-label="Type">
-          <option value="">Any type</option>
-          {types.map((t) => <option key={t}>{t}</option>)}
+        <select value={type} onChange={(e) => { setType(e.target.value); setLimit(PAGE) }} aria-label={t('bestiary.typeAria')}>
+          <option value="">{t('bestiary.anyType')}</option>
+          {types.map((ty) => <option key={ty} value={ty}>{tMonsterType(ty)}</option>)}
         </select>
-        <select value={size} onChange={(e) => { setSize(e.target.value); setLimit(PAGE) }} aria-label="Size">
-          <option value="">Any size</option>
-          {sizes.map((t) => <option key={t}>{t}</option>)}
+        <select value={size} onChange={(e) => { setSize(e.target.value); setLimit(PAGE) }} aria-label={t('bestiary.sizeAria')}>
+          <option value="">{t('bestiary.anySize')}</option>
+          {sizes.map((sz) => <option key={sz} value={sz}>{tSize(sz)}</option>)}
         </select>
-        <select value={source} onChange={(e) => setSource(e.target.value as typeof source)} aria-label="Source">
-          <option value="all">SRD + custom</option>
-          <option value="srd">SRD only</option>
-          <option value="custom">Custom only</option>
+        <select value={source} onChange={(e) => setSource(e.target.value as typeof source)} aria-label={t('bestiary.sourceAria')}>
+          <option value="all">{t('bestiary.srdCustom')}</option>
+          <option value="srd">{t('bestiary.srdOnly')}</option>
+          <option value="custom">{t('bestiary.customOnly')}</option>
         </select>
         {filtered && (
-          <button onClick={() => { setSearch(''); setCrMin('0'); setCrMax('30'); setType(''); setSize(''); setSource('all') }}>Clear</button>
+          <button onClick={() => { setSearch(''); setCrMin('0'); setCrMax('30'); setType(''); setSize(''); setSource('all') }}>{t('common.clear')}</button>
         )}
       </div>
 
       {!ready && (
         <p className="muted empty-note">
-          The SRD monster library is still downloading in the background ({srd.length} so far). This only happens the first time.
+          {t('bestiary.downloading', { n: srd.length })}
         </p>
       )}
       <p className="muted count-line">
-        {shown.length} monster{shown.length === 1 ? '' : 's'}
-        {filtered ? ' match' : ''}
+        {filtered ? tn('bestiary.countMatch', shown.length) : tn('bestiary.count', shown.length)}
       </p>
 
       <table className="monster-table">
         <thead>
           <tr>
-            <th className="sortable" onClick={() => sortBy('name')}>Name{arrow('name')}</th>
-            <th className="sortable" onClick={() => sortBy('cr')}>CR{arrow('cr')}</th>
-            <th>Type</th>
+            <th className="sortable" onClick={() => sortBy('name')}>{t('bestiary.colName')}{arrow('name')}</th>
+            <th className="sortable" onClick={() => sortBy('cr')}>{t('bestiary.cr')}{arrow('cr')}</th>
+            <th>{t('bestiary.colType')}</th>
             <th className="sortable" onClick={() => sortBy('ac')}>AC{arrow('ac')}</th>
             <th className="sortable" onClick={() => sortBy('hp')}>HP{arrow('hp')}</th>
             <th>XP</th>
-            <th>Add to combat</th>
+            <th>{t('bestiary.colAdd')}</th>
             <th />
           </tr>
         </thead>
@@ -160,9 +160,9 @@ export function BestiaryPage() {
       </table>
       {shown.length > limit && (
         <div className="row gap" style={{ marginTop: 12 }}>
-          <button onClick={() => setLimit((l) => l + PAGE)}>Show {Math.min(PAGE, shown.length - limit)} more</button>
+          <button onClick={() => setLimit((l) => l + PAGE)}>{t('bestiary.showMore', { n: Math.min(PAGE, shown.length - limit) })}</button>
           <span className="muted">
-            {limit} of {shown.length} shown
+            {t('bestiary.shown', { n: limit, total: shown.length })}
           </span>
         </div>
       )}
@@ -176,7 +176,7 @@ function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; exp
     mutateCombat((s) => {
       s.combatants.push(...monsterCombatants(m, Math.max(1, Math.floor(Number(count)) || 1), s.combatants))
       if (s.started) sortCombatants(s)
-    }, `Added ${m.name}`)
+    }, t('bestiary.added', { name: m.name }))
   const xp = m.xp ?? XP_BY_CR[m.cr]
 
   return (
@@ -186,26 +186,26 @@ function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; exp
           <button className="link-btn name-btn" onClick={onToggle} aria-expanded={expanded}>
             {expanded ? '▾' : '▸'} {m.name}
           </button>{' '}
-          {m.source === 'custom' && <span className="tag">custom</span>}
-          {m.legendaryUses ? <span className="tag legendary">legendary</span> : null}
+          {m.source === 'custom' && <span className="tag">{t('bestiary.tagCustom')}</span>}
+          {m.legendaryUses ? <span className="tag legendary">{t('bestiary.tagLegendary')}</span> : null}
         </td>
         <td>{m.cr}</td>
-        <td className="muted">{m.type ?? '-'}</td>
+        <td className="muted">{m.type ? tMonsterType(m.type) : '-'}</td>
         <td>{m.ac}</td>
         <td>{m.hp}</td>
         <td>{xp ?? '-'}</td>
         <td>
           <div className="row gap">
-            <input className="narrow" type="number" min={1} value={count} onChange={(e) => setCount(e.target.value)} aria-label={`How many ${m.name}`} />
-            <button onClick={add}>Add</button>
+            <input className="narrow" type="number" min={1} value={count} onChange={(e) => setCount(e.target.value)} aria-label={t('bestiary.howMany', { name: m.name })} />
+            <button onClick={add}>{t('common.add')}</button>
           </div>
         </td>
         <td>
           <div className="row gap">
-            <button onClick={onEdit}>{m.source === 'srd' ? 'Copy' : 'Edit'}</button>
+            <button onClick={onEdit}>{m.source === 'srd' ? t('bestiary.copy') : t('common.edit')}</button>
             {m.source === 'custom' && (
-              <button className="danger" onClick={() => confirm(`Delete ${m.name}?`) && db.monsters.delete(m.id!)}>
-                Delete
+              <button className="danger" onClick={() => confirm(t('bestiary.deleteConfirm', { name: m.name })) && db.monsters.delete(m.id!)}>
+                {t('common.delete')}
               </button>
             )}
           </div>
@@ -222,11 +222,11 @@ function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; exp
   )
 }
 
-const GROUPS: { timing: NonNullable<Action['timing']>; title: string }[] = [
-  { timing: 'action', title: 'Actions' },
-  { timing: 'bonus', title: 'Bonus actions' },
-  { timing: 'reaction', title: 'Reactions' },
-  { timing: 'legendary', title: 'Legendary actions' },
+const GROUPS: { timing: NonNullable<Action['timing']>; title: 'stat.group.action' | 'stat.group.bonus' | 'stat.group.reaction' | 'stat.group.legendary' }[] = [
+  { timing: 'action', title: 'stat.group.action' },
+  { timing: 'bonus', title: 'stat.group.bonus' },
+  { timing: 'reaction', title: 'stat.group.reaction' },
+  { timing: 'legendary', title: 'stat.group.legendary' },
 ]
 
 /** A compact stat block. */
@@ -235,24 +235,25 @@ export function MonsterDetails({ m }: { m: MonsterTemplate }) {
   return (
     <div className="stat-block">
       <div className="muted">
-        {[m.size, m.type].filter(Boolean).join(' ')} · CR {m.cr}
-        {m.xp !== undefined && ` (${m.xp} XP${m.xpLair ? `, ${m.xpLair} in lair` : ''})`} · AC {m.ac} · HP {m.hp} · Speed {m.speed} ft · Initiative {formatMod(m.initiativeBonus)}
+        {t('stat.cr', { kind: [m.size ? tSize(m.size) : '', m.type ? tMonsterType(m.type) : ''].filter(Boolean).join(' '), cr: m.cr })}
+        {m.xp !== undefined && (m.xpLair ? t('stat.xpLair', { xp: m.xp, lair: m.xpLair }) : t('stat.xp', { xp: m.xp }))}
+        {t('stat.line', { ac: m.ac, hp: m.hp, speed: m.speed, init: formatMod(m.initiativeBonus) })}
       </div>
       <div className="stat-abilities">
         {ABILITIES.map((a) => (
           <div key={a}>
-            <strong>{a.toUpperCase()}</strong> {m.abilities[a]} ({formatMod(abilityMod(m.abilities[a]))})
+            <strong>{tAbility(a)}</strong> {m.abilities[a]} ({formatMod(abilityMod(m.abilities[a]))})
           </div>
         ))}
       </div>
-      {m.saves && <div><strong>Saves</strong> {Object.entries(m.saves).map(([k, v]) => `${k.toUpperCase()} ${formatMod(v)}`).join(', ')}</div>}
-      {line('Resistances', m.resistances)}
-      {line('Immunities', m.immunities)}
-      {line('Vulnerabilities', m.vulnerabilities)}
-      {line('Condition immunities', m.conditionImmunities)}
-      {(m.traits ?? []).map((t) => (
-        <p key={t.id}>
-          <strong>{t.name}{t.uses ? ` (${t.uses}/day)` : ''}.</strong> {t.desc}
+      {m.saves && <div><strong>{t('stat.saves')}</strong> {Object.entries(m.saves).map(([k, v]) => `${tAbility(k as Ability)} ${formatMod(v)}`).join(', ')}</div>}
+      {line(t('stat.resistances'), m.resistances?.map(tDamage))}
+      {line(t('stat.immunities'), m.immunities?.map(tDamage))}
+      {line(t('stat.vulnerabilities'), m.vulnerabilities?.map(tDamage))}
+      {line(t('stat.conditionImmunities'), m.conditionImmunities?.map(tCondition))}
+      {(m.traits ?? []).map((tr) => (
+        <p key={tr.id}>
+          <strong>{tr.name}{tr.uses ? t('stat.perDay', { n: tr.uses }) : ''}.</strong> {tr.desc}
         </p>
       ))}
       {GROUPS.map(({ timing, title }) => {
@@ -260,13 +261,13 @@ export function MonsterDetails({ m }: { m: MonsterTemplate }) {
         if (!list.length) return null
         return (
           <div key={timing}>
-            <div className="subhead">{title}{timing === 'legendary' && m.legendaryUses ? ` (${m.legendaryUses} per round)` : ''}</div>
+            <div className="subhead">{t(title)}{timing === 'legendary' && m.legendaryUses ? t('stat.legendaryPerRound', { n: m.legendaryUses }) : ''}</div>
             {list.map((a) => (
               <p key={a.id}>
                 <strong>
                   {a.name}
-                  {a.limited?.kind === 'recharge' ? ` (Recharge ${a.limited.min}${a.limited.min < 6 ? '-6' : ''})` : ''}
-                  {a.limited?.kind === 'day' ? ` (${a.limited.times}/day)` : ''}.
+                  {a.limited?.kind === 'recharge' ? t('stat.recharge', { min: `${a.limited.min}${a.limited.min < 6 ? '-6' : ''}` }) : ''}
+                  {a.limited?.kind === 'day' ? t('stat.perDay', { n: a.limited.times }) : ''}.
                 </strong>{' '}
                 {a.desc ?? ''}
               </p>
@@ -283,7 +284,7 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
   const [m, setM] = useState<MonsterTemplate>(() => {
     const base = { ...initial, actions: structuredClone(initial.actions ?? []) }
     if (base.source !== 'srd') return base
-    const copy: MonsterTemplate = { ...base, id: undefined, name: `${base.name} (copy)`, source: 'custom', actions: base.actions.map((a) => ({ ...a, id: newId() })) }
+    const copy: MonsterTemplate = { ...base, id: undefined, name: `${base.name} (${t('bestiary.copySuffix')})`, source: 'custom', actions: base.actions.map((a) => ({ ...a, id: newId() })) }
     delete copy.srdIndex
     return copy
   })
@@ -299,33 +300,33 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
 
   return (
     <div className="card form">
-      <Section title={initial.id === undefined && initial.source === 'custom' ? 'New monster' : 'Edit monster'}>
+      <Section title={initial.id === undefined && initial.source === 'custom' ? t('mform.new') : t('mform.edit')}>
         <div className="field-grid">
           <label className="field span-2">
-            <span>Name</span>
+            <span>{t('common.name')}</span>
             <input value={m.name} onChange={(e) => set('name', e.target.value)} autoFocus />
           </label>
           <label className="field">
-            <span>Challenge rating</span>
+            <span>{t('mform.cr')}</span>
             <select value={m.cr} onChange={(e) => setM((p) => ({ ...p, cr: e.target.value, xp: p.xp === XP_BY_CR[p.cr] ? undefined : p.xp }))}>
               {CR_OPTIONS.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
-          <NumberField label={`XP (default ${XP_BY_CR[m.cr] ?? '-'})`} value={m.xp ?? XP_BY_CR[m.cr] ?? 0} onChange={(n) => set('xp', n)} />
-          <NumberField label="Armor class" value={m.ac} onChange={(n) => set('ac', n)} />
-          <NumberField label="Hit points" value={m.hp} min={1} onChange={(n) => set('hp', n)} />
-          <NumberField label="Speed" value={m.speed} onChange={(n) => set('speed', n)} />
-          <NumberField label="Initiative bonus" value={m.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
-          <NumberField label="Legendary actions / round" value={m.legendaryUses ?? 0} min={0} onChange={(n) => set('legendaryUses', n > 0 ? Math.floor(n) : undefined)} />
+          <NumberField label={t('mform.xp', { n: XP_BY_CR[m.cr] ?? '-' })} value={m.xp ?? XP_BY_CR[m.cr] ?? 0} onChange={(n) => set('xp', n)} />
+          <NumberField label={t('mform.ac')} value={m.ac} onChange={(n) => set('ac', n)} />
+          <NumberField label={t('mform.hp')} value={m.hp} min={1} onChange={(n) => set('hp', n)} />
+          <NumberField label={t('mform.speed')} value={m.speed} onChange={(n) => set('speed', n)} />
+          <NumberField label={t('mform.init')} value={m.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
+          <NumberField label={t('mform.legendary')} value={m.legendaryUses ?? 0} min={0} onChange={(n) => set('legendaryUses', n > 0 ? Math.floor(n) : undefined)} />
         </div>
       </Section>
 
-      <Section title="Ability scores">
+      <Section title={t('mform.abilities')}>
         <div className="ability-row">
           {ABILITIES.map((a) => (
             <div key={a} className="ability">
               <NumberField
-                label={a.toUpperCase()}
+                label={tAbility(a)}
                 value={m.abilities[a]}
                 onChange={(n) => setM((p) => ({ ...p, abilities: { ...p.abilities, [a]: n } }))}
               />
@@ -335,11 +336,11 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
         </div>
       </Section>
 
-      <Section title="Defences">
+      <Section title={t('mform.defences')}>
         <div className="defence-grid">
-          <DamageTypeList label="Resistances" value={m.resistances ?? []} onChange={(v) => set('resistances', v)} />
-          <DamageTypeList label="Immunities" value={m.immunities ?? []} onChange={(v) => set('immunities', v)} />
-          <DamageTypeList label="Vulnerabilities" value={m.vulnerabilities ?? []} onChange={(v) => set('vulnerabilities', v)} />
+          <DamageTypeList label={t('stat.resistances')} value={m.resistances ?? []} onChange={(v) => set('resistances', v)} />
+          <DamageTypeList label={t('stat.immunities')} value={m.immunities ?? []} onChange={(v) => set('immunities', v)} />
+          <DamageTypeList label={t('stat.vulnerabilities')} value={m.vulnerabilities ?? []} onChange={(v) => set('vulnerabilities', v)} />
         </div>
       </Section>
 
@@ -347,9 +348,9 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
 
       <div className="form-actions">
         <button className="primary" onClick={save} disabled={!m.name.trim()}>
-          Save monster
+          {t('mform.save')}
         </button>
-        <button onClick={onClose}>Cancel</button>
+        <button onClick={onClose}>{t('common.cancel')}</button>
       </div>
     </div>
   )

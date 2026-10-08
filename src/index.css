@@ -739,3 +739,55 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .award-panel { display: flex; flex-direction: column; gap: 12px; }
 .award-list { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .reward-banner { align-items: center; }
+
+/* ---------- Character spotlight: the DM shows one sheet on the players' screens ---------- */
+.spotlight-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; max-width: 1200px; margin: 12px auto 0; padding: 10px 16px; background: linear-gradient(#e7bd45, #c9972b); border: 2px solid var(--gold-dark); border-radius: 8px; color: var(--ink); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); }
+.spotlight-bar > span:first-child { flex: 1; min-width: 220px; }
+.sheet-view { color: var(--ink); }
+.sheet-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 32px; padding: 20px 28px; background: var(--parchment); border: 3px solid var(--leather); border-radius: 12px; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6); }
+.sheet-id { flex: 1; min-width: 260px; }
+.sheet-id h1 { font-size: 3rem; color: var(--red-dark); line-height: 1.05; }
+.sheet-sub { font-family: var(--font-display); font-size: 1.3rem; color: var(--ink-muted); margin-bottom: 10px; }
+.sheet-stats { display: grid; grid-template-columns: repeat(3, auto); gap: 8px 22px; }
+.sheet-stats div { display: flex; flex-direction: column; align-items: center; min-width: 78px; padding: 4px 8px; border: 2px solid var(--edge); border-radius: 8px; background: var(--parchment-3); }
+.sheet-stats span { font-family: var(--font-display); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); }
+.sheet-stats strong { font-family: var(--font-display); font-size: 1.7rem; color: var(--red-dark); }
+.sheet-abilities { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 18px 0; }
+.sheet-ability { display: flex; flex-direction: column; align-items: center; padding: 10px 6px; background: var(--parchment); border: 3px solid var(--leather); border-radius: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+.sheet-ability span { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.1em; color: var(--ink-muted); }
+.sheet-ability strong { font-family: var(--font-display); font-size: 2.4rem; color: var(--red-dark); line-height: 1.1; }
+.sheet-ability small { color: var(--ink-muted); font-size: 1rem; }
+.sheet-ability em { font-style: normal; font-size: 0.95rem; margin-top: 4px; }
+.sheet-ability em.prof { font-weight: 800; color: var(--good); }
+.sheet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.sheet-panel { padding: 14px 20px 16px; background: var(--parchment); border: 3px solid var(--leather); border-radius: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); font-size: 1.15rem; }
+.sheet-panel.wide { grid-column: 1 / -1; }
+.sheet-panel h2 { font-size: 1.3rem; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid var(--edge); }
+.sheet-panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sheet-panel li { display: flex; justify-content: space-between; gap: 14px; }
+.sheet-panel li strong { font-family: var(--font-display); color: var(--ink); font-size: 1.05rem; }
+.sheet-panel p { margin: 6px 0 0; }
+.sheet-note { color: var(--ink-muted); }
+.sheet-pips { font-size: 1.3rem; letter-spacing: 0.15em; color: var(--gold-dark); }
+.sheet-items { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 28px !important; }
+.sheet-items li.equipped strong::before { content: '⚔ '; color: var(--good); }
+.sheet-items li span { color: var(--ink-muted); font-size: 0.95rem; text-align: right; }
+@media (max-width: 720px) {
+  .sheet-view { padding: 10px 12px 28px; }
+  .sheet-hero { padding: 12px 14px; gap: 10px 16px; }
+  .sheet-id h1 { font-size: 1.8rem; }
+  .sheet-sub { font-size: 1rem; }
+  .sheet-stats { grid-template-columns: repeat(3, 1fr); width: 100%; gap: 6px; }
+  .sheet-stats strong { font-size: 1.25rem; }
+  .sheet-abilities { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sheet-ability strong { font-size: 1.8rem; }
+  .sheet-panel { font-size: 1rem; padding: 10px 14px 12px; }
+}
+@media (max-width: 720px) {
+  .sheet-hero .portrait { width: 88px !important; height: 88px !important; font-size: 40px !important; }
+}
+
+/* Party card buttons: an even grid instead of whatever width each label happens to need */
+.card-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 4px; }
+.card-actions button { width: 100%; height: 40px; padding: 0 8px; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.card-actions button { font-size: 0.85rem; }

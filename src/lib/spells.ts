@@ -1,10 +1,14 @@
 import type { SrdSpell } from './srdApi'
 import { addToDice } from './character'
+import { t } from './i18n'
 import { parseDice } from './dice'
 import { CONDITIONS, type Ability, type Action, type CastingSnapshot, type Spellcasting } from '../types'
 
-const ORDINAL = ['Cantrip', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th']
-export const levelLabel = (n: number) => ORDINAL[n] ?? `${n}th`
+/** "Cantrip", "1st" (Swedish: "1"): put it into a `spell.level` / `spell.slot` message for the full wording. */
+export const levelLabel = (n: number): string => (n === 0 ? t('spell.cantrip') : n >= 1 && n <= 9 ? t(`spell.ord.${n as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`) : String(n))
+
+/** "1st level" / "Nivå 1"; level 0 is just "Cantrip". */
+export const levelName = (n: number): string => (n === 0 ? t('spell.cantrip') : t('spell.level', { level: levelLabel(n) }))
 
 /** "...increases by 1d6 for each spell slot level above 3" -> { dice: '1d6', above: 3 } */
 function upcastExtra(text: string) {

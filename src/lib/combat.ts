@@ -13,6 +13,7 @@ import type {
 import { XP_BY_CR } from '../data/encounterBudget'
 import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
 import { exhaustionLevel } from './conditionRules'
+import { possessive, t, tCondition, tDamage } from './i18n'
 import { rollInitiative } from './dice'
 import { newId } from './id'
 import { addCombatSummary } from './journal'
@@ -75,7 +76,7 @@ export async function mutateCombat(fn: (state: CombatState) => void | MutationMe
       const afterIds = new Set(state.combatants.map((c) => c.id))
       const removed = [...beforeActions].filter(([id]) => !afterIds.has(id))
       state.history!.push({
-        label: meta.label ?? label ?? (state.log.length > logLength ? state.log[state.log.length - 1] : 'last change'),
+        label: meta.label ?? label ?? (state.log.length > logLength ? state.log[state.log.length - 1] : t('undo.last')),
         snapshot: before,
         refund: meta.refund,
         restoreActions: removed.length ? Object.fromEntries(removed) : undefined,
@@ -186,7 +187,7 @@ export function lairCombatant(): Combatant {
   return {
     id: newId(),
     kind: 'lair',
-    name: 'Lair actions',
+    name: t('lair.name'),
     initiative: 20,
     initiativeBonus: -1000,
     ac: 0,
@@ -243,11 +244,11 @@ export function settleConcentration(s: CombatState, promptId: string, success: b
   s.prompts = s.prompts!.filter((x) => x.id !== promptId)
   if (!c) return
   if (success) {
-    logEvent(s, `${c.name} keeps concentrating (DC ${p.dc})`)
+    logEvent(s, t('log.keepsConc', { name: c.name, dc: p.dc }))
   } else {
     c.concentrating = false
-    logEvent(s, `${c.name} fails the concentration save (DC ${p.dc}) and loses concentration`)
-    announce(s, `${c.name} loses concentration`)
+    logEvent(s, t('log.losesConc', { name: c.name, dc: p.dc }))
+    announce(s, t('ann.losesConc', { name: c.name }))
   }
 }
 
@@ -261,9 +262,9 @@ export function settleRecharge(s: CombatState, promptId: string, roll: number) {
   if (!c || !action) return
   if (roll >= p.min) {
     delete c.spent?.[action.id]
-    logEvent(s, `${c.name}'s ${action.name} recharges (rolled ${roll})`)
+    logEvent(s, t('log.recharges', { who: possessive(c.name), action: action.name, roll }))
   } else {
-    logEvent(s, `${c.name}'s ${action.name} stays spent (rolled ${roll}, needs ${p.min}+)`)
+    logEvent(s, t('log.staysSpent', { who: possessive(c.name), action: action.name, roll, min: p.min }))
   }
 }
 
@@ -305,7 +306,7 @@ export function startCombat(s: CombatState) {
   s.round = 1
   if (s.combatants[0] && s.combatants[0].kind === 'monster' && isDown(s.combatants[0])) advanceTurn(s)
   else if (s.combatants[0]) beginTurn(s, s.combatants[0])
-  logEvent(s, 'Combat begins')
+  logEvent(s, t('log.begins'))
 }
 
 /** Move to the next turn, skipping defeated monsters. */
@@ -366,10 +367,10 @@ export function dealDamage(s: CombatState, target: Combatant, parts: DamageAmoun
 
   if (target.kind === 'pc' && target.hp === 0) {
     target.deathSaves.failures = Math.min(3, target.deathSaves.failures + (crit ? 2 : 1))
-    notes.push(`death save failure${crit ? 's (crit)' : ''} (${target.deathSaves.failures}/3)`)
+    notes.push(t(crit ? 'note.deathFailCrit' : 'note.deathFail', { n: target.deathSaves.failures }))
     if (target.deathSaves.failures >= 3) {
-      notes.push('has died')
-      return { total, notes, publicNote: `${target.name} has died` }
+      notes.push(t('note.hasDied'))
+      return { total, notes, publicNote: t('ann.died', { name: target.name }) }
     }
     return { total, notes }
   }
@@ -386,19 +387,19 @@ export function dealDamage(s: CombatState, target: Combatant, parts: DamageAmoun
       addCondition(target, 'Unconscious')
       if (overflow >= target.maxHp) {
         target.deathSaves.failures = 3
-        notes.push('is killed outright (massive damage)')
-        return { total, notes, publicNote: `${target.name} has died` }
+        notes.push(t('note.massive'))
+        return { total, notes, publicNote: t('ann.died', { name: target.name }) }
       }
-      notes.push('drops to 0 HP and falls Unconscious')
-      return { total, notes, publicNote: `${target.name} falls unconscious` }
+      notes.push(t('note.drops'))
+      return { total, notes, publicNote: t('ann.falls', { name: target.name }) }
     }
-    notes.push('is defeated')
-    return { total, notes, publicNote: `${target.name} is defeated` }
+    notes.push(t('note.defeated'))
+    return { total, notes, publicNote: t('ann.defeated', { name: target.name }) }
   }
   if (target.concentrating) {
     const dc = concentrationDc(total)
     addPrompt(s, { kind: 'concentration', combatantId: target.id, dc })
-    notes.push(`concentration save DC ${dc}`)
+    notes.push(t('note.concSave', { dc }))
   }
   return { total, notes }
 }
@@ -409,7 +410,7 @@ export function healTarget(target: Combatant, amount: number): string[] {
   applyHealing(target, amount)
   if (wasDown && target.hp > 0 && target.kind === 'pc') {
     target.conditions = target.conditions.filter((c) => c !== 'Unconscious')
-    return ['regains consciousness']
+    return [t('note.wakes')]
   }
   return []
 }
@@ -417,25 +418,25 @@ export function healTarget(target: Combatant, amount: number): string[] {
 /** The row's Dmg button: damage with no type, logged as a manual adjustment. */
 export function damageRow(s: CombatState, c: Combatant, amount: number) {
   const r = dealDamage(s, c, [{ type: '', amount }], false)
-  logEvent(s, `${c.name} takes ${amount} damage${r.notes.length ? ` - ${r.notes.join('; ')}` : ''}`)
+  logEvent(s, `${t('log.takes', { name: c.name, amount })}${r.notes.length ? ` - ${r.notes.join('; ')}` : ''}`)
   if (r.publicNote) announce(s, r.publicNote)
 }
 
 export function healRow(s: CombatState, c: Combatant, amount: number) {
   const notes = healTarget(c, amount)
-  logEvent(s, `${c.name} is healed for ${amount}${notes.length ? ` - ${notes.join('; ')}` : ''}`)
-  if (notes.length) announce(s, `${c.name} regains consciousness`)
+  logEvent(s, `${t('log.healed', { name: c.name, amount })}${notes.length ? ` - ${notes.join('; ')}` : ''}`)
+  if (notes.length) announce(s, t('ann.wakes', { name: c.name }))
 }
 
 /** Set a death-save pip count by hand, noting when it settles the character's fate. */
 export function setDeathSaves(s: CombatState, c: Combatant, which: 'successes' | 'failures', n: number) {
   c.deathSaves[which] = n
   if (which === 'failures' && n >= 3) {
-    logEvent(s, `${c.name} fails their third death save and dies`)
-    announce(s, `${c.name} has died`)
+    logEvent(s, t('log.thirdFail', { name: c.name }))
+    announce(s, t('ann.died', { name: c.name }))
   } else if (which === 'successes' && n >= 3) {
-    logEvent(s, `${c.name} succeeds three death saves and is stable at 0 HP`)
-    announce(s, `${c.name} is stable`)
+    logEvent(s, t('log.stable', { name: c.name }))
+    announce(s, t('ann.stable', { name: c.name }))
   }
 }
 
@@ -471,7 +472,7 @@ export interface ActionResolution {
 
 const fmtParts = (parts: DamageAmount[]) => {
   const shown = parts.filter((p) => p.amount > 0)
-  return shown.length ? shown.map((p) => `${p.amount}${p.type ? ` ${p.type}` : ''}`).join(' + ') : ''
+  return shown.length ? shown.map((p) => `${p.amount}${p.type ? ` ${tDamage(p.type)}` : ''}`).join(' + ') : ''
 }
 
 /** Applies an already-resolved action to its targets and records it in the log and the player announcements. */
@@ -494,25 +495,28 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
       let report: DamageReport | undefined
 
       if (o.result === 'cast') {
-        line = `${attacker.name} casts ${action.name} on ${target.name}`
-        pub = `${attacker.name} casts ${action.name}`
+        line = t('log.casts', { a: attacker.name, action: action.name, t: target.name })
+        pub = t('ann.casts', { a: attacker.name, action: action.name })
       } else if (o.result === 'heal') {
         notes.push(...healTarget(target, total))
-        line = `${attacker.name} heals ${target.name} for ${total} (${action.name})`
-        pub = target.kind === 'pc' ? `${attacker.name} heals ${target.name} for ${total}` : `${attacker.name} heals ${target.name}`
+        line = t('log.heals', { a: attacker.name, t: target.name, n: total, action: action.name })
+        pub = target.kind === 'pc' ? t('ann.healsPc', { a: attacker.name, t: target.name, n: total }) : t('ann.heals', { a: attacker.name, t: target.name })
       } else if (o.result === 'miss') {
-        line = `${attacker.name} misses ${target.name} (${action.name})`
-        pub = `${attacker.name} misses ${target.name}`
+        line = t('log.misses', { a: attacker.name, t: target.name, action: action.name })
+        pub = t('ann.misses', { a: attacker.name, t: target.name })
       } else {
         report = dealDamage(s, target, o.parts, o.result === 'crit')
         notes.push(...report.notes)
-        const verb = o.result === 'crit' ? 'CRITS' : 'hits'
+        const who = possessive(attacker.name)
+        const showDamage = target.kind === 'pc' && total > 0
         if (o.result === 'saved' || o.result === 'failed') {
-          line = `${target.name} ${o.result === 'saved' ? 'saves against' : 'fails the save against'} ${attacker.name}'s ${action.name}, ${dmgText ? `takes ${dmgText}` : 'takes no damage'}`
-          pub = `${target.name} ${o.result === 'saved' ? 'resists' : 'is caught by'} ${attacker.name}'s ${action.name}${target.kind === 'pc' && total > 0 ? ` (${total} damage)` : ''}`
+          const saved = o.result === 'saved'
+          line = t(saved ? (dmgText ? 'log.savedDmg' : 'log.savedNone') : dmgText ? 'log.failedDmg' : 'log.failedNone', { t: target.name, who, action: action.name, dmg: dmgText })
+          pub = t(saved ? (showDamage ? 'ann.resistsDmg' : 'ann.resists') : showDamage ? 'ann.caughtDmg' : 'ann.caught', { t: target.name, who, action: action.name, n: total })
         } else {
-          line = `${attacker.name} ${verb} ${target.name} with ${action.name} for ${dmgText || '0'}`
-          pub = `${attacker.name} ${o.result === 'crit' ? 'critically hits' : 'hits'} ${target.name}${target.kind === 'pc' && total > 0 ? ` for ${total}` : ''}`
+          const crit = o.result === 'crit'
+          line = t(crit ? 'log.crit' : 'log.hit', { a: attacker.name, t: target.name, action: action.name, dmg: dmgText || '0' })
+          pub = t(crit ? (showDamage ? 'ann.critDmg' : 'ann.crit') : showDamage ? 'ann.hitDmg' : 'ann.hit', { a: attacker.name, t: target.name, n: total })
         }
       }
 
@@ -520,16 +524,16 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
         const k = target.counters?.find((x) => x.id === o.spendCounter)
         if (k) {
           k.used = Math.min(k.max, k.used + 1)
-          notes.push(`${k.name} (${k.max - k.used} left)`)
+          notes.push(t('note.counterLeft', { name: k.name, n: k.max - k.used }))
         }
       }
       const cond = action.condition
       const afflicted = o.result === 'hit' || o.result === 'crit' || o.result === 'failed'
       if (cond && o.applyCondition && afflicted) {
-        if (isConditionImmune(target, cond)) notes.push(`immune to ${cond}`)
+        if (isConditionImmune(target, cond)) notes.push(t('note.immuneTo', { cond: tCondition(cond) }))
         else if (!target.conditions.includes(cond)) {
           target.conditions.push(cond)
-          notes.push(`now ${cond}`)
+          notes.push(t('note.now', { cond: tCondition(cond) }))
         }
       }
       if (o.detail) notes.unshift(o.detail)
@@ -540,28 +544,28 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
 
     const extra: string[] = []
     if (r.cast) {
-      if (r.cast.spent && r.cast.slotLevel > 0) extra.push(`level ${r.cast.slotLevel} slot`)
+      if (r.cast.spent && r.cast.slotLevel > 0) extra.push(t('note.slotLevel', { n: r.cast.slotLevel }))
       if (r.cast.monsterSpell?.times) {
         attacker.spent ??= {}
         const key = `spell:${r.cast.monsterSpell.index}`
         attacker.spent[key] = (attacker.spent[key] ?? 0) + 1
       }
       if (r.cast.concentration) {
-        if (attacker.concentrating) extra.push('drops previous concentration')
+        if (attacker.concentrating) extra.push(t('note.dropsConc'))
         attacker.concentrating = true
-        extra.push('concentrating')
+        extra.push(t('note.concentrating'))
       }
     }
     if (r.detail) extra.unshift(r.detail)
 
     const action = r.action
     if (lines.length === 0) {
-      lines.push(`${attacker.name} uses ${action.name}`)
-      publicLines.push(`${attacker.name} uses ${action.name}`)
+      lines.push(t('log.uses', { a: attacker.name, action: action.name }))
+      publicLines.push(t('log.uses', { a: attacker.name, action: action.name }))
     }
     const suffix = extra.length ? ` [${extra.join('; ')}]` : ''
     if (lines.length === 1) logEvent(s, lines[0] + suffix)
-    else logEvent(s, `${attacker.name} uses ${action.name}${suffix}: ${lines.join(' | ')}`)
+    else logEvent(s, t('log.usesMulti', { a: attacker.name, action: action.name, suffix, lines: lines.join(' | ') }))
     // players hear about every target, but not rolls
     for (const p of publicLines) announce(s, p)
 
@@ -645,8 +649,8 @@ export function delayTurn(s: CombatState, afterId: string) {
   const [moved] = s.combatants.splice(idx, 1)
   s.combatants.splice(after, 0, moved) // removing it shifted the anchor to `after - 1`, so this puts it right behind the anchor
   s.turnIndex = idx - 1 // advanceTurn steps onto the creature that moved into this slot
-  logEvent(s, `${me.name} delays their turn until after ${anchor.name}`)
-  announce(s, `${me.name} delays their turn`)
+  logEvent(s, t('log.delays', { a: me.name, b: anchor.name }))
+  announce(s, t('ann.delays', { a: me.name }))
   advanceTurn(s)
 }
 
@@ -664,20 +668,20 @@ export function setExhaustion(s: CombatState, c: Combatant, level: number) {
       c.deathSaves.failures = 3
       if (!c.conditions.includes('Unconscious')) c.conditions.push('Unconscious')
     }
-    logEvent(s, `${c.name} dies of exhaustion (level 6)`)
-    announce(s, `${c.name} has died`)
+    logEvent(s, t('log.exhaustDies', { name: c.name }))
+    announce(s, t('ann.died', { name: c.name }))
   } else if (n > 0) {
-    logEvent(s, `${c.name} is at Exhaustion level ${n}`)
+    logEvent(s, t('log.exhaustLevel', { name: c.name, n }))
   }
 }
 
 /** Is this action available (not spent / out of daily uses)? */
 export function actionAvailable(c: Combatant, a: Action): { ok: boolean; why?: string } {
   const spent = c.spent?.[a.id] ?? 0
-  if (a.limited?.kind === 'recharge' && spent) return { ok: false, why: `needs to recharge (${a.limited.min}${a.limited.min < 6 ? '-6' : ''})` }
-  if (a.limited?.kind === 'day' && spent >= a.limited.times) return { ok: false, why: `${a.limited.times}/day used up` }
-  if (a.limited?.kind === 'rest' && spent) return { ok: false, why: 'used until the next rest' }
-  if (a.timing === 'legendary' && c.legendary && c.legendary.used >= c.legendary.max) return { ok: false, why: 'no legendary actions left' }
+  if (a.limited?.kind === 'recharge' && spent) return { ok: false, why: t('why.recharge', { min: a.limited.min, upto: a.limited.min < 6 ? '-6' : '' }) }
+  if (a.limited?.kind === 'day' && spent >= a.limited.times) return { ok: false, why: t('why.perDay', { n: a.limited.times }) }
+  if (a.limited?.kind === 'rest' && spent) return { ok: false, why: t('why.rest') }
+  if (a.timing === 'legendary' && c.legendary && c.legendary.used >= c.legendary.max) return { ok: false, why: t('why.legendary') }
   return { ok: true }
 }
 

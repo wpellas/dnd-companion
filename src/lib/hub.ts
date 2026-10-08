@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
-import { toPublic, type PublicCombat } from './publicState'
+import { toPublic, toPublicSheet, type PublicCombat, type PublicSheet } from './publicState'
+import { setLang, useLang, type Lang } from './i18n'
+import { useSpotlight } from './spotlight'
 
 /**
  * Live view over the local network. The DM's browser (the "host") pushes the player-safe state to the relay in
@@ -63,10 +65,12 @@ async function smallPortrait(blob: Blob, key: string): Promise<string | undefine
 export function LiveHost() {
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
+  const spotlight = useSpotlight()
   const ws = useRef<WebSocket | null>(null)
-  const latest = useRef<{ combat?: string; portraits?: string }>({})
+  const latest = useRef<{ combat?: string; portraits?: string; spotlight?: string; lang?: string }>({})
+  const lang = useLang()
 
-  const push = (type: 'combat' | 'portraits', data: unknown) => {
+  const push = (type: 'combat' | 'portraits' | 'spotlight' | 'lang', data: unknown) => {
     const payload = JSON.stringify({ type, data })
     latest.current[type] = payload
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(payload)
@@ -76,6 +80,21 @@ export function LiveHost() {
     push('combat', toPublic(combat) ?? null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [combat])
+
+  // everyone sees the DM's language
+  useEffect(() => {
+    push('lang', lang)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang])
+
+  // the character sheet the DM is showing (null = back to the feed); follows HP changes and edits live
+  useEffect(() => {
+    if (spotlight === undefined || !characters) return
+    const c = spotlight ? characters.find((x) => x.id === spotlight.characterId) : undefined
+    const fighter = combat?.started ? combat.combatants.find((x) => x.characterId === c?.id) : undefined
+    push('spotlight', c && spotlight ? toPublicSheet(c, fighter, { inventory: spotlight.inventory }) : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spotlight, characters, combat])
 
   useEffect(() => {
     if (!characters) return
@@ -137,6 +156,10 @@ export function LiveHost() {
 
 export interface RemoteView {
   combat?: PublicCombat | null
+  /** The DM's interface language, once the relay has told us */
+  lang?: Lang
+  /** The character sheet the DM is showing; null = none, undefined = nothing received yet */
+  sheet?: PublicSheet | null
   portraits: Record<number, string>
   /** Connected to the relay */
   connected: boolean
@@ -166,6 +189,11 @@ export function useRemoteView(): RemoteView {
       socket.onmessage = (e) => {
         const msg = JSON.parse(String(e.data)) as { type: string; data?: unknown; connected?: boolean }
         if (msg.type === 'combat') setView((v) => ({ ...v, combat: (msg.data as PublicCombat | null) ?? null }))
+        else if (msg.type === 'lang') {
+          const next = msg.data as Lang
+          setLang(next)
+          setView((v) => ({ ...v, lang: next }))
+        } else if (msg.type === 'spotlight') setView((v) => ({ ...v, sheet: (msg.data as PublicSheet | null) ?? null }))
         else if (msg.type === 'portraits') setView((v) => ({ ...v, portraits: (msg.data as Record<number, string>) ?? {} }))
         else if (msg.type === 'host') setView((v) => ({ ...v, hostOnline: !!msg.connected }))
       }

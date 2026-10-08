@@ -1,4 +1,5 @@
 import type { AbilityScores } from '../types'
+import { t } from './i18n'
 
 export const abilityMod = (score: number) => Math.floor((score - 10) / 2)
 
@@ -34,7 +35,7 @@ export function rollDice(expr: string, crit = false): { total: number; note: str
   const rolls = Array.from({ length: count }, () => rollDie(d.sides))
   const total = rolls.reduce((a, b) => a + b, 0) + d.mod
   const modText = d.mod ? formatMod(d.mod) : ''
-  const note = count ? `[${rolls.join(', ')}]${modText}${crit ? ' (crit)' : ''}` : `${d.mod}`
+  const note = count ? `[${rolls.join(', ')}]${modText}${crit ? t('roll.crit') : ''}` : `${d.mod}`
   return { total: Math.max(0, total), note }
 }
 

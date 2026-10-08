@@ -1,5 +1,6 @@
 import type { Character, Resource } from '../types'
 import { abilityMod, rollDie } from './dice'
+import { t } from './i18n'
 
 /** Hit dice still available to spend (a character has `level` of them in total). */
 export const hitDiceRemaining = (c: Character) => Math.max(0, c.level - (c.hitDiceUsed ?? 0))
@@ -140,7 +141,7 @@ export function longRest(c: Character): Character {
 
 /** One-line summary of what a short rest will recharge for this character (for the preview). */
 export function shortRestRecharges(c: Character): string[] {
-  const out = (c.resources ?? []).filter((r) => r.recharge !== 'long' && r.used > 0).map((r) => (r.recharge === 'short-one' ? `${r.name} (1 use)` : r.name))
-  if (hasPactMagic(c) && c.spellcasting?.slots.some((s) => s.used > 0)) out.push('Pact Magic slots')
+  const out = (c.resources ?? []).filter((r) => r.recharge !== 'long' && r.used > 0).map((r) => (r.recharge === 'short-one' ? t('rest.oneUse', { name: r.name }) : r.name))
+  if (hasPactMagic(c) && c.spellcasting?.slots.some((s) => s.used > 0)) out.push(t('rest.pactSlots'))
   return out
 }

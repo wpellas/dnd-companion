@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { InitiativeInput } from '../components/InitiativeInput'
 import { Portrait } from '../components/Portrait'
+import { Rich } from '../components/Rich'
 import { RewardBanner } from '../components/RewardBanner'
 import { TurnPanel } from '../components/TurnPanel'
 import { rateEncounter, encounterXp, entriesFromCombat } from '../lib/encounters'
@@ -27,6 +28,7 @@ import {
   undoCombat,
 } from '../lib/combat'
 import { formatMod, rollDie, rollInitiative } from '../lib/dice'
+import { t, tCondition, tDamage } from '../lib/i18n'
 import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/settings'
 import { saveBonus } from '../lib/resolve'
 import { exhaustionLevel } from '../lib/conditionRules'
@@ -48,12 +50,12 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
       const present = new Set(s.combatants.map((c) => c.characterId))
       characters?.filter((ch) => !present.has(ch.id)).forEach((ch) => s.combatants.push(pcCombatant(ch)))
       if (s.started) sortCombatants(s)
-    }, 'Added the party')
+    }, t('lbl.addedParty'))
 
   const saveEncounter = async () => {
     const entries = entriesFromCombat(combatants)
-    if (!entries.length) return alert('Add some monsters first.')
-    const name = prompt('Name this encounter:', 'New encounter')?.trim()
+    if (!entries.length) return alert(t('combat.addMonstersFirst'))
+    const name = prompt(t('combat.namePrompt'), t('combat.newEncounter'))?.trim()
     if (name) await db.encounters.add({ name, notes: '', entries })
   }
 
@@ -66,44 +68,46 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
   return (
     <div className="page">
       <div className="toolbar">
-        <h2>Combat {started && <span className="muted">· Round {combat?.round}</span>}</h2>
-        <button onClick={addParty}>+ Add party</button>
-        <button onClick={() => mutateCombat((s) => rollAllMonsterInitiative(s, settings.groupInitiative), 'Rolled monster initiative')}>🎲 Roll monster initiative</button>
+        <h2>
+          {t('combat.title')} {started && <span className="muted">{t('combat.round', { n: combat?.round ?? 0 })}</span>}
+        </h2>
+        <button onClick={addParty}>{t('combat.addParty')}</button>
+        <button onClick={() => mutateCombat((s) => rollAllMonsterInitiative(s, settings.groupInitiative), t('lbl.rolledInit'))}>{t('combat.rollMonsters')}</button>
         {!started ? (
-          <button className="primary" disabled={!allSet} onClick={() => mutateCombat(startCombat, 'Combat started')}>
-            Start combat
+          <button className="primary" disabled={!allSet} onClick={() => mutateCombat(startCombat, t('lbl.started'))}>
+            {t('combat.start')}
           </button>
         ) : (
           <>
-            <button className="primary" onClick={() => mutateCombat(advanceTurn, 'Next turn')}>
-              Next turn ▶
+            <button className="primary" onClick={() => mutateCombat(advanceTurn, t('lbl.nextTurn'))}>
+              {t('combat.next')}
             </button>
-            <button className="danger" onClick={() => confirm('End combat? Monsters are removed.') && endCombat()}>
-              End combat
+            <button className="danger" onClick={() => confirm(t('combat.endConfirm')) && endCombat()}>
+              {t('combat.end')}
             </button>
           </>
         )}
-        <button disabled={!lastUndo} title={lastUndo ? `Undo: ${lastUndo.label}` : 'Nothing to undo'} onClick={() => undoCombat()}>
-          ↶ Undo
+        <button disabled={!lastUndo} title={lastUndo ? t('combat.undoTitle', { label: lastUndo.label }) : t('combat.nothingUndo')} onClick={() => undoCombat()}>
+          {t('combat.undo')}
         </button>
-        <button onClick={() => window.open('#player', 'dnd-player-view')}>Open player view ↗</button>
+        <button onClick={() => window.open('#player', 'dnd-player-view')}>{t('combat.openPlayer')}</button>
       </div>
 
       <div className="toolbar sub">
-        <button onClick={() => mutateCombat((s) => { if (!s.combatants.some((c) => c.kind === 'lair')) { s.combatants.push(lairCombatant()); if (s.started) sortCombatants(s) } }, 'Added lair actions')}>
-          ＋ Lair actions (initiative 20)
+        <button onClick={() => mutateCombat((s) => { if (!s.combatants.some((c) => c.kind === 'lair')) { s.combatants.push(lairCombatant()); if (s.started) sortCombatants(s) } }, t('lbl.addedLair'))}>
+          {t('combat.lair')}
         </button>
         <button onClick={saveEncounter} disabled={!monsters.length}>
-          💾 Save monsters as an encounter
+          {t('combat.saveEncounter')}
         </button>
-        {goTo && <button onClick={() => goTo('encounters')}>📜 Saved encounters</button>}
-        <label className="check small" title="Monsters of the same kind share one initiative: rolled once, or typed once. They still act one after another.">
+        {goTo && <button onClick={() => goTo('encounters')}>{t('combat.savedEncounters')}</button>}
+        <label className="check small" title={t('combat.groupTitle')}>
           <input type="checkbox" checked={settings.groupInitiative} onChange={(e) => updateSettings({ groupInitiative: e.target.checked })} />
-          <span>Group same monsters' initiative</span>
+          <span>{t('combat.group')}</span>
         </label>
         {rating && (
-          <span className="difficulty" title={`Encounter XP ${xp} against budgets: Low ${rating.budget.low}, Moderate ${rating.budget.moderate}, High ${rating.budget.high}`}>
-            {xp} XP · <strong className={`diff ${rating.difficulty?.replace(' ', '-').toLowerCase()}`}>{rating.difficulty}</strong> for this party
+          <span className="difficulty" title={t('combat.budgetTitle', { xp, low: rating.budget.low, mod: rating.budget.moderate, high: rating.budget.high })}>
+            {xp} XP · <strong className={`diff ${rating.difficulty?.replace(' ', '-').toLowerCase()}`}>{rating.difficulty ? t(`diff.${rating.difficulty}`) : ''}</strong> {t('combat.forParty')}
           </span>
         )}
       </div>
@@ -114,8 +118,8 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
         <PromptBanner key={p.id} prompt={p} combatants={combatants} settings={settings} />
       ))}
 
-      {!started && combatants.length > 0 && !allSet && <p className="muted">Enter an initiative for everyone (typed or rolled) to start.</p>}
-      {combatants.length === 0 && <p className="muted">Add your party above, then add monsters from the Bestiary tab or load a saved encounter.</p>}
+      {!started && combatants.length > 0 && !allSet && <p className="muted">{t('combat.needInit')}</p>}
+      {combatants.length === 0 && <p className="muted">{t('combat.emptyHint')}</p>}
 
       {started && combat && <TurnPanel key={`${combat.round}-${combat.turnIndex}-${combat.combatants[combat.turnIndex]?.id}`} combat={combat} />}
 
@@ -142,36 +146,39 @@ function PromptBanner({ prompt, combatants, settings }: { prompt: Prompt; combat
     const pass = total === undefined ? undefined : total >= prompt.dc
     return (
       <div className="prompt-banner">
-        <strong>{c.name}</strong> must keep concentrating: Constitution save, DC {prompt.dc} ({formatMod(bonus)})
+        <Rich text={t('prompt.conc', { dc: prompt.dc, bonus: formatMod(bonus) })} parts={{ name: <strong>{c.name}</strong> }} />
         <input className="narrow" type="number" placeholder="d20" value={d} onChange={(e) => setD(e.target.value)} aria-label="d20" />
         {canRoll && <button onClick={() => setD(String(rollDie(20)))}>🎲</button>}
-        {total !== undefined && <span className={pass ? 'adv' : 'dis'}>{total} → {pass ? 'keeps concentrating' : 'loses concentration'}</span>}
-        <button className="primary" disabled={pass === undefined} onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, !!pass), `${c.name}: concentration check`)}>
-          Apply
+        {total !== undefined && <span className={pass ? 'adv' : 'dis'}>{total} → {pass ? t('prompt.keeps') : t('prompt.loses')}</span>}
+        <button className="primary" disabled={pass === undefined} onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, !!pass), t('lbl.concCheck', { name: c.name }))}>
+          {t('prompt.apply')}
         </button>
-        <button title="Passed (advantage, a feature...)" onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, true), `${c.name}: kept concentration`)}>Passed</button>
-        <button className="danger" onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, false), `${c.name}: lost concentration`)}>Failed</button>
+        <button title={t('prompt.passedTitle')} onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, true), t('lbl.concKept', { name: c.name }))}>{t('prompt.passed')}</button>
+        <button className="danger" onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, false), t('lbl.concLost', { name: c.name }))}>{t('prompt.failed')}</button>
       </div>
     )
   }
   const action = c.actions.find((a) => a.id === prompt.actionId)
   return (
     <div className="prompt-banner">
-      <strong>{c.name}</strong>: roll a d6 to recharge <strong>{action?.name}</strong> ({prompt.min}{prompt.min < 6 ? '-6' : ''})
+      <Rich
+        text={t('prompt.recharge', { range: `${prompt.min}${prompt.min < 6 ? '-6' : ''}` })}
+        parts={{ name: <strong>{c.name}</strong>, action: <strong>{action?.name}</strong> }}
+      />
       <input className="narrow" type="number" min={1} max={6} placeholder="d6" value={d} onChange={(e) => setD(e.target.value)} aria-label="d6" />
       <button onClick={() => setD(String(rollDie(6)))}>🎲</button>
-      <button className="primary" disabled={roll === undefined} onClick={() => mutateCombat((s) => settleRecharge(s, prompt.id, roll!), `${c.name}: recharge`)}>
-        Apply
+      <button className="primary" disabled={roll === undefined} onClick={() => mutateCombat((s) => settleRecharge(s, prompt.id, roll!), t('lbl.recharge', { name: c.name }))}>
+        {t('prompt.apply')}
       </button>
-      <button onClick={() => mutateCombat((s) => { s.prompts = (s.prompts ?? []).filter((x) => x.id !== prompt.id) }, 'Skipped recharge')}>Skip</button>
+      <button onClick={() => mutateCombat((s) => { s.prompts = (s.prompts ?? []).filter((x) => x.id !== prompt.id) }, t('lbl.skippedRecharge'))}>{t('prompt.skip')}</button>
     </div>
   )
 }
 
-const ECON: { key: keyof TurnUsed; letter: string; title: string }[] = [
-  { key: 'action', letter: 'A', title: 'Action' },
-  { key: 'bonus', letter: 'B', title: 'Bonus action' },
-  { key: 'reaction', letter: 'R', title: 'Reaction' },
+const ECON: { key: keyof TurnUsed; letter: 'econ.aLetter' | 'econ.bLetter' | 'econ.rLetter'; title: 'econ.action' | 'econ.bonus' | 'econ.reaction' }[] = [
+  { key: 'action', letter: 'econ.aLetter', title: 'econ.action' },
+  { key: 'bonus', letter: 'econ.bLetter', title: 'econ.bonus' },
+  { key: 'reaction', letter: 'econ.rLetter', title: 'econ.reaction' },
 ]
 
 function CombatantRow({ c, active, started, image, settings }: { c: Combatant; active: boolean; started: boolean; image?: Blob; settings: Settings }) {
@@ -182,64 +189,75 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
       if (!target) return
       fn(target)
       if (resort) sortCombatants(s)
-    }, label ?? `${c.name}: edit`)
+    }, label ?? t('lbl.edit', { name: c.name }))
   const amt = Number(amount)
-  const withState = (fn: (s: Parameters<Parameters<typeof mutateCombat>[0]>[0], t: Combatant) => void, label: string) =>
+  const withState = (fn: (s: Parameters<Parameters<typeof mutateCombat>[0]>[0], who: Combatant) => void, label: string) =>
     mutateCombat((s) => {
-      const t = s.combatants.find((x) => x.id === c.id)
-      if (t) fn(s, t)
+      const who = s.combatants.find((x) => x.id === c.id)
+      if (who) fn(s, who)
     }, label)
 
   const toggleCondition = (cond: Condition) =>
-    update((t) => {
-      t.conditions = t.conditions.includes(cond) ? t.conditions.filter((x) => x !== cond) : [...t.conditions, cond]
-    }, false, `${c.name}: ${cond}`)
+    update((who) => {
+      who.conditions = who.conditions.includes(cond) ? who.conditions.filter((x) => x !== cond) : [...who.conditions, cond]
+    }, false, `${c.name}: ${tCondition(cond)}`)
   const pct = c.maxHp ? Math.round((c.hp / c.maxHp) * 100) : 0
   const down = c.kind !== 'lair' && c.hp === 0
+  const none = '-'
 
   if (c.kind === 'lair') {
     return (
       <div className={`combatant lair ${active ? 'active' : ''}`}>
-        <InitiativeInput value={c.initiative} onCommit={(n) => update((t) => (t.initiative = n), true, 'Lair initiative')} />
+        <InitiativeInput value={c.initiative} onCommit={(n) => update((who) => (who.initiative = n), true, t('lbl.lairInit'))} />
         <span />
         <div className="portrait placeholder" style={{ width: 48, height: 48, fontSize: 22 }}>☗</div>
         <div className="who">
           <strong>{c.name}</strong>
-          <span className="muted">{c.notes || 'Acts on initiative 20, after everyone else on a tie'}</span>
+          <span className="muted">{c.notes || t('row.lairNote')}</span>
         </div>
         <span />
         <span />
         <span />
-        <button title="Remove from combat" onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), 'Removed lair actions')}>✕</button>
+        <button title={t('row.removeTitle')} onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), t('lbl.removedLair'))}>✕</button>
       </div>
     )
   }
 
   return (
     <div className={`combatant ${c.kind} ${active ? 'active' : ''} ${down ? 'down' : ''}`}>
-      <InitiativeInput value={c.initiative} onCommit={(n) => withState((s, t) => { t.initiative = n; if (settings.groupInitiative) shareInitiative(s, t); else sortCombatants(s) }, `${c.name}: initiative`)} />
+      <InitiativeInput value={c.initiative} onCommit={(n) => withState((s, who) => { who.initiative = n; if (settings.groupInitiative) shareInitiative(s, who); else sortCombatants(s) }, t('lbl.initiative', { name: c.name }))} />
       {canAppRoll(c.kind, settings) ? (
-        <button title={c.surprised ? 'Roll initiative (Surprised: Disadvantage)' : 'Roll initiative'} onClick={() => withState((s, t) => { t.initiative = rollInitiative(t.initiativeBonus, !!t.surprised); if (settings.groupInitiative) shareInitiative(s, t); else sortCombatants(s) }, `${c.name}: rolled initiative`)}>
+        <button title={c.surprised ? t('row.rollInitSurprised') : t('row.rollInit')} onClick={() => withState((s, who) => { who.initiative = rollInitiative(who.initiativeBonus, !!who.surprised); if (settings.groupInitiative) shareInitiative(s, who); else sortCombatants(s) }, t('lbl.rolledInitOne', { name: c.name }))}>
           🎲
         </button>
       ) : (
-        <span title="Players roll their own initiative: type it in" />
+        <span title={t('row.playersRoll')} />
       )}
       <Portrait name={c.name} image={image} size={48} />
       <div className="who">
         <strong>{c.name}</strong>
         <span className="muted">
-          AC {c.ac}
+          {t('row.ac', { n: c.ac })}
           {(c.resistances?.length || c.immunities?.length || c.vulnerabilities?.length) ? (
-            <span className="defences" title={`Resist: ${(c.resistances ?? []).join(', ') || '-'} · Immune: ${(c.immunities ?? []).join(', ') || '-'} · Vulnerable: ${(c.vulnerabilities ?? []).join(', ') || '-'}`}>
+            <span
+              className="defences"
+              title={t('row.defences', {
+                r: (c.resistances ?? []).map(tDamage).join(', ') || none,
+                i: (c.immunities ?? []).map(tDamage).join(', ') || none,
+                v: (c.vulnerabilities ?? []).map(tDamage).join(', ') || none,
+              })}
+            >
               {' '}🛡{c.resistances?.length ? ` R${c.resistances.length}` : ''}{c.immunities?.length ? ` I${c.immunities.length}` : ''}{c.vulnerabilities?.length ? ` V${c.vulnerabilities.length}` : ''}
             </span>
           ) : null}
         </span>
         {!started && (
-          <label className="check small surprised" title="Surprised creatures roll Initiative with Disadvantage (2024 rules)">
-            <input type="checkbox" checked={!!c.surprised} onChange={() => withState((_s, t) => toggleSurprised(_s, t), `${c.name}: surprised`)} />
-            <span>Surprised{c.surprised ? (canAppRoll(c.kind, settings) ? ': rolls with Disadvantage' : ': roll initiative with Disadvantage') : ''}</span>
+          <label className="check small surprised" title={t('row.surprisedTitle')}>
+            <input type="checkbox" checked={!!c.surprised} onChange={() => withState((s, who) => toggleSurprised(s, who), t('lbl.surprised', { name: c.name }))} />
+            <span>
+              {t('row.surprised')}
+              {c.surprised ? (canAppRoll(c.kind, settings) ? t('row.surprisedRolls') : t('row.surprisedPlayer')) : ''}
+            </span>
           </label>
         )}
         {active && (
@@ -248,19 +266,19 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
               <button
                 key={key}
                 className={`econ-pip ${c.turn?.[key] ? 'used' : ''}`}
-                title={`${title}: ${c.turn?.[key] ? 'used' : 'available'} (click to toggle)`}
-                onClick={() => update((t) => (t.turn = { action: false, bonus: false, reaction: false, ...t.turn, [key]: !(t.turn?.[key] ?? false) }), false, `${c.name}: ${title}`)}
+                title={t('econ.title', { what: t(title), state: c.turn?.[key] ? t('econ.used') : t('econ.available') })}
+                onClick={() => update((who) => (who.turn = { action: false, bonus: false, reaction: false, ...who.turn, [key]: !(who.turn?.[key] ?? false) }), false, `${c.name}: ${t(title)}`)}
               >
-                {letter}
+                {t(letter)}
               </button>
             ))}
           </span>
         )}
-        {c.legendary && <span className="muted tiny">Legendary {c.legendary.max - c.legendary.used}/{c.legendary.max}</span>}
+        {c.legendary && <span className="muted tiny">{t('row.legendary', { left: c.legendary.max - c.legendary.used, max: c.legendary.max })}</span>}
         {c.kind === 'pc' && down && (
-          <div className="saves" title="Death saves">
-            <Pips label="✓" n={c.deathSaves.successes} onChange={(n) => withState((s, t) => setDeathSaves(s, t, 'successes', n), `${c.name}: death save`)} />
-            <Pips label="✗" n={c.deathSaves.failures} onChange={(n) => withState((s, t) => setDeathSaves(s, t, 'failures', n), `${c.name}: death save`)} />
+          <div className="saves" title={t('row.deathSaves')}>
+            <Pips label="✓" n={c.deathSaves.successes} onChange={(n) => withState((s, who) => setDeathSaves(s, who, 'successes', n), t('lbl.deathSave', { name: c.name }))} />
+            <Pips label="✗" n={c.deathSaves.failures} onChange={(n) => withState((s, who) => setDeathSaves(s, who, 'failures', n), t('lbl.deathSave', { name: c.name }))} />
           </div>
         )}
       </div>
@@ -271,7 +289,7 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
         </div>
         <span>
           {c.hp}/{c.maxHp}
-          {c.tempHp > 0 && <em> +{c.tempHp} temp</em>}
+          {c.tempHp > 0 && <em>{t('row.temp', { n: c.tempHp })}</em>}
         </span>
       </div>
 
@@ -285,52 +303,52 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
           onChange={(e) => setAmount(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && amt > 0) {
-              withState((s, t) => damageRow(s, t, amt), `${c.name}: damage`)
+              withState((s, who) => damageRow(s, who, amt), t('lbl.damage', { name: c.name }))
               setAmount('')
             }
           }}
         />
-        <button className="danger" onClick={() => { if (amt > 0) withState((s, t) => damageRow(s, t, amt), `${c.name}: damage`); setAmount('') }}>
-          Dmg
+        <button className="danger" onClick={() => { if (amt > 0) withState((s, who) => damageRow(s, who, amt), t('lbl.damage', { name: c.name })); setAmount('') }}>
+          {t('row.dmg')}
         </button>
-        <button onClick={() => { if (amt > 0) withState((s, t) => healRow(s, t, amt), `${c.name}: heal`); setAmount('') }}>Heal</button>
+        <button onClick={() => { if (amt > 0) withState((s, who) => healRow(s, who, amt), t('lbl.heal', { name: c.name })); setAmount('') }}>{t('row.heal')}</button>
         <button
-          title="Set temp HP (kept if higher than current)"
+          title={t('row.tempTitle')}
           onClick={() => {
-            if (amt > 0) update((t) => (t.tempHp = Math.max(t.tempHp, amt)), false, `${c.name}: temp HP`)
+            if (amt > 0) update((who) => (who.tempHp = Math.max(who.tempHp, amt)), false, t('lbl.tempHp', { name: c.name }))
             setAmount('')
           }}
         >
-          Temp
+          {t('row.tempBtn')}
         </button>
       </div>
 
       <details className="conditions">
-        <summary title={[...c.conditions, c.concentrating ? 'Concentrating' : ''].filter(Boolean).join(', ')}>
-          {c.conditions.length ? c.conditions.map((x) => (x === 'Exhaustion' ? `Exhaustion ${exhaustionLevel(c)}` : x)).join(', ') : 'Conditions'}
-          {c.concentrating && ' · ◎ Concentrating'}
+        <summary title={[...c.conditions.map(tCondition), c.concentrating ? t('row.concentratingTitle') : ''].filter(Boolean).join(', ')}>
+          {c.conditions.length ? c.conditions.map((x) => (x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x))).join(', ') : t('row.conditions')}
+          {c.concentrating && t('row.concentratingSummary')}
         </summary>
         <div className="popover">
           <label>
-            <input type="checkbox" checked={c.concentrating} onChange={(e) => update((t) => (t.concentrating = e.target.checked), false, `${c.name}: concentration`)} />
-            Concentrating
+            <input type="checkbox" checked={c.concentrating} onChange={(e) => update((who) => (who.concentrating = e.target.checked), false, t('lbl.concentration', { name: c.name }))} />
+            {t('row.concentratingTitle')}
           </label>
-          <div className="exhaustion" title="Each level: -2 to every d20 test and -5 ft Speed; level 6 is death">
-            <span>Exhaustion</span>
-            <button aria-label="Lower exhaustion" disabled={exhaustionLevel(c) === 0} onClick={() => withState((s, t) => setExhaustion(s, t, exhaustionLevel(t) - 1), `${c.name}: exhaustion`)}>−</button>
+          <div className="exhaustion" title={t('row.exhaustionTitle')}>
+            <span>{tCondition('Exhaustion')}</span>
+            <button aria-label={t('row.lowerExhaustion')} disabled={exhaustionLevel(c) === 0} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) - 1), t('lbl.exhaustion', { name: c.name }))}>−</button>
             <strong>{exhaustionLevel(c)}</strong>
-            <button aria-label="Raise exhaustion" disabled={exhaustionLevel(c) >= 6} onClick={() => withState((s, t) => setExhaustion(s, t, exhaustionLevel(t) + 1), `${c.name}: exhaustion`)}>+</button>
+            <button aria-label={t('row.raiseExhaustion')} disabled={exhaustionLevel(c) >= 6} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) + 1), t('lbl.exhaustion', { name: c.name }))}>+</button>
           </div>
           {CONDITIONS.filter((cond) => cond !== 'Exhaustion').map((cond) => (
             <label key={cond}>
               <input type="checkbox" checked={c.conditions.includes(cond)} onChange={() => toggleCondition(cond)} />
-              {cond}
+              {tCondition(cond)}
             </label>
           ))}
         </div>
       </details>
 
-      <button title="Remove from combat" onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), `Removed ${c.name}`)}>
+      <button title={t('row.removeTitle')} onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), t('lbl.removed', { name: c.name }))}>
         ✕
       </button>
     </div>
@@ -348,4 +366,3 @@ function Pips({ label, n, onChange }: { label: string; n: number; onChange: (n: 
     </span>
   )
 }
-

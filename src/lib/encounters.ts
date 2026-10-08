@@ -2,6 +2,7 @@ import { db } from '../db'
 import { XP_BY_CR, difficultyOf, partyBudget } from '../data/encounterBudget'
 import type { Combatant, Encounter, EncounterEntry, MonsterTemplate } from '../types'
 import { monsterCombatants, mutateCombat, pcCombatant, sortCombatants } from './combat'
+import { t } from './i18n'
 
 /** The monster template an encounter entry points at (an SRD monster by index, or a custom one by id). */
 export function templateFor(e: EncounterEntry, srd: MonsterTemplate[], custom: MonsterTemplate[]): MonsterTemplate | undefined {
@@ -58,6 +59,6 @@ export async function loadEncounter(enc: Encounter, srd: MonsterTemplate[], cust
       s.combatants.push(...monsterCombatants(t, e.count, s.combatants))
     }
     if (s.started) sortCombatants(s)
-  }, `Loaded encounter "${enc.name}"`)
+  }, t('enc.loadedLabel', { name: enc.name }))
   return missing
 }

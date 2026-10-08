@@ -98,8 +98,17 @@ A read-only screen for a TV or phones, in a second window or on any device on yo
 Healthy / Bloodied / Defeated (never their HP or AC, no peeking), conditions, a "Merlin's turn!" banner and short announcements
 like "Goblin Warrior 1 hits Xaroz".
 
+**Show a character to the players:** the 📺 button on a party card puts that character's sheet on the TV and phones instead of the
+feed (stats, saves, attacks, spells and slots, features, and optionally inventory and gold), so you and the player can check you agree
+on their numbers. It is only a switch: the fight keeps running underneath, the sheet follows HP changes live, and "Back to the feed"
+restores the view exactly as it was. A bar on every DM tab reminds you it is on.
+
 ### Settings ⚙️
-The player-dice policy, backup and restore, and the live-view address with a QR code.
+The **language** (English or Svenska), the player-dice policy, backup and restore, and the live-view address with a QR code.
+
+**Language:** pick it from the dropdown on the Settings tab and the whole app switches, including the TV and the players' phones
+(they follow the DM's choice) and the lines that call out whose turn it is ("Merlins tur", "Runda 3"). Only the app's own words are
+translated: spell, monster and item names, class features and rules text from the SRD stay in English.
 
 ## 📱 Live view on phones and TVs
 
@@ -159,6 +168,8 @@ A level-up helper, a battle map with tokens, and players logging in as their own
   resistances / immunities / vulnerabilities; undo; concentration, recharge and legendary-action tracking; auto-Unconscious,
   massive damage; condition-driven hints; action / bonus action / reaction trackers; lair actions; saved encounters with XP
   difficulty; backup and restore; settings; player-view announcements; live view on phones with a QR code.
+- **Language:** English and Swedish, switched from Settings and followed by every connected screen.
+- **Spotlight:** show one character's sheet on the players' screens and switch back to the feed any time.
 - **Loot update:** equipment and inventory from the SRD item list, weapons that become attacks, Armor Class from gear, coins, XP and
   gold awards (after a fight or by hand), level-up badges, a Loot & XP journal log.
 - **Table-speed update:** group initiative, Surprised, Delay; ray-by-ray Scorching Ray / Magic Missile / Eldritch Blast and monster

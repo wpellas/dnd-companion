@@ -4,7 +4,7 @@ import { CheckField, Section } from './Section'
 import { SpellInfo, SpellPicker } from './SpellPicker'
 import { UsePips } from './UsePips'
 import { castingSnapshot, emptySlots } from '../lib/character'
-import { className } from '../lib/classes'
+import { t, tAbility, tClass } from '../lib/i18n'
 import { formatMod } from '../lib/dice'
 import { highestSlotLevel, levelLabel } from '../lib/spells'
 import { ABILITIES, type Ability, type Character, type KnownSpell, type Spellcasting } from '../types'
@@ -24,10 +24,10 @@ export function SpellcastingEditor({ c, setC }: Props) {
     setC((prev) => (prev.spellcasting ? { ...prev, spellcasting: { ...prev.spellcasting, ...p } } : prev))
 
   if (!sc) {
-    const who = className(c.classIndex)
+    const who = tClass(c.classIndex)
     return (
       <Section
-        title="Spellcasting"
+        title={t('sc.title')}
         action={
           <button
             onClick={() =>
@@ -37,13 +37,13 @@ export function SpellcastingEditor({ c, setC }: Props) {
               }))
             }
           >
-            Enable manually
+            {t('sc.enable')}
           </button>
         }
       >
         <p className="muted empty-note">
-          {who ? `${who}s don't cast spells by default.` : 'Pick a class to fill in spellcasting automatically.'} For a casting
-          subclass (Eldritch Knight, Arcane Trickster...) or a multiclass, enable it and set the slots by hand.
+          {who ? t('sc.noDefault', { who }) : t('sc.pickClass')}
+          {t('sc.manualNote')}
         </p>
       </Section>
     )
@@ -64,21 +64,21 @@ export function SpellcastingEditor({ c, setC }: Props) {
 
   return (
     <Section
-      title="Spellcasting"
+      title={t('sc.title')}
       action={
         <>
           <CheckField
-            label="Follow class table"
-            title="Slot counts and spell limits follow the class table for this level. Editing them by hand turns this off."
+            label={t('sc.follow')}
+            title={t('sc.followTitle')}
             checked={sc.auto}
             onChange={(auto) => patchSc({ auto })}
           />
           {!sc.auto && (
             <button
               className="danger"
-              onClick={() => (spellsChosen === 0 || confirm('Remove spellcasting and the spells chosen?')) && setC((p) => ({ ...p, spellcasting: undefined }))}
+              onClick={() => (spellsChosen === 0 || confirm(t('sc.removeConfirm'))) && setC((p) => ({ ...p, spellcasting: undefined }))}
             >
-              Remove
+              {t('common.remove')}
             </button>
           )}
         </>
@@ -86,32 +86,32 @@ export function SpellcastingEditor({ c, setC }: Props) {
     >
       <div className="field-grid">
         <label className="field">
-          <span>Spellcasting ability</span>
+          <span>{t('sc.ability')}</span>
           <select value={sc.ability} onChange={(e) => patchSc({ ability: e.target.value as Ability })}>
             {ABILITIES.map((a) => (
               <option key={a} value={a}>
-                {a.toUpperCase()}
+                {tAbility(a)}
               </option>
             ))}
           </select>
         </label>
         {snap && (
           <div className="field">
-            <span>Spell save DC</span>
+            <span>{t('sc.saveDc')}</span>
             <strong className="static-value">{snap.saveDc}</strong>
           </div>
         )}
         {snap && (
           <div className="field">
-            <span>Spell attack</span>
+            <span>{t('sc.attack')}</span>
             <strong className="static-value">{formatMod(snap.attackBonus)}</strong>
           </div>
         )}
       </div>
 
-      <div className="subhead">Spell slots</div>
+      <div className="subhead">{t('sc.slots')}</div>
       {slotLevels.length === 0 ? (
-        <p className="muted empty-note">No spell slots at this level.</p>
+        <p className="muted empty-note">{t('sc.noSlots')}</p>
       ) : (
         <div className="slot-grid">
           {slotLevels.map(({ s, i }) => (
@@ -122,13 +122,13 @@ export function SpellcastingEditor({ c, setC }: Props) {
                 min={0}
                 max={9}
                 value={s.max}
-                aria-label={`${levelLabel(i + 1)} level slots`}
+                aria-label={t('sc.slotsAria', { level: levelLabel(i + 1) })}
                 onChange={(e) => setSlotMax(i, Math.max(0, Math.min(9, Math.floor(e.target.valueAsNumber) || 0)))}
               />
               <UsePips
                 max={s.max}
                 used={s.used}
-                label={`${levelLabel(i + 1)} slots`}
+                label={t('spell.slots', { level: levelLabel(i + 1) })}
                 onChange={(used) => patchSc({ slots: sc.slots.map((x, j) => (j === i ? { ...x, used } : x)) })}
               />
             </div>
@@ -138,7 +138,7 @@ export function SpellcastingEditor({ c, setC }: Props) {
 
       <div className="spell-columns">
         <SpellList
-          title="Cantrips"
+          title={t('spell.cantrips')}
           spells={sc.cantrips}
           limit={sc.cantripLimit}
           onLimit={(n) => patchSc({ cantripLimit: n, auto: false })}
@@ -147,7 +147,7 @@ export function SpellcastingEditor({ c, setC }: Props) {
           onInfo={setInfo}
         />
         <SpellList
-          title="Prepared spells"
+          title={t('sc.prepared')}
           spells={byLevel}
           limit={sc.preparedLimit}
           onLimit={(n) => patchSc({ preparedLimit: n, auto: false })}
@@ -161,7 +161,7 @@ export function SpellcastingEditor({ c, setC }: Props) {
       {info && (
         <div className="spell-info-box">
           <SpellInfo index={info} />
-          <button onClick={() => setInfo(undefined)}>Close</button>
+          <button onClick={() => setInfo(undefined)}>{t('sc.close')}</button>
         </div>
       )}
 
@@ -206,20 +206,20 @@ function SpellList({
         <div className="subhead">
           {title} <span className={over ? 'warn' : 'muted'}>{spells.length} / {limit}</span>
         </div>
-        <NumberField label="Limit" value={limit} min={0} onChange={(n) => onLimit(Math.max(0, Math.floor(n)))} />
-        <button onClick={onAdd}>+ Add</button>
+        <NumberField label={t('sc.limit')} value={limit} min={0} onChange={(n) => onLimit(Math.max(0, Math.floor(n)))} />
+        <button onClick={onAdd}>{t('sc.addBtn')}</button>
       </div>
       {spells.length === 0 ? (
-        <p className="muted empty-note">None chosen.</p>
+        <p className="muted empty-note">{t('sc.none')}</p>
       ) : (
         <div className="spell-chips">
           {spells.map((s) => (
             <span className="spell-chip" key={s.index}>
-              <button className="link" onClick={() => onInfo(s.index)} title="Show spell text">
+              <button className="link" onClick={() => onInfo(s.index)} title={t('sc.showText')}>
                 {s.name}
               </button>
               {showLevel && <small>{levelLabel(s.level)}</small>}
-              <button className="x" onClick={() => onRemove(s.index)} aria-label={`Remove ${s.name}`}>
+              <button className="x" onClick={() => onRemove(s.index)} aria-label={t('ui.remove', { what: s.name })}>
                 ✕
               </button>
             </span>

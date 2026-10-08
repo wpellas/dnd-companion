@@ -1,6 +1,7 @@
 import type { SrdEquipment, SrdMagicItem } from './srdApi'
 import { abilityMod } from './dice'
 import { newId } from './id'
+import { t } from './i18n'
 import type { Ability, Action, Character, Coins, CoinType, Item } from '../types'
 
 /** Pure rules for what a character owns: Armor Class from gear, weapon attacks, coins, carrying weight, experience. */
@@ -92,7 +93,7 @@ export function armorClass(c: Gear): ArmorClassResult {
     // unarmored: 10 + Dex, and the Barbarian / Monk features that add a second ability
     const extra = c.classIndex === 'barbarian' ? abilityMod(c.abilities?.con ?? 10) : c.classIndex === 'monk' && !shield ? abilityMod(c.abilities?.wis ?? 10) : 0
     ac = 10 + dex + extra
-    parts.push(extra ? `Unarmored Defense ${ac}` : `Unarmored ${ac}`)
+    parts.push(t(extra ? 'ac.unarmoredDefense' : 'ac.unarmored', { n: ac }))
   }
   if (shield) {
     const bonus = shield.armor!.base + (shield.magicBonus ?? 0)
@@ -103,7 +104,7 @@ export function armorClass(c: Gear): ArmorClassResult {
     ac += i.magicBonus!
     parts.push(`${i.name} ${i.magicBonus! > 0 ? '+' : ''}${i.magicBonus}`)
   }
-  return { ac, parts, warning: bodies.length > 1 ? 'Several body armors are equipped; only the best counts.' : undefined }
+  return { ac, parts, warning: bodies.length > 1 ? t('ac.severalArmors') : undefined }
 }
 
 /** Keep `ac` in step with the gear when the character uses "Armor Class from equipment". */
@@ -136,7 +137,7 @@ export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action
         damage: w.damage,
         damageType: w.damageType,
         range: w.range ?? (w.ranged ? 'range' : 'reach 5 ft.'),
-        desc: w.mastery ? `Weapon mastery: ${w.mastery}` : undefined,
+        desc: w.mastery ? t('inv.masteryDesc', { m: w.mastery }) : undefined,
       }
       return w.versatile ? [base, { ...base, id: `item:${i.id}:2h`, name: `${i.name} (two-handed)`, damage: w.versatile }] : [base]
     })
@@ -148,11 +149,14 @@ export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action
 
 export const blankItem = (kind: Item['kind'] = 'gear'): Item => ({ id: newId(), name: '', kind, qty: 1 })
 
-/** Group and short hint for the picker, from an SRD equipment entry. */
-export function equipmentGroup(e: SrdEquipment): { group: string; hint?: string } {
-  if (e.damage) return { group: 'Weapons', hint: `${e.damage.damage_dice} ${e.damage.damage_type?.index ?? ''}`.trim() }
-  if (e.armor_class) return { group: 'Armor & shields', hint: e.equipment_categories.some((c) => c.index === 'shields') ? `+${e.armor_class.base} AC` : `AC ${e.armor_class.base}` }
-  return { group: 'Gear', hint: e.cost ? `${e.cost.quantity} ${e.cost.unit}` : undefined }
+/** Headings of the item picker (translated where they are shown). */
+export type CatalogGroup = 'weapons' | 'armor' | 'gear' | 'magic'
+
+/** Group and short hint for the picker, from an SRD equipment entry (the damage type is translated where it is shown). */
+export function equipmentGroup(e: SrdEquipment): { group: CatalogGroup; hint?: string; damageType?: string } {
+  if (e.damage) return { group: 'weapons', hint: e.damage.damage_dice, damageType: e.damage.damage_type?.index }
+  if (e.armor_class) return { group: 'armor', hint: e.equipment_categories.some((c) => c.index === 'shields') ? `+${e.armor_class.base} AC` : `AC ${e.armor_class.base}` }
+  return { group: 'gear', hint: e.cost ? `${e.cost.quantity} ${e.cost.unit}` : undefined }
 }
 
 const text = (lines?: string[]) => (lines?.length ? lines.join('\n\n') : undefined)

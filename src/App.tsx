@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import logo from './assets/images/logo-128.png'
 import { SpellLibraryStatus } from './components/SpellLibraryStatus'
+import { SpotlightBar } from './components/SpotlightBar'
 import { useHash } from './hooks'
 import { LiveHost, useHubStatus } from './lib/hub'
+import { setLang, t } from './lib/i18n'
+import { useStoredLanguage } from './lib/settings'
 import { BestiaryPage } from './pages/BestiaryPage'
 import { CombatPage } from './pages/CombatPage'
 import { EncountersPage } from './pages/EncountersPage'
@@ -13,19 +16,24 @@ import { SettingsPage } from './pages/SettingsPage'
 
 type Tab = 'combat' | 'party' | 'bestiary' | 'encounters' | 'journal' | 'settings'
 
-const TAB_LABEL: Record<Tab, string> = {
-  combat: '⚔ Combat',
-  party: '🛡 Party',
-  bestiary: '🐉 Bestiary',
-  encounters: '📜 Encounters',
-  journal: '📖 Journal',
-  settings: '⚙ Settings',
-}
+const TABS: Tab[] = ['combat', 'party', 'bestiary', 'encounters', 'journal', 'settings']
+
+/** Remembered outside the component: changing the language re-creates the UI, and you should stay on the Settings tab. */
+let lastTab: Tab = 'combat'
 
 export default function App() {
   const hash = useHash()
-  const [tab, setTab] = useState<Tab>('combat')
+  const [tab, setTabState] = useState<Tab>(lastTab)
+  const setTab = (next: Tab) => {
+    lastTab = next
+    setTabState(next)
+  }
   const hub = useHubStatus()
+  // the DM's saved language (the live view follows the DM through the relay instead; see PlayerView)
+  const stored = useStoredLanguage()
+  useEffect(() => {
+    if (stored && hash !== '#player') setLang(stored)
+  }, [stored, hash])
 
   if (hash === '#player') return <PlayerView />
 
@@ -33,39 +41,39 @@ export default function App() {
     <>
       <LiveHost />
       <nav>
-        <img className="nav-logo" src={logo} alt="D&D Companion" />
-        <span className="brand">Dungeon Master's Companion</span>
+        <img className="nav-logo" src={logo} alt={t('app.logoAlt')} />
+        <span className="brand">{t('app.brand')}</span>
         {hub.state === 'live' && (
-          <button className="live-badge" onClick={() => setTab('settings')} title="Live view: click for the address and QR code">
-            📡 {hub.viewers} watching
+          <button className="live-badge" onClick={() => setTab('settings')} title={t('nav.watchingTitle')}>
+            {t('nav.watching', { n: hub.viewers })}
           </button>
         )}
         <div className="tabs">
-          {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
-            <button key={t} className={t === tab ? 'selected' : ''} onClick={() => setTab(t)}>
-              {TAB_LABEL[t]}
+          {TABS.map((id) => (
+            <button key={id} className={id === tab ? 'selected' : ''} onClick={() => setTab(id)}>
+              {t(`nav.${id}`)}
             </button>
           ))}
         </div>
       </nav>
-      {tab === 'combat' && <CombatPage goTo={(t) => setTab(t)} />}
+      <SpotlightBar />
+      {tab === 'combat' && <CombatPage goTo={(to) => setTab(to)} />}
       {tab === 'party' && <PartyPage />}
       {tab === 'bestiary' && <BestiaryPage />}
-      {tab === 'encounters' && <EncountersPage goTo={(t) => setTab(t)} />}
+      {tab === 'encounters' && <EncountersPage goTo={(to) => setTab(to)} />}
       {tab === 'journal' && <JournalPage />}
       {tab === 'settings' && <SettingsPage />}
       <footer className="attribution">
         <div className="sync-status">
           <SpellLibraryStatus />
         </div>
-        Class, spell and monster data from the{' '}
+        {t('footer.dataFrom')}
         <a href="https://www.dnd5eapi.co" target="_blank" rel="noreferrer">
-          5e SRD API
+          {t('footer.api')}
         </a>
-        . This work includes material from the System Reference Document 5.2 by Wizards of the Coast LLC, available at
-        dndbeyond.com/srd and licensed under{' '}
+        {t('footer.legal')}
         <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
-          CC BY 4.0
+          {t('footer.license')}
         </a>
         .
       </footer>

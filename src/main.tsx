@@ -7,10 +7,10 @@ import '@fontsource/alegreya/400-italic.css'
 import '@fontsource/alegreya/600.css'
 import '@fontsource/alegreya/700.css'
 import './index.css'
-import App from './App.tsx'
+import Root from './Root.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 )

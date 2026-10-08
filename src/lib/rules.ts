@@ -1,5 +1,6 @@
 import type { Action } from '../types'
 import { rollDie } from './dice'
+import { t } from './i18n'
 
 export type AttackOutcome = 'crit' | 'hit' | 'miss'
 export type RollMode = 'normal' | 'adv' | 'dis'
@@ -15,11 +16,11 @@ export function attackOutcome(d20: number, bonus: number, targetAc: number): Att
 export function rollD20(mode: RollMode): { value: number; note: string } {
   if (mode === 'normal') {
     const v = rollDie(20)
-    return { value: v, note: `rolled ${v}` }
+    return { value: v, note: t('roll.rolled', { v }) }
   }
   const [a, b] = [rollDie(20), rollDie(20)]
   const value = mode === 'adv' ? Math.max(a, b) : Math.min(a, b)
-  return { value, note: `rolled ${a} & ${b} (${mode === 'adv' ? 'advantage' : 'disadvantage'})` }
+  return { value, note: t('roll.rolledTwo', { a, b, how: t(mode === 'adv' ? 'roll.advantage' : 'roll.disadvantage') }) }
 }
 
 export function adjustDamage(amount: number, mod: DamageModifier) {
@@ -33,3 +34,13 @@ export const damageAfterSave = (amount: number, action: Action, saved: boolean) 
   saved ? (action.halfOnSave ? Math.floor(amount / 2) : 0) : amount
 
 export const concentrationDc = (damage: number) => Math.max(10, Math.floor(damage / 2))
+
+/**
+ * How an attack roll is written in the log: "d20 14 +4 = 18 vs AC 15 (advantage) (Exhaustion -2)".
+ * `ac` may be unknown while a target isn't picked yet.
+ */
+export function attackRollText(o: { roll?: number; bonus: number; ac?: number; mode?: RollMode; exhaustion?: number }): string {
+  const mode = o.mode && o.mode !== 'normal' ? ` (${t(o.mode === 'adv' ? 'roll.advantage' : 'roll.disadvantage')})` : ''
+  const penalty = o.exhaustion ? ` (${t('cond.Exhaustion')} -${o.exhaustion})` : ''
+  return `d20 ${o.roll} ${o.bonus >= 0 ? '+' : ''}${o.bonus} = ${(o.roll ?? 0) + o.bonus} vs AC ${o.ac ?? '?'}${mode}${penalty}`
+}

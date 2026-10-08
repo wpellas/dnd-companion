@@ -1,4 +1,5 @@
 import type { Ability, Combatant, Condition } from '../types'
+import { t, tCondition } from './i18n'
 
 /**
  * What each 2024 condition does to d20 rolls and saves, taken from the official condition texts
@@ -7,8 +8,8 @@ import type { Ability, Combatant, Condition } from '../types'
  */
 interface ConditionEffect {
   /** The creature's own attack rolls have Disadvantage / Advantage */
-  attacksDisadv?: string
-  attacksAdv?: string
+  attacksDisadv?: boolean
+  attacksAdv?: boolean
   /** Attack rolls against the creature have Advantage / Disadvantage */
   attackedAdv?: boolean
   attackedDisadv?: boolean
@@ -23,32 +24,27 @@ interface ConditionEffect {
   /** Ability checks (not just attacks) have Disadvantage */
   checksDisadv?: boolean
   resistAll?: boolean
-  /** One-line reminder shown for the creature on its turn */
-  reminder: string
 }
 
 const STR_DEX: Ability[] = ['str', 'dex']
 
 export const CONDITION_EFFECTS: Record<Condition, ConditionEffect> = {
-  Blinded: { attacksDisadv: 'Blinded', attackedAdv: true, reminder: "Can't see; its attack rolls have Disadvantage and attacks against it have Advantage." },
-  Charmed: { reminder: "Can't attack or harm the charmer; the charmer has Advantage on social checks against it." },
-  Deafened: { reminder: "Can't hear; fails ability checks that need hearing." },
-  Exhaustion: { reminder: 'Each Exhaustion level: -2 to every D20 Test and -5 ft Speed. Dies at level 6.' },
+  Blinded: { attacksDisadv: true, attackedAdv: true },
+  Charmed: {},
+  Deafened: {},
+  Exhaustion: {},
   Frightened: {
-    attacksDisadv: 'Frightened (while the source of fear is in sight)',
+    attacksDisadv: true,
     checksDisadv: true,
-    reminder: "Disadvantage on ability checks and attack rolls while the source of fear is in sight; can't move closer to it.",
   },
   Grappled: {
-    attacksDisadv: 'Grappled (unless attacking the grappler)',
+    attacksDisadv: true,
     speedZero: true,
-    reminder: 'Speed 0; Disadvantage on attacks against anyone but the grappler.',
   },
-  Incapacitated: { incapacitated: true, reminder: "Can't take actions, Bonus Actions or Reactions; Concentration is broken; can't speak." },
+  Incapacitated: { incapacitated: true },
   Invisible: {
-    attacksAdv: 'Invisible',
+    attacksAdv: true,
     attackedDisadv: true,
-    reminder: 'Its attack rolls have Advantage and attacks against it have Disadvantage (unless it can be seen somehow).',
   },
   Paralyzed: {
     incapacitated: true,
@@ -56,7 +52,6 @@ export const CONDITION_EFFECTS: Record<Condition, ConditionEffect> = {
     autoFailSaves: STR_DEX,
     attackedAdv: true,
     critWithin5: true,
-    reminder: 'Incapacitated, Speed 0; fails STR and DEX saves; attacks against it have Advantage; hits from within 5 ft are Critical Hits.',
   },
   Petrified: {
     incapacitated: true,
@@ -64,26 +59,22 @@ export const CONDITION_EFFECTS: Record<Condition, ConditionEffect> = {
     autoFailSaves: STR_DEX,
     attackedAdv: true,
     resistAll: true,
-    reminder: 'Incapacitated, Speed 0; fails STR and DEX saves; attacks against it have Advantage; Resistance to all damage; immune to Poisoned.',
   },
-  Poisoned: { attacksDisadv: 'Poisoned', checksDisadv: true, reminder: 'Disadvantage on attack rolls and ability checks.' },
+  Poisoned: { attacksDisadv: true, checksDisadv: true },
   Prone: {
-    attacksDisadv: 'Prone',
+    attacksDisadv: true,
     proneAttacked: true,
-    reminder: 'Disadvantage on attack rolls; attacks against it have Advantage from within 5 ft, otherwise Disadvantage. Standing up costs half its Speed.',
   },
   Restrained: {
-    attacksDisadv: 'Restrained',
+    attacksDisadv: true,
     attackedAdv: true,
     speedZero: true,
     saveDisadv: ['dex'],
-    reminder: 'Speed 0; its attack rolls and DEX saves have Disadvantage; attacks against it have Advantage.',
   },
   Stunned: {
     incapacitated: true,
     autoFailSaves: STR_DEX,
     attackedAdv: true,
-    reminder: 'Incapacitated; fails STR and DEX saves; attacks against it have Advantage.',
   },
   Unconscious: {
     incapacitated: true,
@@ -91,7 +82,6 @@ export const CONDITION_EFFECTS: Record<Condition, ConditionEffect> = {
     autoFailSaves: STR_DEX,
     attackedAdv: true,
     critWithin5: true,
-    reminder: 'Incapacitated and Prone, Speed 0; fails STR and DEX saves; attacks against it have Advantage; hits from within 5 ft are Critical Hits.',
   },
 }
 
@@ -105,10 +95,11 @@ export const exhaustionPenalty = (c: Pick<Combatant, 'exhaustion'>) => 2 * exhau
 export const conditionReminders = (c: Pick<Combatant, 'conditions' | 'exhaustion'>) =>
   effects(c).map((e) => ({
     name: e.name,
+    label: tCondition(e.name),
     text:
       e.name === 'Exhaustion' && exhaustionLevel(c) > 0
-        ? `Level ${exhaustionLevel(c)}: -${exhaustionPenalty(c)} to every D20 Test (the app applies it to attack and save bonuses) and -${5 * exhaustionLevel(c)} ft Speed. Dies at level 6.`
-        : e.fx.reminder,
+        ? t('remind.exhaustionLevel', { n: exhaustionLevel(c), pen: exhaustionPenalty(c), ft: 5 * exhaustionLevel(c) })
+        : t(`remind.${e.name}`),
   }))
 
 export const isIncapacitated = (c: Pick<Combatant, 'conditions'>) => effects(c).some((e) => e.fx.incapacitated)
@@ -121,6 +112,10 @@ export const saveHasDisadvantage = (c: Pick<Combatant, 'conditions'>, ability: A
   effects(c).some((e) => e.fx.saveDisadv?.includes(ability))
 
 export const resistsAllDamage = (c: Pick<Combatant, 'conditions'>) => effects(c).some((e) => e.fx.resistAll)
+
+/** Why the attacker's own condition gives them advantage or disadvantage. */
+const attackerReason = (c: Condition) =>
+  c === 'Frightened' ? t('reason.attackerFrightened') : c === 'Grappled' ? t('reason.attackerGrappled') : t('reason.attackerIs', { cond: tCondition(c) })
 
 export type AttackMode = 'normal' | 'adv' | 'dis'
 
@@ -145,19 +140,19 @@ export function attackAdvice(
   const adv: string[] = []
   const dis: string[] = []
   for (const e of effects(attacker)) {
-    if (e.fx.attacksDisadv) dis.push(`attacker is ${e.fx.attacksDisadv}`)
-    if (e.fx.attacksAdv) adv.push(`attacker is ${e.fx.attacksAdv}`)
+    if (e.fx.attacksDisadv) dis.push(attackerReason(e.name))
+    if (e.fx.attacksAdv) adv.push(attackerReason(e.name))
   }
   for (const e of effects(target)) {
-    if (e.fx.attackedAdv) adv.push(`target is ${e.name}`)
-    if (e.fx.attackedDisadv) dis.push(`target is ${e.name}`)
-    if (e.fx.proneAttacked) (within5 ? adv : dis).push(`target is Prone (${within5 ? 'within 5 ft' : 'farther than 5 ft'})`)
+    if (e.fx.attackedAdv) adv.push(t('reason.targetIs', { cond: tCondition(e.name) }))
+    if (e.fx.attackedDisadv) dis.push(t('reason.targetIs', { cond: tCondition(e.name) }))
+    if (e.fx.proneAttacked) (within5 ? adv : dis).push(t(within5 ? 'reason.proneNear' : 'reason.proneFar'))
   }
   const crit = effects(target).find((e) => e.fx.critWithin5)
   return {
     mode: adv.length && dis.length ? 'normal' : adv.length ? 'adv' : dis.length ? 'dis' : 'normal',
     advReasons: adv,
     disReasons: dis,
-    critOnHit: crit && within5 ? `target is ${crit.name} and the attacker is within 5 ft` : null,
+    critOnHit: crit && within5 ? t('reason.crit', { cond: tCondition(crit.name) }) : null,
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { autoFailsSave, saveHasDisadvantage } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
+import { t, tAbility, tCondition, tn } from '../../lib/i18n'
 import { adjustForTarget, saveBonus } from '../../lib/resolve'
 import { rollD20 } from '../../lib/rules'
 import type { TargetOutcome } from '../../lib/combat'
@@ -53,10 +54,10 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
     onApply(
       rows.map((r): TargetOutcome => {
         const how = r.auto
-          ? `${ability.toUpperCase()} save fails automatically (${r.t.conditions.join('/')})`
+          ? t('save.autoFailDetail', { abil: tAbility(ability), conds: r.t.conditions.map(tCondition).join('/') })
           : useLr[r.t.id]
-            ? `${ability.toUpperCase()} save ${r.total} vs DC ${dc} - uses Legendary Resistance`
-            : `${ability.toUpperCase()} save ${r.roll} ${formatMod(r.bonus)} = ${r.total} vs DC ${dc}`
+            ? t('save.lrDetail', { abil: tAbility(ability), total: r.total ?? '', dc })
+            : t('save.rollDetail', { abil: tAbility(ability), roll: r.roll ?? '', bonus: formatMod(r.bonus), total: r.total ?? '', dc })
         return {
           targetId: r.t.id,
           result: r.saved ? 'saved' : 'failed',
@@ -74,22 +75,22 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
   return (
     <div className="resolve">
       <div className="muted">
-        {ability.toUpperCase()} saving throw, DC {dc}
-        {action.halfOnSave ? ' (half damage on a success)' : hasDamage ? ' (no damage on a success)' : ''}
+        {t('save.line', { abil: tAbility(ability), dc })}
+        {action.halfOnSave ? t('save.half') : hasDamage ? t('save.none') : ''}
         {action.area ? ` · ${action.area}` : ''}
       </div>
 
-      {hasDamage && <DamageEntry entry={entry} label="Damage" canRoll={canRollDamage} />}
+      {hasDamage && <DamageEntry entry={entry} label={t('act.damage')} canRoll={canRollDamage} />}
 
       <table className="save-table">
         <thead>
           <tr>
-            <th>Creature</th>
-            <th>{ability.toUpperCase()} save</th>
-            <th>d20</th>
-            <th>Result</th>
-            {hasDamage && <th>Takes</th>}
-            {action.condition && <th>{action.condition}</th>}
+            <th>{t('save.colCreature')}</th>
+            <th>{t('save.colSave', { abil: tAbility(ability) })}</th>
+            <th>{t('save.colD20')}</th>
+            <th>{t('save.colResult')}</th>
+            {hasDamage && <th>{t('save.colTakes')}</th>}
+            {action.condition && <th>{tCondition(action.condition)}</th>}
           </tr>
         </thead>
         <tbody>
@@ -97,7 +98,7 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
             <tr key={r.t.id}>
               <td>
                 <strong>{r.t.name}</strong>
-                {r.dis && <div className="dis small">Disadvantage (conditions)</div>}
+                {r.dis && <div className="dis small">{t('save.disConditions')}</div>}
               </td>
               <td>
                 {formatMod(r.bonus)}
@@ -105,14 +106,14 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
               </td>
               <td>
                 {r.auto ? (
-                  <span className="muted">auto-fail</span>
+                  <span className="muted">{t('save.autoFail')}</span>
                 ) : (
                   <div className="row gap">
                     <input
                       className="narrow"
                       type="number"
                       value={d20[r.t.id] ?? ''}
-                      aria-label={`${r.t.name} d20`}
+                      aria-label={t('save.d20Aria', { name: r.t.name })}
                       onChange={(e) => {
                         setD20((s) => ({ ...s, [r.t.id]: e.target.value }))
                         setRollNote((s) => ({ ...s, [r.t.id]: '' }))
@@ -120,7 +121,7 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
                     />
                     {canRollFor(r.t) ? (
                       <button
-                        title="Roll for this creature (the DM's dice)"
+                        title={t('save.rollTitle')}
                         onClick={() => {
                           const v = rollD20(r.dis ? 'dis' : 'normal')
                           setD20((s) => ({ ...s, [r.t.id]: String(v.value) }))
@@ -133,25 +134,25 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
                   </div>
                 )}
                 {rollNote[r.t.id] && <div className="muted small">{rollNote[r.t.id]}</div>}
-                {!canRollFor(r.t) && !r.auto && <div className="muted small">player rolls</div>}
+                {!canRollFor(r.t) && !r.auto && <div className="muted small">{t('save.playerRolls')}</div>}
               </td>
               <td>
                 {r.saved === undefined ? (
                   <span className="muted">-</span>
                 ) : (
                   <span className={`save-result ${r.saved ? 'saved' : 'failed'}`}>
-                    {r.saved ? 'SAVES' : 'FAILS'}
+                    {r.saved ? t('save.saves') : t('save.fails')}
                     {r.total !== undefined && !r.auto && <small> ({r.total})</small>}
                   </span>
                 )}
                 {r.saved === false && r.lr && (
                   <button className="link-btn" onClick={() => setUseLr((s) => ({ ...s, [r.t.id]: true }))}>
-                    Use Legendary Resistance ({r.lr.max - r.lr.used} left)
+                    {t('save.useLr', { n: r.lr.max - r.lr.used })}
                   </button>
                 )}
                 {useLr[r.t.id] && (
                   <button className="link-btn" onClick={() => setUseLr((s) => ({ ...s, [r.t.id]: false }))}>
-                    undo
+                    {t('common.undo')}
                   </button>
                 )}
               </td>
@@ -171,13 +172,13 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
                 <td>
                   {r.saved === false ? (
                     r.t.conditionImmunities?.includes(action.condition) ? (
-                      <span className="muted small">immune</span>
+                      <span className="muted small">{t('save.immune')}</span>
                     ) : (
                       <input
                         type="checkbox"
                         checked={cond[r.t.id] ?? true}
                         onChange={(e) => setCond((s) => ({ ...s, [r.t.id]: e.target.checked }))}
-                        aria-label={`Apply ${action.condition} to ${r.t.name}`}
+                        aria-label={t('save.applyCond', { cond: tCondition(action.condition), name: r.t.name })}
                       />
                     )
                   ) : (
@@ -192,9 +193,9 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
 
       <div className="row gap">
         <button className="primary" disabled={!canApply} onClick={apply}>
-          Apply to {targets.length} {targets.length === 1 ? 'creature' : 'creatures'}
+          {tn('save.applyTo', targets.length)}
         </button>
-        {!allKnown && <span className="muted">Enter every d20 to continue.</span>}
+        {!allKnown && <span className="muted">{t('save.enterAll')}</span>}
         <span className="muted small">{attacker.name} · {action.name}</span>
       </div>
     </div>

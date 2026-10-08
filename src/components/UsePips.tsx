@@ -1,3 +1,5 @@
+import { t } from '../lib/i18n'
+
 interface Props {
   max: number
   used: number
@@ -22,7 +24,7 @@ export function UsePips({ max, used, onChange, label }: Props) {
           min={0}
           max={max}
           value={max - used}
-          aria-label={`${label ?? 'uses'} remaining`}
+          aria-label={t('ui.remaining', { label: label ?? t('ui.uses') })}
           onChange={(e) => {
             const left = Math.floor(e.target.valueAsNumber)
             if (!Number.isNaN(left)) onChange(max - Math.min(max, Math.max(0, left)))
@@ -40,7 +42,7 @@ export function UsePips({ max, used, onChange, label }: Props) {
           <button
             key={i}
             className={spent ? 'spent' : 'avail'}
-            aria-label={`${label ?? 'use'} ${spent ? 'spent' : 'available'}`}
+            aria-label={`${label ?? t('ui.use')} ${t(spent ? 'ui.spent' : 'ui.available')}`}
             onClick={() => onChange(Math.min(max, Math.max(0, spent ? used - 1 : used + 1)))}
           />
         )

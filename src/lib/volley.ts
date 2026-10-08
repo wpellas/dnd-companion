@@ -1,7 +1,8 @@
 import type { Action, Combatant, DamagePart } from '../types'
 import { attackAdvice, exhaustionPenalty, type AttackAdvice } from './conditionRules'
 import { adjustForTarget, actionDamageParts, type AdjustedDamage, type DamageAmount } from './resolve'
-import { attackOutcome, type AttackOutcome } from './rules'
+import { t } from './i18n'
+import { attackOutcome, attackRollText, type AttackOutcome } from './rules'
 
 /**
  * Several separate attacks in one go: the rays of Scorching Ray, the darts of Magic Missile, the beams of Eldritch Blast,
@@ -73,8 +74,6 @@ export interface RowResult {
   detail: string
 }
 
-const MODE_WORD = { normal: '', adv: ' (advantage)', dis: ' (disadvantage)' } as const
-
 /** Work out one attack: hit or miss, the damage entered, and what the target takes after its defences. */
 export function evaluateRow(row: RowState, step: Step, attacker: Combatant, target: Combatant | undefined, within5: boolean): RowResult {
   const action = step.actions[Math.min(row.actionIndex, step.actions.length - 1)]
@@ -100,8 +99,6 @@ export function evaluateRow(row: RowState, step: Step, attacker: Combatant, targ
   const adjusted = target && hit ? adjustForTarget(out, target) : undefined
   const complete = !!target && outcome !== null && (!hit || parts.length === 0 || filled)
 
-  const how = autoHit
-    ? 'auto-hit'
-    : `d20 ${roll} ${bonus >= 0 ? '+' : ''}${bonus} = ${(roll ?? 0) + bonus} vs AC ${target?.ac ?? '?'}${advice ? MODE_WORD[advice.mode] : ''}${penalty ? ` (Exhaustion -${penalty})` : ''}`
+  const how = autoHit ? t('detail.autoHit') : attackRollText({ roll, bonus, ac: target?.ac, mode: advice?.mode, exhaustion: penalty })
   return { action, autoHit, parts, included, bonus, roll, outcome, hit, advice, out, adjusted, complete, detail: how }
 }

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { attackAdvice, exhaustionPenalty } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
+import { t } from '../../lib/i18n'
 import { adjustForTarget } from '../../lib/resolve'
-import { attackOutcome, rollD20, type RollMode } from '../../lib/rules'
+import { attackOutcome, attackRollText, rollD20, type RollMode } from '../../lib/rules'
 import type { TargetOutcome } from '../../lib/combat'
 import type { Action, Combatant } from '../../types'
+import { Rich } from '../Rich'
 import { DamageEntry } from './DamageEntry'
 import { useDamageEntry } from './useDamageEntry'
 
@@ -17,7 +19,7 @@ interface Props {
   onApply: (outcomes: TargetOutcome[], detail: string) => void
 }
 
-const MODE_LABEL: Record<RollMode, string> = { normal: 'Normal', adv: 'Advantage', dis: 'Disadvantage' }
+const MODE_KEY = { normal: 'res.mode.normal', adv: 'res.mode.adv', dis: 'res.mode.dis' } as const
 
 /** One attack: the d20 against AC (with advantage hints from conditions), then damage by type, with the target's defences applied. */
 export function AttackResolver({ attacker, action, target, canRoll, onApply }: Props) {
@@ -44,7 +46,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
 
   const apply = () => {
     if (!outcome) return
-    const detail = `d20 ${roll} ${formatMod(bonus)} = ${(roll ?? 0) + bonus} vs AC ${target.ac}${mode !== 'normal' ? ` (${MODE_LABEL[mode].toLowerCase()})` : ''}${penalty ? ` (Exhaustion -${penalty})` : ''}${advice.critOnHit && base === 'hit' ? ` - crit: ${advice.critOnHit}` : ''}`
+    const detail = `${attackRollText({ roll, bonus, ac: target.ac, mode, exhaustion: penalty })}${advice.critOnHit && base === 'hit' ? t('res.critDetail', { why: advice.critOnHit }) : ''}`
     onApply(
       [
         {
@@ -64,18 +66,18 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
     <div className="resolve">
       {(advice.advReasons.length > 0 || advice.disReasons.length > 0 || advice.critOnHit) && (
         <div className="advice">
-          {advice.advReasons.map((r) => <div key={r} className="adv">▲ Advantage: {r}</div>)}
-          {advice.disReasons.map((r) => <div key={r} className="dis">▼ Disadvantage: {r}</div>)}
+          {advice.advReasons.map((r) => <div key={r} className="adv">{t('res.advLine', { why: r })}</div>)}
+          {advice.disReasons.map((r) => <div key={r} className="dis">{t('res.disLine', { why: r })}</div>)}
           {advice.mode === 'normal' && advice.advReasons.length > 0 && advice.disReasons.length > 0 && (
-            <div className="muted">They cancel out: roll normally.</div>
+            <div className="muted">{t('res.cancel')}</div>
           )}
-          {advice.critOnHit && <div className="crit-note">★ Any hit is a Critical Hit: {advice.critOnHit}</div>}
+          {advice.critOnHit && <div className="crit-note">{t('res.critNote', { why: advice.critOnHit })}</div>}
         </div>
       )}
 
       <div className="roll-line">
         <label className="field">
-          <span>d20 roll</span>
+          <span>{t('res.d20')}</span>
           <input
             className="narrow"
             type="number"
@@ -88,14 +90,14 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
           />
         </label>
         <span className="bonus-note">
-          {formatMod(bonus)} to hit vs AC {target.ac}
-          {penalty > 0 && <> (Exhaustion -{penalty})</>}
+          {t('res.toHitVs', { bonus: formatMod(bonus), ac: target.ac })}
+          {penalty > 0 && t('res.exhaustion', { n: penalty })}
         </span>
         {canRoll ? (
           <>
-            <select value={mode} onChange={(e) => setPickedMode(e.target.value as RollMode)} aria-label="Roll mode">
-              {(Object.keys(MODE_LABEL) as RollMode[]).map((m) => (
-                <option key={m} value={m}>{MODE_LABEL[m]}</option>
+            <select value={mode} onChange={(e) => setPickedMode(e.target.value as RollMode)} aria-label={t('res.modeAria')}>
+              {(Object.keys(MODE_KEY) as RollMode[]).map((m) => (
+                <option key={m} value={m}>{t(MODE_KEY[m])}</option>
               ))}
             </select>
             <button
@@ -105,31 +107,32 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
                 setD20Note(r.note)
               }}
             >
-              🎲 Roll to hit
+              {t('res.rollToHit')}
             </button>
             {d20Note && <span className="roll-note">{d20Note}</span>}
           </>
         ) : (
           <span className="roll-hint">
-            {mode === 'adv' ? 'Rolled with Advantage' : mode === 'dis' ? 'Rolled with Disadvantage' : 'Rolled at the table'}: enter the d20 that counts
+            {mode === 'adv' ? t('res.hintAdv') : mode === 'dis' ? t('res.hintDis') : t('res.hintTable')}
+            {t('res.hintEnter')}
           </span>
         )}
       </div>
 
       <div className="outcome-line">
-        <label className="check small" title="Needed for Prone targets and the auto-crit rules">
+        <label className="check small" title={t('res.within5Title')}>
           <input type="checkbox" checked={within5} onChange={(e) => setWithin5(e.target.checked)} />
-          <span>Attacker within 5 ft</span>
+          <span>{t('res.within5')}</span>
         </label>
-        {outcome && <div className={`outcome ${outcome}`}>{outcome === 'crit' ? 'CRITICAL HIT' : outcome === 'hit' ? 'HIT' : 'MISS'}</div>}
+        {outcome && <div className={`outcome ${outcome}`}>{outcome === 'crit' ? t('res.crit') : outcome === 'hit' ? t('res.hit') : t('res.miss')}</div>}
       </div>
 
       {hit && hasDamage && (
         <>
-          <DamageEntry entry={entry} label="Damage" canRoll={canRoll} crit={outcome === 'crit'} />
+          <DamageEntry entry={entry} label={t('act.damage')} canRoll={canRoll} crit={outcome === 'crit'} />
           {entry.out.length > 0 && entry.complete && (
             <div className="applied">
-              {target.name} takes <strong>{adjusted.total}</strong>
+              <Rich text={t('res.takes', { name: target.name })} parts={{ n: <strong>{adjusted.total}</strong> }} />
               {adjusted.notes.length > 0 && <span className="muted"> ({adjusted.notes.join('; ')})</span>}
             </div>
           )}
@@ -138,7 +141,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
 
       <div className="row gap">
         <button className="primary" disabled={!canApply} onClick={apply}>
-          {outcome === 'miss' ? 'Log miss' : hit && hasDamage ? `Apply ${adjusted.total} damage` : 'Apply'}
+          {outcome === 'miss' ? t('res.logMiss') : hit && hasDamage ? t('res.applyDamage', { n: adjusted.total }) : t('res.apply')}
         </button>
       </div>
     </div>

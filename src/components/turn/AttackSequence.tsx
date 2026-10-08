@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { TargetOutcome } from '../../lib/combat'
 import { formatMod, rollDice } from '../../lib/dice'
+import { RIDER_NOTE } from '../../lib/monsters'
+import { t, tDamage, tn } from '../../lib/i18n'
 import { rollD20 } from '../../lib/rules'
 import { evaluateRow, newRow, type RowState, type Step } from '../../lib/volley'
 import type { Combatant } from '../../types'
@@ -18,7 +20,7 @@ interface Props {
   onApply: (outcomes: TargetOutcome[], detail: string) => void
 }
 
-const OUTCOME_LABEL = { crit: 'CRIT', hit: 'HIT', miss: 'MISS' } as const
+const OUTCOME_LABEL = { crit: 'seq.crit', hit: 'res.hit', miss: 'res.miss' } as const
 
 /**
  * A run of separate attacks, each with its own target, d20 and damage: the rays of Scorching Ray, darts of Magic Missile,
@@ -40,8 +42,8 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
   const options = pickable.map((c) => ({
     value: c.id,
     label: c.name,
-    group: c.kind === 'pc' ? 'Party' : 'Enemies',
-    hint: `AC ${c.ac} · ${c.hp}/${c.maxHp}${c.hp === 0 ? ' (down)' : ''}`,
+    group: c.kind === 'pc' ? t('turn.groupParty') : t('turn.groupEnemies'),
+    hint: `${t('turn.targetHint', { ac: c.ac, hp: c.hp, max: c.maxHp })}${c.hp === 0 ? t('turn.down') : ''}`,
   }))
 
   /** Roll one attack for the app-rolled creature: the d20 (with the advantage the conditions give), then damage (dice doubled on a crit). */
@@ -82,28 +84,28 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
       notes: r.hit ? (r.adjusted?.notes ?? []) : [],
       action: r.action,
     }))
-    onApply(outcomes, `${rows.length} attack${rows.length === 1 ? '' : 's'}`)
+    onApply(outcomes, tn('seq.detail', rows.length))
   }
 
   return (
     <div className="resolve volley">
       <div className="row gap wrap">
         <div className="field">
-          <span>Aim all at</span>
+          <span>{t('seq.aimAll')}</span>
           <Combobox
             className="target-select"
-            placeholder="Pick a target for every attack…"
+            placeholder={t('seq.aimPlaceholder')}
             options={options}
             onChange={(id) => id && setRows((rs) => rs.map((r) => ({ ...r, targetId: id })))}
           />
         </div>
-        <label className="check small" title="Needed for Prone targets and the auto-crit rules">
+        <label className="check small" title={t('res.within5Title')}>
           <input type="checkbox" checked={within5} onChange={(e) => setWithin5(e.target.checked)} />
-          <span>Attacker within 5 ft</span>
+          <span>{t('res.within5')}</span>
         </label>
         {canRoll && (
-          <button disabled={rows.some((r) => !r.targetId)} onClick={() => rows.forEach((_, i) => rollRow(i))} title="Roll every attack for this creature (the DM's dice)">
-            🎲 Roll all
+          <button disabled={rows.some((r) => !r.targetId)} onClick={() => rows.forEach((_, i) => rollRow(i))} title={t('seq.rollAllTitle')}>
+            {t('seq.rollAll')}
           </button>
         )}
       </div>
@@ -112,11 +114,11 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
         <thead>
           <tr>
             <th>#</th>
-            <th>Attack</th>
-            <th>Target</th>
-            <th>d20</th>
-            <th>Result</th>
-            <th>Damage</th>
+            <th>{t('seq.colAttack')}</th>
+            <th>{t('seq.colTarget')}</th>
+            <th>{t('res.colD20')}</th>
+            <th>{t('save.colResult')}</th>
+            <th>{t('seq.colDamage')}</th>
             <th />
           </tr>
         </thead>
@@ -129,7 +131,7 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                 <td>{i + 1}</td>
                 <td>
                   {step.actions.length > 1 ? (
-                    <select value={row.actionIndex} aria-label={`Attack ${i + 1} action`} onChange={(e) => patch(i, { actionIndex: Number(e.target.value), amounts: {}, extras: {} })}>
+                    <select value={row.actionIndex} aria-label={t('seq.actionAria', { n: i + 1 })} onChange={(e) => patch(i, { actionIndex: Number(e.target.value), amounts: {}, extras: {} })}>
                       {step.actions.map((a, k) => (
                         <option key={a.id} value={k}>{a.name}</option>
                       ))}
@@ -137,19 +139,19 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                   ) : (
                     <strong>{r.action.name}</strong>
                   )}
-                  <div className="muted small">{step.autoHit ? 'auto-hit' : `${formatMod(r.bonus)} to hit`}</div>
+                  <div className="muted small">{step.autoHit ? t('seq.autoHit') : t('seq.toHit', { bonus: formatMod(r.bonus) })}</div>
                 </td>
                 <td>
                   <Combobox
                     className="target-select"
-                    placeholder="Target…"
+                    placeholder={t('seq.targetPlaceholder')}
                     value={row.targetId}
                     options={options}
                     onChange={(id) => patch(i, { targetId: id })}
                   />
                   {r.advice && r.advice.mode !== 'normal' && (
                     <div className={`small ${r.advice.mode === 'adv' ? 'adv' : 'dis'}`} title={[...r.advice.advReasons, ...r.advice.disReasons].join('; ')}>
-                      {r.advice.mode === 'adv' ? '▲ Advantage' : '▼ Disadvantage'}
+                      {r.advice.mode === 'adv' ? t('seq.adv') : t('seq.dis')}
                     </div>
                   )}
                 </td>
@@ -157,11 +159,11 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                   {step.autoHit ? (
                     <span className="muted">-</span>
                   ) : (
-                    <input className="narrow" type="number" aria-label={`Attack ${i + 1} d20`} value={row.d20} onChange={(e) => patch(i, { d20: e.target.value })} />
+                    <input className="narrow" type="number" aria-label={t('seq.attackAria', { n: i + 1 })} value={row.d20} onChange={(e) => patch(i, { d20: e.target.value })} />
                   )}
                 </td>
                 <td>
-                  {r.outcome ? <span className={`outcome-chip ${r.outcome}`}>{OUTCOME_LABEL[r.outcome]}</span> : <span className="muted">-</span>}
+                  {r.outcome ? <span className={`outcome-chip ${r.outcome}`}>{t(OUTCOME_LABEL[r.outcome])}</span> : <span className="muted">-</span>}
                 </td>
                 <td>
                   {r.hit && r.parts.length > 0 ? (
@@ -169,9 +171,9 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                       {r.parts.map((p, k) => (
                         <div className="part" key={k}>
                           {p.note && (
-                            <label className="check small" title="Only when this applies">
+                            <label className="check small" title={t('de.onlyIf', { note: p.note === RIDER_NOTE ? t('de.rider') : p.note })}>
                               <input type="checkbox" checked={r.included[k]} onChange={(e) => patch(i, { extras: { ...row.extras, [k]: e.target.checked } })} />
-                              <span>if {p.note}</span>
+                              <span>{t('seq.ifNote', { note: p.note === RIDER_NOTE ? t('de.rider') : p.note })}</span>
                             </label>
                           )}
                           <input
@@ -180,30 +182,30 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                             min={0}
                             disabled={!r.included[k]}
                             placeholder={p.dice}
-                            aria-label={`Attack ${i + 1} ${p.type || 'damage'}`}
+                            aria-label={t('seq.damageAria', { n: i + 1, type: p.type || 'damage' })}
                             value={row.amounts[k] ?? ''}
                             onChange={(e) => patch(i, { amounts: { ...row.amounts, [k]: e.target.value } })}
                           />
-                          <small className="muted">{p.type || 'untyped'}</small>
+                          <small className="muted">{p.type ? tDamage(p.type) : t('de.untyped')}</small>
                         </div>
                       ))}
                       {r.adjusted && r.adjusted.notes.length > 0 && <span className="muted small">{r.adjusted.notes.join('; ')}</span>}
                     </div>
                   ) : (
-                    <span className="muted">{r.outcome === 'miss' ? 'no damage' : r.parts.length ? '' : 'no damage roll'}</span>
+                    <span className="muted">{r.outcome === 'miss' ? t('seq.noDamage') : r.parts.length ? '' : t('seq.noDamageRoll')}</span>
                   )}
                   {rollNotes[i] && <div className="muted small">{rollNotes[i]}</div>}
                 </td>
                 <td>
                   <div className="row gap">
                     {canRoll && (
-                      <button title="Roll this attack" disabled={!row.targetId} onClick={() => rollRow(i)}>
+                      <button title={t('seq.rollThis')} disabled={!row.targetId} onClick={() => rollRow(i)}>
                         🎲
                       </button>
                     )}
                     <button
-                      title="Skip this attack"
-                      aria-label={`Remove attack ${i + 1}`}
+                      title={t('seq.skip')}
+                      aria-label={t('seq.removeAria', { n: i + 1 })}
                       disabled={rows.length === 1}
                       onClick={() => {
                         setRows((rs) => rs.filter((_, k) => k !== i))
@@ -222,14 +224,15 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
       </table>
 
       {!canRoll && (
-        <div className="muted roll-hint">Rolled at the table: type each d20 and the damage the player rolled for it.</div>
+        <div className="muted roll-hint">{t('seq.tableHint')}</div>
       )}
 
       <div className="row gap">
         <button className="primary" disabled={!allDone} onClick={apply}>
-          Apply {rows.length} attack{rows.length === 1 ? '' : 's'}{allDone && total > 0 ? ` (${total} damage)` : ''}
+          {tn('seq.apply', rows.length)}
+          {allDone && total > 0 ? t('seq.applyDamage', { n: total }) : ''}
         </button>
-        {!allDone && <span className="muted">Pick a target and enter every d20 and damage to continue.</span>}
+        {!allDone && <span className="muted">{t('seq.needAll')}</span>}
       </div>
     </div>
   )

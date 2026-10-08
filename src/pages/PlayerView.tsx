@@ -3,9 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import heroLogo from '../assets/images/logo-360.png'
 import navLogo from '../assets/images/logo-128.png'
+import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
 import { useRemoteView } from '../lib/hub'
-import { toPublic, type PublicCombat } from '../lib/publicState'
+import { possessive, setLang, t, tCondition } from '../lib/i18n'
+import { useStoredLanguage } from '../lib/settings'
+import { toPublic, toPublicSheet, type PublicCombat } from '../lib/publicState'
+import { useSpotlight } from '../lib/spotlight'
 
 /** How long a new announcement stays on screen. */
 const EVENT_MS = 22000
@@ -15,8 +19,8 @@ const BANNER_MS = 2600
 function useNow(interval = 1000) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), interval)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setNow(Date.now()), interval)
+    return () => clearInterval(timer)
   }, [interval])
   return now
 }
@@ -31,6 +35,14 @@ export function PlayerView() {
   const localState = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const now = useNow()
+  const spotlight = useSpotlight()
+
+  // the DM's language: from the relay, or (the DM's own second window, no relay) from the saved setting. A phone has neither saved.
+  const stored = useStoredLanguage()
+  const language = remote.lang ?? stored
+  useEffect(() => {
+    if (language) setLang(language)
+  }, [language])
 
   const combat: PublicCombat | undefined = remote.combat ?? toPublic(localState)
   const portraitFor = (characterId?: number) => (characterId === undefined ? undefined : remote.portraits[characterId])
@@ -48,17 +60,34 @@ export function PlayerView() {
     if (first) return // don't flash the banner on page load
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBanner({ id: turnKey, name: active.name, round: combat!.round })
-    const t = setTimeout(() => setBanner((b) => (b?.id === turnKey ? undefined : b)), BANNER_MS)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setBanner((b) => (b?.id === turnKey ? undefined : b)), BANNER_MS)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnKey])
+
+  // the DM is showing one character's sheet instead of the feed: from the relay, or (the DM's own second window) from the local database
+  const localChar = spotlight ? characters?.find((c) => c.id === spotlight.characterId) : undefined
+  const localSheet =
+    spotlight && localChar
+      ? toPublicSheet(localChar, localState?.started ? localState.combatants.find((c) => c.characterId === localChar.id) : undefined, { inventory: spotlight.inventory })
+      : null
+  const sheet = remote.sheet !== undefined ? remote.sheet : localSheet
+  const showingSheet = !!sheet
+
+  // keep the creature whose turn it is on screen: a long list would otherwise leave them below the fold
+  useEffect(() => {
+    if (!turnKey) return
+    const frame = requestAnimationFrame(() => document.querySelector('.player-row.active')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    return () => cancelAnimationFrame(frame)
+  }, [turnKey, showingSheet])
+  if (sheet) return <CharacterSheetView sheet={sheet} src={portraitFor(sheet.id)} image={imageFor(sheet.id)} />
 
   if (!combat || combat.combatants.length === 0) {
     return (
       <div className="player empty">
-        <img src={heroLogo} alt="D&D Companion" />
-        <span>Gather your party…</span>
-        {remote.connected && !remote.hostOnline && <small className="player-note">Waiting for the DM…</small>}
+        <img src={heroLogo} alt={t('player.logoAlt')} />
+        <span>{t('player.gather')}</span>
+        {remote.connected && !remote.hostOnline && <small className="player-note">{t('player.waitingDm')}</small>}
       </div>
     )
   }
@@ -69,13 +98,13 @@ export function PlayerView() {
     <div className="player">
       <header>
         <img src={navLogo} alt="" />
-        {combat.started ? `Round ${combat.round}` : 'Rolling initiative…'}
-        {remote.connected && !remote.hostOnline && <span className="player-note">DM offline</span>}
+        {combat.started ? t('player.round', { n: combat.round }) : t('player.rolling')}
+        {remote.connected && !remote.hostOnline && <span className="player-note">{t('player.dmOffline')}</span>}
       </header>
 
       {banner && (
         <div className="turn-banner" key={banner.id} role="status">
-          <span>{banner.name}'s turn</span>
+          <span>{t('player.turn', { who: possessive(banner.name) })}</span>
         </div>
       )}
 
@@ -95,7 +124,7 @@ export function PlayerView() {
               <div className="player-card">
                 <span className="init-badge">{c.initiative ?? '–'}</span>
                 <div className="grow">
-                  <div className="player-name">{c.kind === 'lair' ? 'The lair stirs…' : c.name}</div>
+                  <div className="player-name">{c.kind === 'lair' ? t('player.lair') : c.name}</div>
                   {c.kind === 'pc' && (
                     <>
                       <div className="bar big">
@@ -107,18 +136,18 @@ export function PlayerView() {
                       </div>
                       {c.deathSaves && (
                         <div className="death-saves">
-                          Death saves: <span className="ok">{'✓'.repeat(c.deathSaves.successes) || '·'}</span> <span className="bad">{'✗'.repeat(c.deathSaves.failures) || '·'}</span>
+                          {t('player.deathSaves')} <span className="ok">{'✓'.repeat(c.deathSaves.successes) || '·'}</span> <span className="bad">{'✗'.repeat(c.deathSaves.failures) || '·'}</span>
                         </div>
                       )}
                     </>
                   )}
-                  {c.kind === 'monster' && <div className={`status ${c.status.toLowerCase()}`}>{c.status}</div>}
+                  {c.kind === 'monster' && <div className={`status ${c.status.toLowerCase()}`}>{t(`status.${c.status}`)}</div>}
                   {(c.conditions.length > 0 || c.concentrating) && (
                     <div className="badges">
-                      {c.concentrating && <span className="badge">◎ Concentrating</span>}
+                      {c.concentrating && <span className="badge">{t('player.concentrating')}</span>}
                       {c.conditions.map((cond) => (
                         <span className="badge" key={cond}>
-                          {cond === 'Exhaustion' && c.exhaustion ? `Exhaustion ${c.exhaustion}` : cond}
+                          {cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond)}
                         </span>
                       ))}
                     </div>

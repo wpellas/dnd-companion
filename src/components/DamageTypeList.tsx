@@ -1,3 +1,4 @@
+import { t, tDamage } from '../lib/i18n'
 import { DAMAGE_TYPES } from '../types'
 
 interface Props {
@@ -9,17 +10,17 @@ interface Props {
 
 /** A small editable set of damage types (resistances, immunities, vulnerabilities). */
 export function DamageTypeList({ label, value, onChange, hint }: Props) {
-  const remaining = DAMAGE_TYPES.filter((t) => !value.includes(t))
+  const remaining = DAMAGE_TYPES.filter((d) => !value.includes(d))
   return (
     <div className="damage-list">
       <div className="subhead" title={hint}>
         {label}
       </div>
       <div className="spell-chips">
-        {value.map((t) => (
-          <span className="spell-chip" key={t}>
-            {t}
-            <button className="x" onClick={() => onChange(value.filter((x) => x !== t))} aria-label={`Remove ${t}`}>
+        {value.map((d) => (
+          <span className="spell-chip" key={d}>
+            {tDamage(d)}
+            <button className="x" onClick={() => onChange(value.filter((x) => x !== d))} aria-label={t('ui.remove', { what: tDamage(d) })}>
               ✕
             </button>
           </span>
@@ -28,18 +29,18 @@ export function DamageTypeList({ label, value, onChange, hint }: Props) {
           <select
             className="add-type"
             value=""
-            aria-label={`Add ${label.toLowerCase()}`}
+            aria-label={t('ui.add', { what: label.toLowerCase() })}
             onChange={(e) => e.target.value && onChange([...value, e.target.value])}
           >
-            <option value="">+ add…</option>
-            {remaining.map((t) => (
-              <option key={t} value={t}>
-                {t}
+            <option value="">{t('ui.addEllipsis')}</option>
+            {remaining.map((d) => (
+              <option key={d} value={d}>
+                {tDamage(d)}
               </option>
             ))}
           </select>
         )}
-        {value.length === 0 && <span className="muted">none</span>}
+        {value.length === 0 && <span className="muted">{t('ui.none')}</span>}
       </div>
     </div>
   )

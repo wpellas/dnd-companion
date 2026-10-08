@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { NumberField } from '../components/NumberField'
-import { addEntry, deleteEntry, KIND_LABEL, updateEntry } from '../lib/journal'
+import { locale, t } from '../lib/i18n'
+import { addEntry, deleteEntry, kindLabel, splitCombatLog, updateEntry } from '../lib/journal'
 import { getCampaign } from '../lib/store'
 import type { JournalEntry } from '../types'
 
 type Filter = 'all' | JournalEntry['kind']
 const FILTERS: Filter[] = ['all', 'note', 'session', 'combat', 'loot']
-const FILTER_LABEL: Record<Filter, string> = { all: 'Everything', note: 'Notes', session: 'Sessions', combat: 'Combats', loot: 'Loot & XP' }
+const FILTER_LABEL = { all: 'journal.filterAll', note: 'journal.filterNote', session: 'journal.filterSession', combat: 'journal.filterCombat', loot: 'journal.filterLoot' } as const
 
 /** The DM's campaign journal: free notes, session recaps, and an automatic summary of every fight that ends. Never shown to players. */
 export function JournalPage() {
@@ -26,7 +27,7 @@ export function JournalPage() {
 
   const blank = (kind: JournalEntry['kind']): JournalEntry => ({
     kind,
-    title: kind === 'session' ? `Session ${sessions + 1}` : '',
+    title: kind === 'session' ? t('journal.sessionTitle', { n: sessions + 1 }) : '',
     body: '',
     day: campaign?.day ?? 1,
     createdAt: 0,
@@ -36,20 +37,20 @@ export function JournalPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <h2>Journal</h2>
-        <button onClick={() => setEditing(blank('session'))}>📖 New session recap</button>
+        <h2>{t('journal.title')}</h2>
+        <button onClick={() => setEditing(blank('session'))}>{t('journal.newSession')}</button>
         <button className="primary" onClick={() => setEditing(blank('note'))}>
-          + New note
+          {t('journal.newNote')}
         </button>
       </div>
 
       {editing && <EntryForm key={editing.id ?? 'new'} initial={editing} onClose={() => setEditing(null)} />}
 
       <div className="filter-bar">
-        <input className="grow" type="search" placeholder="Search the journal…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search the journal" />
+        <input className="grow" type="search" placeholder={t('journal.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('journal.search')} />
         {FILTERS.map((f) => (
           <button key={f} className={`chip ${filter === f ? 'selected' : ''}`} onClick={() => setFilter(f)}>
-            {FILTER_LABEL[f]}
+            {t(FILTER_LABEL[f])}
           </button>
         ))}
       </div>
@@ -58,13 +59,7 @@ export function JournalPage() {
         {shown.map((e) => (
           <JournalCard key={e.id} e={e} onEdit={() => setEditing(e)} />
         ))}
-        {entries && shown.length === 0 && (
-          <p className="muted">
-            {entries.length === 0
-              ? 'Nothing here yet. Write a note or a session recap; every fight you end is added automatically.'
-              : 'No entries match.'}
-          </p>
-        )}
+        {entries && shown.length === 0 && <p className="muted">{entries.length === 0 ? t('journal.empty') : t('journal.noMatch')}</p>}
       </div>
     </div>
   )
@@ -72,29 +67,31 @@ export function JournalPage() {
 
 function JournalCard({ e, onEdit }: { e: JournalEntry; onEdit: () => void }) {
   // a combat summary is long: show the result, tuck the log away
-  const [head, ...rest] = e.kind === 'combat' ? e.body.split('\n\nCombat log:\n') : [e.body]
-  const log = rest.join('')
+  const [head, log] = e.kind === 'combat' ? splitCombatLog(e.body) : [e.body, '']
   return (
     <article className={`card journal-card ${e.kind}`}>
       <div className="row gap wrap journal-head">
-        <span className={`kind-badge ${e.kind}`}>{KIND_LABEL[e.kind]}</span>
-        <strong className="journal-title">{e.title || 'Untitled'}</strong>
-        <span className="muted">
-          Day {e.day} · {new Date(e.createdAt).toLocaleDateString()}
-        </span>
+        <span className={`kind-badge ${e.kind}`}>{kindLabel(e.kind)}</span>
+        <strong className="journal-title">{e.title || t('common.untitled')}</strong>
+        <span className="muted">{t('journal.dayDate', { day: e.day, date: new Date(e.createdAt).toLocaleDateString(locale()) })}</span>
         <span className="grow" />
-        <button title={e.pinned ? 'Unpin' : 'Pin to the top'} aria-label={e.pinned ? 'Unpin' : 'Pin'} className={e.pinned ? 'selected' : ''} onClick={() => updateEntry(e.id!, { pinned: !e.pinned })}>
+        <button
+          title={e.pinned ? t('journal.unpin') : t('journal.pinTitle')}
+          aria-label={e.pinned ? t('journal.unpin') : t('journal.pin')}
+          className={e.pinned ? 'selected' : ''}
+          onClick={() => updateEntry(e.id!, { pinned: !e.pinned })}
+        >
           📌
         </button>
-        <button onClick={onEdit}>Edit</button>
-        <button className="danger" onClick={() => confirm(`Delete "${e.title || 'this entry'}"?`) && deleteEntry(e.id!)}>
-          Delete
+        <button onClick={onEdit}>{t('common.edit')}</button>
+        <button className="danger" onClick={() => confirm(t('journal.deleteConfirm', { title: e.title || t('journal.thisEntry') })) && deleteEntry(e.id!)}>
+          {t('common.delete')}
         </button>
       </div>
       {head && <p className="journal-body">{head}</p>}
       {log && (
         <details>
-          <summary>Combat log</summary>
+          <summary>{t('journal.combatLog')}</summary>
           <p className="journal-body">{log}</p>
         </details>
       )}
@@ -120,29 +117,29 @@ function EntryForm({ initial, onClose }: { initial: JournalEntry; onClose: () =>
     <div className="card form">
       <div className="field-grid">
         <label className="field span-2">
-          <span>Title</span>
-          <input autoFocus value={e.title} placeholder="What happened?" onChange={(ev) => set('title', ev.target.value)} />
+          <span>{t('journal.formTitle')}</span>
+          <input autoFocus value={e.title} placeholder={t('journal.titlePlaceholder')} onChange={(ev) => set('title', ev.target.value)} />
         </label>
         <label className="field">
-          <span>Type</span>
+          <span>{t('journal.type')}</span>
           <select value={e.kind} disabled={e.kind === 'combat' || e.kind === 'loot'} onChange={(ev) => set('kind', ev.target.value as JournalEntry['kind'])}>
-            <option value="note">Note</option>
-            <option value="session">Session recap</option>
-            {e.kind === 'combat' && <option value="combat">Combat</option>}
-            {e.kind === 'loot' && <option value="loot">Loot</option>}
+            <option value="note">{kindLabel('note')}</option>
+            <option value="session">{t('journal.typeSession')}</option>
+            {e.kind === 'combat' && <option value="combat">{kindLabel('combat')}</option>}
+            {e.kind === 'loot' && <option value="loot">{kindLabel('loot')}</option>}
           </select>
         </label>
-        <NumberField label="Campaign day" value={e.day} min={1} onChange={(n) => set('day', Math.max(1, Math.floor(n)))} />
+        <NumberField label={t('journal.campaignDay')} value={e.day} min={1} onChange={(n) => set('day', Math.max(1, Math.floor(n)))} />
       </div>
       <label className="field">
-        <span>Notes</span>
-        <textarea rows={10} value={e.body} placeholder="NPCs met, clues, loot, hooks for next time…" onChange={(ev) => set('body', ev.target.value)} />
+        <span>{t('common.notes')}</span>
+        <textarea rows={10} value={e.body} placeholder={t('journal.bodyPlaceholder')} onChange={(ev) => set('body', ev.target.value)} />
       </label>
       <div className="form-actions">
         <button className="primary" disabled={!e.title.trim() && !e.body.trim()} onClick={save}>
-          Save
+          {t('common.save')}
         </button>
-        <button onClick={onClose}>Cancel</button>
+        <button onClick={onClose}>{t('common.cancel')}</button>
       </div>
     </div>
   )

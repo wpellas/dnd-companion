@@ -1,10 +1,24 @@
 import { db } from '../db'
 import type { CombatState, JournalEntry } from '../types'
+import { MESSAGES } from '../i18n/messages'
+import { t, tn } from './i18n'
 import { getCampaign } from './store'
 
 /** The DM's campaign journal: notes, session recaps, and a summary of every fight that ends. Nothing here reaches the player view. */
 
-export const KIND_LABEL: Record<JournalEntry['kind'], string> = { note: 'Note', session: 'Session', combat: 'Combat', loot: 'Loot' }
+export const kindLabel = (kind: JournalEntry['kind']) => t(`jkind.${kind}`)
+
+/**
+ * A combat entry's body is the result followed by the log under a heading. The heading is in the language the entry
+ * was written in, so look for it in every language.
+ */
+export function splitCombatLog(body: string): [head: string, log: string] {
+  for (const heading of MESSAGES['journal.logHeading']) {
+    const at = body.indexOf(`\n\n${heading}\n`)
+    if (at >= 0) return [body.slice(0, at), body.slice(at + heading.length + 3)]
+  }
+  return [body, '']
+}
 
 export async function addEntry(kind: JournalEntry['kind'], title: string, body = ''): Promise<number> {
   const now = Date.now()
@@ -35,11 +49,11 @@ export async function addCombatSummary(state: CombatState) {
   const xp = defeated.reduce((n, c) => n + (c.xp ?? 0), 0)
   const down = party.filter((c) => c.hp === 0)
   const lines = [
-    `Enemies: ${monsters.length ? monsterSummary(monsters.map((c) => c.name)) : 'none'}`,
-    `Defeated: ${defeated.length} of ${monsters.length}${xp ? ` (${xp} XP)` : ''}`,
-    `Party after the fight: ${party.map((c) => `${c.name} ${c.hp}/${c.maxHp}`).join(', ') || 'none'}${down.length ? ` - down: ${down.map((c) => c.name).join(', ')}` : ''}`,
+    t('journal.enemies', { list: monsters.length ? monsterSummary(monsters.map((c) => c.name)) : t('journal.none') }),
+    `${t('journal.defeated', { n: defeated.length, total: monsters.length })}${xp ? ` (${xp} XP)` : ''}`,
+    `${t('journal.party', { list: party.map((c) => `${c.name} ${c.hp}/${c.maxHp}`).join(', ') || t('journal.none') })}${down.length ? t('journal.down', { names: down.map((c) => c.name).join(', ') }) : ''}`,
   ]
-  if (state.log.length) lines.push('', 'Combat log:', ...state.log.map((l) => `- ${l}`))
-  const title = `Combat: ${monsters.length ? monsterSummary(monsters.map((c) => c.name)) : 'a skirmish'} (${state.round} round${state.round === 1 ? '' : 's'})`
+  if (state.log.length) lines.push('', t('journal.logHeading'), ...state.log.map((l) => `- ${l}`))
+  const title = tn('journal.combatTitle', state.round, { what: monsters.length ? monsterSummary(monsters.map((c) => c.name)) : t('journal.skirmish') })
   await addEntry('combat', title, lines.join('\n'))
 }

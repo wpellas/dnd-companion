@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
+import type { Lang } from './i18n'
 
 export interface Settings {
   /**
@@ -10,9 +11,11 @@ export interface Settings {
   allowPlayerAppRolls: boolean
   /** Monsters of the same kind share one initiative (rolled once, or typed once), the way many tables run big groups */
   groupInitiative: boolean
+  /** Interface language for the DM and, through the live view, everyone else */
+  language: Lang
 }
 
-export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false }
+export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false, language: 'en' }
 
 const KEY = 'settings'
 
@@ -31,3 +34,7 @@ export function useSettings(): Settings {
 
 /** May the app roll a die for this kind of creature? Monsters: always (the DM's dice). Players: only if enabled. */
 export const canAppRoll = (kind: 'pc' | 'monster' | 'lair', settings: Settings) => kind !== 'pc' || settings.allowPlayerAppRolls
+
+/** The language saved in the database, or undefined while loading and when none was ever chosen (a phone showing the live view has none). */
+export const useStoredLanguage = () =>
+  useLiveQuery(async () => ((await db.kv.get(KEY))?.value as Partial<Settings> | undefined)?.language ?? null, [])

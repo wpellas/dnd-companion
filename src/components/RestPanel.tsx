@@ -1,4 +1,6 @@
 import { Fragment, useState } from 'react'
+import { t, tn } from '../lib/i18n'
+import { levelLabel } from '../lib/spells'
 import { applyLongRest, applyShortRest } from '../lib/store'
 import { useSettings } from '../lib/settings'
 import { hitDiceRemaining, longRestHitDice, rollHitDice, shortRestRecharges, shortRestRecoveries, slotLevelsChosen, type Recovery, type RecoveryChoice } from '../lib/rest'
@@ -30,7 +32,7 @@ export function RestPanel({ kind, characters, onClose }: Props) {
     const n = spend[c.id!] ?? 0
     const r = rollHitDice(c, n)
     setHealed((h) => ({ ...h, [c.id!]: String(r.total) }))
-    setNotes((m) => ({ ...m, [c.id!]: `d${c.hitDie}: [${r.rolls.join(', ')}] ${r.con >= 0 ? '+' : ''}${r.con} CON each` }))
+    setNotes((m) => ({ ...m, [c.id!]: t('rest.rollNote', { die: c.hitDie, rolls: r.rolls.join(', '), con: `${r.con >= 0 ? '+' : ''}${r.con}` }) }))
   }
 
   const apply = async () => {
@@ -47,26 +49,26 @@ export function RestPanel({ kind, characters, onClose }: Props) {
 
   return (
     <div className="card rest-panel">
-      <h3>{kind === 'short' ? '☾ Short rest' : '☀ Long rest'}</h3>
+      <h3>{kind === 'short' ? t('rest.short') : t('rest.long')}</h3>
       <p className="muted">
         {kind === 'short'
-          ? `About an hour. Spend Hit Dice to heal (${settings.allowPlayerAppRolls ? 'roll them here or type what the players rolled' : 'the players roll their own dice - type the total they rolled'}). Short-rest features recharge, Warlocks regain their Pact Magic slots, and Arcane Recovery-style features can give slots back.`
-          : 'About eight hours. Everyone regains all Hit Points, half their Hit Dice (minimum 1), all spell slots and all feature uses, and loses one Exhaustion level.'}
+          ? t('rest.shortIntro', { how: t(settings.allowPlayerAppRolls ? 'rest.howRoll' : 'rest.howType') })
+          : t('rest.longIntro')}
       </p>
       <table>
         <thead>
           <tr>
             <th />
-            <th>Character</th>
-            <th>HP</th>
-            <th>Hit dice</th>
+            <th>{t('rest.colCharacter')}</th>
+            <th>{t('rest.colHp')}</th>
+            <th>{t('rest.colHitDice')}</th>
             {kind === 'short' ? (
               <>
-                <th>Spend</th>
-                <th>HP regained</th>
+                <th>{t('rest.colSpend')}</th>
+                <th>{t('rest.colRegained')}</th>
               </>
             ) : (
-              <th>Recovers</th>
+              <th>{t('rest.colRecovers')}</th>
             )}
           </tr>
         </thead>
@@ -129,8 +131,8 @@ export function RestPanel({ kind, characters, onClose }: Props) {
                   </>
                 ) : (
                   <td className="muted">
-                    +{Math.min(longRestHitDice(c), c.hitDiceUsed ?? 0)} hit dice, HP {c.maxHp - c.currentHp > 0 ? `+${c.maxHp - c.currentHp}` : 'full'}
-                    {(c.exhaustion ?? 0) > 0 && `, Exhaustion ${c.exhaustion} → ${(c.exhaustion ?? 0) - 1}`}
+                    {t('rest.longRecovers', { n: Math.min(longRestHitDice(c), c.hitDiceUsed ?? 0), hp: c.maxHp - c.currentHp > 0 ? `+${c.maxHp - c.currentHp}` : t('rest.full') })}
+                    {(c.exhaustion ?? 0) > 0 && t('rest.exhaustDrop', { a: c.exhaustion ?? 0, b: (c.exhaustion ?? 0) - 1 })}
                   </td>
                 )}
               </tr>
@@ -149,9 +151,9 @@ export function RestPanel({ kind, characters, onClose }: Props) {
       </table>
       <div className="row gap">
         <button className="primary" disabled={included.size === 0} onClick={apply}>
-          {kind === 'short' ? 'Take short rest' : 'Take long rest'}
+          {kind === 'short' ? t('rest.takeShort') : t('rest.takeLong')}
         </button>
-        <button onClick={onClose}>Cancel</button>
+        <button onClick={onClose}>{t('common.cancel')}</button>
       </div>
     </div>
   )
@@ -168,9 +170,9 @@ function RecoveryPicker({ c, r, choice, onChange }: { c: Character; r: Recovery;
     <div className="recovery">
       <strong>{r.name}</strong>
       <span className="muted">
-        {r.kind === 'slots' ? `recover slots worth up to ${r.budget} level${r.budget === 1 ? '' : 's'} (none above ${r.maxSlotLevel}th)` : `regain up to ${r.budget} Sorcery Point${r.budget === 1 ? '' : 's'}`}
+        {r.kind === 'slots' ? tn('rest.recSlots', r.budget, { max: levelLabel(r.maxSlotLevel) }) : tn('rest.recPoints', r.budget)}
         {' · '}
-        {left} left
+        {t('rest.leftN', { n: left })}
       </span>
       {r.kind === 'slots' &&
         sc?.slots.slice(0, r.maxSlotLevel).map((s, i) => {
@@ -184,11 +186,11 @@ function RecoveryPicker({ c, r, choice, onChange }: { c: Character; r: Recovery;
           }
           return (
             <span className="slot-step" key={level}>
-              Level {level}
-              <button aria-label={`Recover fewer level ${level} slots`} disabled={n === 0} onClick={() => change(-1)}>−</button>
+              {t('rest.levelN', { n: level })}
+              <button aria-label={t('rest.fewer', { n: level })} disabled={n === 0} onClick={() => change(-1)}>−</button>
               <strong>{n}</strong>
-              <button aria-label={`Recover a level ${level} slot`} disabled={n >= s.used || level > left} onClick={() => change(1)}>+</button>
-              <span className="muted">of {s.used} spent</span>
+              <button aria-label={t('rest.recoverOne', { n: level })} disabled={n >= s.used || level > left} onClick={() => change(1)}>+</button>
+              <span className="muted">{t('rest.ofSpent', { n: s.used })}</span>
             </span>
           )
         })}
@@ -198,7 +200,7 @@ function RecoveryPicker({ c, r, choice, onChange }: { c: Character; r: Recovery;
           type="number"
           min={0}
           max={r.budget}
-          aria-label="Sorcery Points to regain"
+          aria-label={t('rest.pointsAria')}
           value={choice?.points ?? 0}
           onChange={(e) => set({ featureId: r.featureId, points: Math.max(0, Math.min(r.budget, Math.floor(e.target.valueAsNumber) || 0)) })}
         />

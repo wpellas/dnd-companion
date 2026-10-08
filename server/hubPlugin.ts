@@ -7,8 +7,8 @@ import { WebSocketServer, type WebSocket } from 'ws'
 /**
  * A tiny relay that lets other devices on the same Wi-Fi watch the fight live.
  *
- * - The DM's browser connects as the `host` (`/hub?role=host`) and pushes the player-safe combat state and the
- *   portraits whenever they change.
+ * - The DM's browser connects as the `host` (`/hub?role=host`) and pushes the player-safe combat state, the portraits and
+ *   (when the DM has chosen to show one) a character sheet whenever they change.
  * - Phones, tablets and TVs open `/#player`, connect as `viewer`s and receive the latest state immediately, then every update.
  *
  * It keeps only the most recent state in memory (nothing is written to disk) and never sees monster HP or AC: the host
@@ -66,7 +66,7 @@ function attach(httpServer: Server | null) {
       } catch {
         return
       }
-      if (msg.type !== 'combat' && msg.type !== 'portraits') return
+      if (msg.type !== 'combat' && msg.type !== 'portraits' && msg.type !== 'spotlight' && msg.type !== 'lang') return
       const payload = String(raw)
       latest.set(msg.type, payload)
       for (const v of ofRole('viewer')) send(v, payload)

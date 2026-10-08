@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react'
+import { t } from '../lib/i18n'
 
 export interface ComboOption {
   value: string
@@ -23,7 +24,7 @@ interface Props {
  * A searchable dropdown: click or focus to open, type to filter, arrow keys + Enter to pick, Esc to close.
  * Matches that start with the query rank above matches that merely contain it.
  */
-export function Combobox({ options, value, onChange, placeholder = 'Search…', className = '', clearLabel = '- none -' }: Props) {
+export function Combobox({ options, value, onChange, placeholder = t('common.search'), className = '', clearLabel = t('common.none') }: Props) {
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
@@ -96,7 +97,7 @@ export function Combobox({ options, value, onChange, placeholder = 'Search…', 
       </span>
       {open && (
         <ul className="combobox-list" id={listId} role="listbox">
-          {rows.length === 0 && <li className="combobox-empty">No matches</li>}
+          {rows.length === 0 && <li className="combobox-empty">{t('common.noMatches')}</li>}
           {rows.map((opt, i) => {
             const heading = opt && opt.group && opt.group !== lastGroup ? opt.group : undefined
             if (opt) lastGroup = opt.group

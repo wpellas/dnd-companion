@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePromise } from '../hooks'
-import { levelLabel } from '../lib/spells'
+import { t } from '../lib/i18n'
+import { levelLabel, levelName } from '../lib/spells'
 import { getAllSpellRefs, getClassSpells, getSpell, type SrdSpellRef } from '../lib/srdApi'
 import type { ClassIndex, KnownSpell } from '../types'
 
@@ -36,44 +37,44 @@ export function SpellPicker({ classIndex, mode, maxLevel, have, full, onAdd, onC
   return (
     <div className="card spell-picker">
       <div className="row gap wrap">
-        <strong>{mode === 'cantrip' ? 'Add a cantrip' : 'Add a spell'}</strong>
-        <input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+        <strong>{mode === 'cantrip' ? t('sp.addCantrip') : t('sp.addSpell')}</strong>
+        <input placeholder={t('common.search')} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
         {classIndex && (
           <label className="row gap">
-            <input type="checkbox" checked={allClasses} onChange={(e) => setAllClasses(e.target.checked)} /> All classes
+            <input type="checkbox" checked={allClasses} onChange={(e) => setAllClasses(e.target.checked)} /> {t('sp.allClasses')}
           </label>
         )}
         {mode === 'spell' && (
           <label className="row gap">
-            <input type="checkbox" checked={higher} onChange={(e) => setHigher(e.target.checked)} /> Higher levels
+            <input type="checkbox" checked={higher} onChange={(e) => setHigher(e.target.checked)} /> {t('sp.higher')}
           </label>
         )}
         <button className="grow-gap" onClick={onClose}>
-          Done
+          {t('common.done')}
         </button>
       </div>
-      {full && <p className="warn">List is full. Remove a spell, or raise the limit, to add more.</p>}
-      {list.loading && <p className="muted">Loading spells from the SRD…</p>}
-      {list.error && <p className="warn">Couldn't load spells ({list.error}). The spell library downloads once in the background when the app first opens online.</p>}
+      {full && <p className="warn">{t('sp.full')}</p>}
+      {list.loading && <p className="muted">{t('sp.loading')}</p>}
+      {list.error && <p className="warn">{t('sp.error', { err: list.error })}</p>}
       <ul className="spell-list">
         {shown.map((s) => (
           <li key={s.index}>
             <div className="row gap">
               <span className="spell-name">{s.name}</span>
               <span className="muted">{levelLabel(s.level)}</span>
-              <button onClick={() => setOpen(open === s.index ? undefined : s.index)}>{open === s.index ? 'Hide' : 'Info'}</button>
+              <button onClick={() => setOpen(open === s.index ? undefined : s.index)}>{open === s.index ? t('sp.hide') : t('sp.info')}</button>
               <button
                 className="primary"
                 disabled={full || haveIds.has(s.index)}
                 onClick={() => onAdd({ index: s.index, name: s.name, level: s.level })}
               >
-                {haveIds.has(s.index) ? 'Added' : 'Add'}
+                {haveIds.has(s.index) ? t('sp.added') : t('sp.add')}
               </button>
             </div>
             {open === s.index && <SpellInfo index={s.index} />}
           </li>
         ))}
-        {!list.loading && !list.error && shown.length === 0 && <li className="muted">No matching spells.</li>}
+        {!list.loading && !list.error && shown.length === 0 && <li className="muted">{t('sp.noMatch')}</li>}
       </ul>
     </div>
   )
@@ -81,16 +82,16 @@ export function SpellPicker({ classIndex, mode, maxLevel, have, full, onAdd, onC
 
 export function SpellInfo({ index }: { index: string }) {
   const spell = usePromise(() => getSpell(index), [index])
-  if (spell.loading) return <p className="muted">Loading…</p>
-  if (!spell.data) return <p className="warn">Couldn't load this spell.</p>
+  if (spell.loading) return <p className="muted">{t('common.loading')}</p>
+  if (!spell.data) return <p className="warn">{t('sp.loadFail')}</p>
   const s = spell.data
   return (
     <div className="spell-info">
       <div className="muted">
-        {s.level === 0 ? 'Cantrip' : `${levelLabel(s.level)} level`}
+        {levelName(s.level)}
         {s.school && ` · ${s.school.name}`} · {s.casting_time} · {s.range} · {s.duration}
-        {s.concentration && ' · Concentration'}
-        {s.ritual && ' · Ritual'} · {s.components.join(', ')}
+        {s.concentration && ` · ${t('sp.concentration')}`}
+        {s.ritual && ` · ${t('sp.ritual')}`} · {s.components.join(', ')}
       </div>
       <p>{s.description}</p>
       {s.higher_level && <p>{s.higher_level}</p>}

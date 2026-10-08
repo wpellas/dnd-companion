@@ -1,5 +1,6 @@
 import { exhaustionPenalty, resistsAllDamage } from './conditionRules'
 import { abilityMod } from './dice'
+import { t, tDamage } from './i18n'
 import { ABILITIES, type Ability, type AbilityScores, type Action, type Combatant, type Condition, type DamagePart } from '../types'
 
 /** A rolled or typed amount of one damage type, before the target's resistances. */
@@ -37,13 +38,7 @@ export function adjustDamageAmount(amount: number, effect: DamageEffect): number
   }
 }
 
-export const EFFECT_LABEL: Record<DamageEffect, string> = {
-  immune: 'immune',
-  resist: 'resistant (halved)',
-  vuln: 'vulnerable (doubled)',
-  both: 'resistant and vulnerable',
-  none: '',
-}
+export const effectLabel = (e: DamageEffect): string => (e === 'none' ? '' : t(`effect.${e}`))
 
 export interface AdjustedDamage {
   total: number
@@ -64,7 +59,7 @@ export function adjustForTarget(parts: DamageAmount[], target: Defences, save?: 
     if (save === 'half') amount = Math.floor(amount / 2)
     if (save === 'none') amount = 0
     const effect = damageEffect(target, p.type)
-    if (effect !== 'none' && amount > 0) notes.push(`${p.type || 'damage'}: ${EFFECT_LABEL[effect]}`)
+    if (effect !== 'none' && amount > 0) notes.push(`${p.type ? tDamage(p.type) : t('effect.damage')}: ${effectLabel(effect)}`)
     out.push({ type: p.type, amount: adjustDamageAmount(amount, effect) })
   }
   return { total: out.reduce((n, p) => n + p.amount, 0), parts: out, notes }

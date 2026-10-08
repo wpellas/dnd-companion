@@ -1,4 +1,5 @@
 import { db } from '../db'
+import { t } from './i18n'
 
 /**
  * Whole-app backup as one JSON file: characters (with portraits), custom monsters, saved encounters, the journal, the
@@ -73,10 +74,10 @@ export async function importBackup(file: File): Promise<Record<string, number>> 
   try {
     raw = JSON.parse(await file.text())
   } catch {
-    throw new Error("That file isn't valid JSON.")
+    throw new Error(t('settings.badJson'))
   }
-  if (raw.format !== FORMAT) throw new Error("That doesn't look like a D&D Companion backup file.")
-  if (typeof raw.version !== 'number' || raw.version > VERSION) throw new Error('This backup was made by a newer version of the app.')
+  if (raw.format !== FORMAT) throw new Error(t('settings.notBackup'))
+  if (typeof raw.version !== 'number' || raw.version > VERSION) throw new Error(t('settings.newerBackup'))
   const data = (await mapBlobs(raw, false)) as Record<string, unknown[]>
   const arr = (k: string) => (Array.isArray(data[k]) ? (data[k] as never[]) : [])
 

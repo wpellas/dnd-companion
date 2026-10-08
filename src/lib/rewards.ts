@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import type { CombatState } from '../types'
 import { canLevelUp, emptyCoins, splitEvenly } from './inventory'
+import { t } from './i18n'
 import { addEntry } from './journal'
 
 /** Handing out experience and gold: after a fight, or whenever the party finds treasure. */
@@ -67,9 +68,9 @@ export async function awardRewards({ ids, xp, gp, note }: AwardInput): Promise<A
     const parts = [xp ? `${xp.toLocaleString()} XP` : '', gp ? `${gp.toLocaleString()} gp` : ''].filter(Boolean)
     const body = [
       note?.trim(),
-      ...lines.map((l) => `${l.name}: ${[l.xp ? `${l.xp} XP` : '', l.gp ? `${l.gp} gp` : ''].filter(Boolean).join(', ') || 'nothing'}${l.levelUp ? ' - can level up!' : ''}`),
+      ...lines.map((l) => `${l.name}: ${[l.xp ? `${l.xp} XP` : '', l.gp ? `${l.gp} gp` : ''].filter(Boolean).join(', ') || t('journal.nothing')}${l.levelUp ? t('journal.levelUpTag') : ''}`),
     ].filter(Boolean)
-    await addEntry('loot', `Awarded ${parts.join(' and ') || 'nothing'}`, body.join('\n'))
+    await addEntry('loot', t('journal.awarded', { what: parts.join(t('journal.and')) || t('journal.nothing') }), body.join('\n'))
   }
   return lines
 }
@@ -79,7 +80,7 @@ export async function awardLastFight(): Promise<AwardLine[]> {
   const f = await getLastFight()
   if (!f) return []
   const present = (await db.characters.bulkGet(f.characterIds)).filter((c) => !!c).map((c) => c!.id!)
-  const lines = await awardRewards({ ids: present, xp: f.xp, gp: 0, note: `Fight: ${f.defeated.join(', ')} defeated` })
+  const lines = await awardRewards({ ids: present, xp: f.xp, gp: 0, note: t('journal.fightNote', { names: f.defeated.join(', ') }) })
   await clearLastFight()
   return lines
 }

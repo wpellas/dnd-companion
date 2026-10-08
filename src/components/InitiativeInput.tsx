@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from '../lib/i18n'
 
 interface Props {
   value: number | null
@@ -26,7 +27,7 @@ export function InitiativeInput({ value, onCommit }: Props) {
     <input
       className="init"
       type="number"
-      placeholder="Init"
+      placeholder={t('ui.init')}
       value={draft ?? (value ?? '')}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}

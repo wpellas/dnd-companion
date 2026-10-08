@@ -223,12 +223,12 @@ tbody tr:hover { background: rgba(217, 169, 46, 0.18); }
 .conditions { position: relative; flex: 1; min-width: 140px; }
 .conditions summary { cursor: pointer; color: var(--ink-muted); font-style: italic; }
 .conditions .popover {
-  position: absolute; z-index: 5; top: 28px; left: 0; width: 240px;
+  position: absolute; z-index: 5; top: 28px; left: 0; width: 310px; max-width: calc(100vw - 32px);
   display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; padding: 10px;
   background: var(--parchment-3); border: 2px solid var(--leather); border-radius: 6px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
 }
-.conditions .popover label { font-size: 0.9rem; display: flex; gap: 5px; align-items: center; }
+.conditions .popover label { font-size: 0.9rem; display: flex; gap: 5px; align-items: center; white-space: nowrap; }
 .pips button { padding: 2px 6px; margin-right: 3px; }
 .pips button.on { background: linear-gradient(#e7bd45, #b88a1d); color: var(--ink); text-shadow: none; }
 .saves { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 3px; }
@@ -681,7 +681,7 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .outcome-chip.miss { color: var(--ink-muted); }
 .delay-row { align-items: flex-end; padding: 6px 0; }
 .surprised { margin-top: 2px; }
-.exhaustion { display: flex; align-items: center; gap: 8px; padding: 4px 0 8px; border-bottom: 1px solid var(--edge); margin-bottom: 4px; }
+.exhaustion { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 4px 0 8px; border-bottom: 1px solid var(--edge); margin-bottom: 4px; }
 .exhaustion span { flex: 1; }
 .exhaustion button { padding: 0 10px; min-width: 32px; }
 .recovery-row td { padding-top: 0; }
@@ -697,3 +697,16 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .kind-badge.session { background: var(--gold); border-color: var(--gold-dark); }
 .kind-badge.combat { background: var(--red); border-color: var(--red-dark); color: #fff; }
 .journal textarea, .card.form textarea { width: 100%; font-family: var(--font-body); font-size: 1rem; }
+
+/* ---------- Attack / damage entry: one tidy baseline per line ---------- */
+.roll-line, .damage-line { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
+.roll-line > select, .roll-line > button, .damage-line > button { height: 38px; }
+.roll-line .bonus-note, .roll-line .roll-note, .roll-line .roll-hint { align-self: flex-end; line-height: 38px; color: var(--ink-muted); }
+.roll-line .bonus-note { color: var(--ink); }
+.roll-line .roll-note { font-style: italic; font-size: 0.9rem; }
+.outcome-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; }
+.outcome-line .outcome { line-height: 1.2; }
+.damage-line .roll-hint { align-self: flex-end; line-height: 38px; color: var(--ink-muted); }
+.damage-entry .part { gap: 4px; }
+.part-label { display: flex; align-items: center; gap: 6px; max-width: 260px; font-family: var(--font-display); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); line-height: 1.2; }
+.part-label input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }

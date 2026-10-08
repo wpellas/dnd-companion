@@ -1,5 +1,6 @@
 import { Combobox, type ComboOption } from './Combobox'
 import { NumberField } from './NumberField'
+import { newId } from '../lib/id'
 import { Section } from './Section'
 import { featureById, featuresFor, resourceFromFeature, type FeatureCtx } from '../data/classFeatures'
 import type { AbilityScores, ClassIndex, Recharge, Resource } from '../types'
@@ -41,7 +42,7 @@ export function ResourcesEditor({ resources, onChange, owner }: Props) {
   const add = (value: string | undefined) => {
     if (!value) return
     if (value === CUSTOM) {
-      onChange([...resources, { id: crypto.randomUUID(), name: '', max: 1, used: 0, recharge: 'long' }])
+      onChange([...resources, { id: newId(), name: '', max: 1, used: 0, recharge: 'long' }])
       return
     }
     const f = featureById(value)

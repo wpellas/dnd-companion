@@ -1,5 +1,6 @@
 import { CheckField, Section } from './Section'
 import { NumberField } from './NumberField'
+import { newId } from '../lib/id'
 import { deriveAction, proficiencyBonus } from '../lib/character'
 import { formatMod } from '../lib/dice'
 import {
@@ -31,7 +32,7 @@ const KIND_LABEL: Record<ActionKind, string> = {
 }
 
 const newAction = (): Action => ({
-  id: crypto.randomUUID(),
+  id: newId(),
   name: '',
   kind: 'attack',
   attackBonus: 0,

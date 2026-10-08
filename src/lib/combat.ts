@@ -14,6 +14,7 @@ import { XP_BY_CR } from '../data/encounterBudget'
 import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
 import { exhaustionLevel } from './conditionRules'
 import { rollInitiative } from './dice'
+import { newId } from './id'
 import { addCombatSummary } from './journal'
 import { buildSaves, isConditionImmune, type DamageAmount } from './resolve'
 import { concentrationDc } from './rules'
@@ -21,7 +22,6 @@ import { concentrationDc } from './rules'
 const EMPTY: CombatState = { id: 'current', combatants: [], round: 0, turnIndex: 0, started: false, log: [], prompts: [], events: [], history: [] }
 
 const HISTORY_LIMIT = 25
-const newId = () => crypto.randomUUID()
 const freshTurn = (): TurnUsed => ({ action: false, bonus: false, reaction: false })
 
 /* ------------------------------------------------------------------------------------------------------------ */

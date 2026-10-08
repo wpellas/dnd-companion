@@ -1,4 +1,5 @@
 import { abilityMod } from '../lib/dice'
+import { newId } from '../lib/id'
 import type { Ability, AbilityScores, ClassIndex, Recharge, Resource } from '../types'
 
 /**
@@ -112,7 +113,7 @@ const rechargeOf = (f: FeatureTemplate, ctx: FeatureCtx): Recharge => (typeof f.
 
 /** A fresh, fully-available resource for a catalog feature at the character's current level. */
 export const resourceFromFeature = (f: FeatureTemplate, ctx: FeatureCtx): Resource => ({
-  id: crypto.randomUUID(),
+  id: newId(),
   name: f.name,
   max: Math.max(1, f.uses(ctx)),
   used: 0,

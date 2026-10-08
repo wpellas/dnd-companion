@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { db } from '../db'
+import { newId } from '../lib/id'
 import { ActionsEditor } from '../components/ActionsEditor'
 import { DamageTypeList } from '../components/DamageTypeList'
 import { NumberField } from '../components/NumberField'
@@ -282,7 +283,7 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
   const [m, setM] = useState<MonsterTemplate>(() => {
     const base = { ...initial, actions: structuredClone(initial.actions ?? []) }
     if (base.source !== 'srd') return base
-    const copy: MonsterTemplate = { ...base, id: undefined, name: `${base.name} (copy)`, source: 'custom', actions: base.actions.map((a) => ({ ...a, id: crypto.randomUUID() })) }
+    const copy: MonsterTemplate = { ...base, id: undefined, name: `${base.name} (copy)`, source: 'custom', actions: base.actions.map((a) => ({ ...a, id: newId() })) }
     delete copy.srdIndex
     return copy
   })

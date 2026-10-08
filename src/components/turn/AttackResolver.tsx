@@ -73,7 +73,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
         </div>
       )}
 
-      <div className="row gap wrap">
+      <div className="roll-line">
         <label className="field">
           <span>d20 roll</span>
           <input
@@ -87,7 +87,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
             autoFocus
           />
         </label>
-        <span className="muted bonus-note">
+        <span className="bonus-note">
           {formatMod(bonus)} to hit vs AC {target.ac}
           {penalty > 0 && <> (Exhaustion -{penalty})</>}
         </span>
@@ -107,20 +107,22 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
             >
               🎲 Roll to hit
             </button>
-            {d20Note && <span className="muted">{d20Note}</span>}
+            {d20Note && <span className="roll-note">{d20Note}</span>}
           </>
         ) : (
-          <span className="muted roll-hint">
+          <span className="roll-hint">
             {mode === 'adv' ? 'Rolled with Advantage' : mode === 'dis' ? 'Rolled with Disadvantage' : 'Rolled at the table'}: enter the d20 that counts
           </span>
         )}
+      </div>
+
+      <div className="outcome-line">
         <label className="check small" title="Needed for Prone targets and the auto-crit rules">
           <input type="checkbox" checked={within5} onChange={(e) => setWithin5(e.target.checked)} />
           <span>Attacker within 5 ft</span>
         </label>
+        {outcome && <div className={`outcome ${outcome}`}>{outcome === 'crit' ? 'CRITICAL HIT' : outcome === 'hit' ? 'HIT' : 'MISS'}</div>}
       </div>
-
-      {outcome && <div className={`outcome ${outcome}`}>{outcome === 'crit' ? 'CRITICAL HIT' : outcome === 'hit' ? 'HIT' : 'MISS'}</div>}
 
       {hit && hasDamage && (
         <>

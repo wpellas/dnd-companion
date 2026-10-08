@@ -16,6 +16,7 @@ import { exhaustionLevel } from './conditionRules'
 import { rollInitiative } from './dice'
 import { newId } from './id'
 import { addCombatSummary } from './journal'
+import { rememberFight } from './rewards'
 import { buildSaves, isConditionImmune, type DamageAmount } from './resolve'
 import { concentrationDc } from './rules'
 
@@ -690,7 +691,10 @@ export async function endCombat() {
         .map((c) => db.characters.update(c.characterId!, { currentHp: c.hp, exhaustion: exhaustionLevel(c) })),
     )
     // a fight that actually happened goes into the campaign journal
-    if (state.started && state.round > 0) await addCombatSummary(state)
+    if (state.started && state.round > 0) {
+      await addCombatSummary(state)
+      await rememberFight(state)
+    }
   }
   await db.transaction('rw', db.combat, async () => {
     const s = normalize(structuredClone((await db.combat.get('current')) ?? EMPTY))

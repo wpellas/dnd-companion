@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { ActionsEditor } from '../components/ActionsEditor'
+import { AwardPanel } from '../components/AwardPanel'
+import { InventoryEditor } from '../components/InventoryEditor'
+import { RewardBanner } from '../components/RewardBanner'
 import { NumberField } from '../components/NumberField'
 import { Portrait } from '../components/Portrait'
 import { DamageTypeList } from '../components/DamageTypeList'
@@ -14,10 +17,11 @@ import { refreshResources } from '../data/classFeatures'
 import { className, CLASS_SAVES } from '../lib/classes'
 import { mergeClassTable, normalizeCharacter, proficiencyBonus } from '../lib/character'
 import { abilityMod, defaultAbilities, formatMod } from '../lib/dice'
+import { canLevelUp, levelForXp, totalGp, withGearAc, xpForNextLevel } from '../lib/inventory'
 import { hitDiceRemaining } from '../lib/rest'
 import { levelLabel } from '../lib/spells'
 import { getClass, getClassLevel } from '../lib/srdApi'
-import { getCampaign } from '../lib/store'
+import { getCampaign, updateCharacter } from '../lib/store'
 import { ABILITIES, CLASSES, type Character, type ClassIndex } from '../types'
 
 const RECHARGE_ICON = { short: '☾', 'short-one': '☾¹', long: '☀' } as const
@@ -56,6 +60,7 @@ export function PartyPage() {
   const campaign = useLiveQuery(getCampaign, [])
   const [editing, setEditing] = useState<Character | null>(null)
   const [resting, setResting] = useState<'short' | 'long'>()
+  const [awarding, setAwarding] = useState(false)
   const inCombat = combat?.started ?? false
 
   return (
@@ -81,10 +86,16 @@ export function PartyPage() {
         >
           ☀ Long rest
         </button>
+        <button disabled={!characters?.length} onClick={() => setAwarding(true)}>
+          ✦ Award XP &amp; gold
+        </button>
         <button className="primary" onClick={() => setEditing(blank())}>
           + New character
         </button>
       </div>
+
+      <RewardBanner />
+      {awarding && characters && <AwardPanel characters={characters.map(normalizeCharacter)} onClose={() => setAwarding(false)} />}
 
       {resting && characters && <RestPanel kind={resting} characters={characters.map(normalizeCharacter)} onClose={() => setResting(undefined)} />}
       {editing && <CharacterForm initial={editing} onClose={() => setEditing(null)} />}
@@ -100,12 +111,15 @@ export function PartyPage() {
 }
 
 function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
+  const [showItems, setShowItems] = useState(false)
   const sc = c.spellcasting
+  const xp = c.xp ?? 0
+  const nextXp = xpForNextLevel(c.level)
   const slotRows = sc?.slots.map((s, i) => ({ ...s, level: i + 1 })).filter((s) => s.max > 0) ?? []
   const update = (patch: Partial<Character>) => db.characters.update(c.id!, patch)
 
   return (
-    <div className="card">
+    <div className={`card ${showItems ? 'wide' : ''}`}>
       <div className="row gap-lg">
         <Portrait name={c.name} image={c.image} size={72} />
         <div>
@@ -129,6 +143,15 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
         <span title="Hit dice remaining">
           HD {hitDiceRemaining(c)}/{c.level} d{c.hitDie}
         </span>
+      </div>
+
+      <div className="wealth">
+        <span title="Everything the coins are worth, in gold pieces">💰 {Math.floor(totalGp(c.coins)).toLocaleString()} gp</span>
+        <span title="Experience points and the XP needed for the next level">
+          XP {xp.toLocaleString()}
+          {nextXp !== undefined ? ` / ${nextXp.toLocaleString()}` : ''}
+        </span>
+        {canLevelUp(c) && <span className="levelup-badge">⬆ Level {levelForXp(xp)} ready</span>}
       </div>
 
       {slotRows.length > 0 && (
@@ -172,7 +195,10 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
         </div>
       )}
 
+      {showItems && <InventoryEditor c={c} onChange={(patch) => updateCharacter(c.id!, patch)} />}
+
       <div className="row gap">
+        <button onClick={() => setShowItems((v) => !v)}>🎒 Items{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
         <button onClick={onEdit}>Edit</button>
         <button className="danger" onClick={() => confirm(`Delete ${c.name}?`) && db.characters.delete(c.id!)}>
           Delete
@@ -191,7 +217,7 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
   // from the new level / ability scores and the class table row.
   const update = (fn: (prev: Character) => Character) =>
     setC((p) => {
-      const n = fn(p)
+      const n = withGearAc(fn(p))
       const resources = refreshResources(n.resources, { level: n.level, abilities: n.abilities, table: tableRef.current })
       return resources === n.resources ? n : { ...n, resources }
     })
@@ -283,7 +309,14 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
             <span>Hit die</span>
             <strong className="static-value">d{c.hitDie}</strong>
           </div>
-          <NumberField label="Armor class" value={c.ac} onChange={(n) => set('ac', n)} />
+          {c.acFromGear ? (
+            <div className="field" title="Worked out from the equipped armor (Equipment & gold section)">
+              <span>Armor class</span>
+              <strong className="static-value">{c.ac}</strong>
+            </div>
+          ) : (
+            <NumberField label="Armor class" value={c.ac} onChange={(n) => set('ac', n)} />
+          )}
           <NumberField
             label="Max HP"
             value={c.maxHp}
@@ -343,6 +376,10 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
         onChange={(resources) => set('resources', resources)}
         owner={{ classIndex: c.classIndex, level: c.level, abilities: c.abilities, table: classTable }}
       />
+
+      <Section title="Equipment & gold">
+        <InventoryEditor c={c} onChange={(patch) => update((p) => ({ ...p, ...patch }))} />
+      </Section>
 
       <Section title="Portrait">
         <div className="row gap-lg">

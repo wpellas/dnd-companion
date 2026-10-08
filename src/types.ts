@@ -162,6 +162,51 @@ export interface Action {
   multiattack?: { choices: string[] }[]
 }
 
+export const COIN_TYPES = ['pp', 'gp', 'ep', 'sp', 'cp'] as const
+export type CoinType = (typeof COIN_TYPES)[number]
+export type Coins = Record<CoinType, number>
+
+export type ItemKind = 'weapon' | 'armor' | 'shield' | 'gear' | 'magic' | 'treasure'
+
+/** How much of the Dexterity modifier body armor lets through. */
+export type ArmorDex = 'full' | 'max2' | 'none'
+
+/** Something a character carries. Weapons and armor take part in combat when equipped (see lib/inventory.ts). */
+export interface Item {
+  id: string
+  name: string
+  kind: ItemKind
+  qty: number
+  /** Pounds each */
+  weight?: number
+  notes?: string
+  /** Full text, for items picked from the SRD list */
+  desc?: string
+  /** Where it came from in the SRD list, so the picker can show what you already have */
+  srd?: { source: 'equipment' | 'magic-items'; index: string }
+  equipped?: boolean
+  requiresAttunement?: boolean
+  attuned?: boolean
+  /** Magic bonus: added to attack and damage rolls (weapons) or to Armor Class (armor and shields) */
+  magicBonus?: number
+  weapon?: {
+    damage: string
+    damageType: string
+    /** Damage when wielded with two hands, for Versatile weapons */
+    versatile?: string
+    ranged?: boolean
+    finesse?: boolean
+    /** "80/320 ft." */
+    range?: string
+    /** 2024 weapon mastery property, kept as a reminder */
+    mastery?: string
+    /** Is the character proficient with it? (adds the proficiency bonus to hit) */
+    proficient: boolean
+  }
+  /** Armor: base AC; shield: the bonus it adds */
+  armor?: { base: number; dex: ArmorDex }
+}
+
 export interface Character {
   id?: number
   name: string
@@ -193,6 +238,12 @@ export interface Character {
   spellcasting?: Spellcasting
   /** Exhaustion level 0-6 (2024 rules); a long rest removes one */
   exhaustion?: number
+  /** Experience points; the level they point to is shown next to the level the character is actually at */
+  xp?: number
+  coins?: Coins
+  items?: Item[]
+  /** Armor Class follows the equipped armor and shield (kept in `ac`); off = `ac` is typed by hand */
+  acFromGear?: boolean
   image?: Blob
 }
 
@@ -380,7 +431,7 @@ export interface Encounter {
 /** A DM-only entry in the campaign journal: a note, a session recap, or an automatic combat summary. */
 export interface JournalEntry {
   id?: number
-  kind: 'note' | 'session' | 'combat'
+  kind: 'note' | 'session' | 'combat' | 'loot'
   title: string
   body: string
   /** In-world campaign day when it was written */

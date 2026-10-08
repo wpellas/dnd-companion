@@ -7,8 +7,8 @@ import { getCampaign } from '../lib/store'
 import type { JournalEntry } from '../types'
 
 type Filter = 'all' | JournalEntry['kind']
-const FILTERS: Filter[] = ['all', 'note', 'session', 'combat']
-const FILTER_LABEL: Record<Filter, string> = { all: 'Everything', note: 'Notes', session: 'Sessions', combat: 'Combats' }
+const FILTERS: Filter[] = ['all', 'note', 'session', 'combat', 'loot']
+const FILTER_LABEL: Record<Filter, string> = { all: 'Everything', note: 'Notes', session: 'Sessions', combat: 'Combats', loot: 'Loot & XP' }
 
 /** The DM's campaign journal: free notes, session recaps, and an automatic summary of every fight that ends. Never shown to players. */
 export function JournalPage() {
@@ -125,10 +125,11 @@ function EntryForm({ initial, onClose }: { initial: JournalEntry; onClose: () =>
         </label>
         <label className="field">
           <span>Type</span>
-          <select value={e.kind} disabled={e.kind === 'combat'} onChange={(ev) => set('kind', ev.target.value as JournalEntry['kind'])}>
+          <select value={e.kind} disabled={e.kind === 'combat' || e.kind === 'loot'} onChange={(ev) => set('kind', ev.target.value as JournalEntry['kind'])}>
             <option value="note">Note</option>
             <option value="session">Session recap</option>
             {e.kind === 'combat' && <option value="combat">Combat</option>}
+            {e.kind === 'loot' && <option value="loot">Loot</option>}
           </select>
         </label>
         <NumberField label="Campaign day" value={e.day} min={1} onChange={(n) => set('day', Math.max(1, Math.floor(n)))} />

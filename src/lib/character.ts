@@ -1,6 +1,7 @@
 import { ABILITIES, type Ability, type Action, type CastingSnapshot, type Character, type SlotState } from '../types'
 import { CLASS_HIT_DIE, CLASS_SAVES } from './classes'
 import { abilityMod, parseDice } from './dice'
+import { emptyCoins, weaponActions } from './inventory'
 import type { SrdClass, SrdClassLevel } from './srdApi'
 
 type Owner = Pick<Character, 'level' | 'abilities'>
@@ -49,6 +50,9 @@ export function normalizeCharacter(c: Character): Character {
     resistances: c.resistances ?? [],
     immunities: c.immunities ?? [],
     vulnerabilities: c.vulnerabilities ?? [],
+    items: c.items ?? [],
+    coins: { ...emptyCoins(), ...c.coins },
+    xp: c.xp ?? 0,
   }
 }
 
@@ -91,4 +95,5 @@ export function castingSnapshot(c: Character): CastingSnapshot | undefined {
   return { ability: sc.ability, mod, attackBonus: mod + pb, saveDc: 8 + pb + mod, casterLevel: c.level }
 }
 
-export const resolveCharacterActions =(c: Character): Action[] => (c.actions ?? []).map((a) => deriveAction(a, c))
+/** A character's actions for a fight: the ones they wrote, plus an attack for every equipped weapon, all resolved against their stats. */
+export const resolveCharacterActions = (c: Character): Action[] => [...(c.actions ?? []), ...weaponActions(c)].map((a) => deriveAction(a, c))

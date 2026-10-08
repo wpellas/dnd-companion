@@ -4,7 +4,7 @@ import { getCampaign } from './store'
 
 /** The DM's campaign journal: notes, session recaps, and a summary of every fight that ends. Nothing here reaches the player view. */
 
-export const KIND_LABEL: Record<JournalEntry['kind'], string> = { note: 'Note', session: 'Session', combat: 'Combat' }
+export const KIND_LABEL: Record<JournalEntry['kind'], string> = { note: 'Note', session: 'Session', combat: 'Combat', loot: 'Loot' }
 
 export async function addEntry(kind: JournalEntry['kind'], title: string, body = ''): Promise<number> {
   const now = Date.now()

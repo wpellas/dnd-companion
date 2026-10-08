@@ -39,6 +39,15 @@ actions, spells and limited-use class features. Attack bonuses, damage and spell
   list (searchable, with the spell text). Slots are clickable pips.
 - **Class features:** add limited-use features from the official SRD list (Second Wind, Rage, Action Surge, Channel Divinity, Lay
   On Hands...) or your own. Counts follow level-ups, and rests recharge them, including "one use back per short rest" features.
+- **Equipment, gold and XP:** every character has coins (pp / gp / ep / sp / cp), experience points and an item list. Add things from
+  the SRD list (all 38 weapons, 12 armors, the shield, adventuring gear and 262 magic items, searchable and stored offline) or make your
+  own. A **wielded weapon becomes an attack in combat** with the right bonus and damage from the character's stats (finesse and ranged
+  handled, a second attack for two-handed Versatile damage, +1 weapons supported). **Armor and shields can set Armor Class**
+  ("Armor Class from equipment"; Barbarian and Monk Unarmored Defense included). Carrying weight against 15 x Strength and the
+  three-item attunement limit are shown. Quick editing lives on the party card (the 🎒 Items button) and in the character form.
+- **Awarding XP and gold:** after a fight a banner offers the fight's XP split evenly between the party; the "Award XP & gold" button
+  hands out any XP and gold (also split evenly) and notes it in the Journal. Cards show XP towards the next level and a "ready to
+  level up" badge (the level itself is still yours to change).
 - **Rests:** a short rest (spend Hit Dice, type or roll the healing; short-rest features recharge; Warlocks regain slots) and a long
   rest (full HP, half your Hit Dice, all slots and features, and one Exhaustion level off). A day counter tracks the campaign.
 - **Slot recovery on a short rest:** Arcane Recovery (Wizard), Natural Recovery (Circle of the Land Druid) and Sorcerous Restoration
@@ -131,14 +140,14 @@ it on a network you trust.
   effect with the Dmg / Heal / condition controls. Monster spells that need a roll the app can't read work the same way.
 - Monster cantrips scale as if the monster's caster level were its CR (the stat block doesn't say), and its spells are cast at the
   level the stat block lists. Retype the damage if your table rules differently.
-- Equipment, inventory and gold aren't tracked.
+- Equipment doesn't track per-item charges, ammunition use or encumbrance penalties, and monster loot isn't generated.
+- Gold and XP are split evenly; an uneven split means awarding it twice.
 - Speed isn't tracked, so Exhaustion's speed penalty is only a reminder.
 - Derived action numbers are fixed when a character joins a fight; edit-and-re-add to pick up mid-fight changes.
 
 ## 🔮 On the horizon
 
-Equipment and inventory, gold and XP tracking, a level-up helper, a battle map with tokens, and players logging in as their own
-characters.
+A level-up helper, a battle map with tokens, and players logging in as their own characters.
 
 ## 📖 Changelog
 
@@ -150,6 +159,8 @@ characters.
   resistances / immunities / vulnerabilities; undo; concentration, recharge and legendary-action tracking; auto-Unconscious,
   massive damage; condition-driven hints; action / bonus action / reaction trackers; lair actions; saved encounters with XP
   difficulty; backup and restore; settings; player-view announcements; live view on phones with a QR code.
+- **Loot update:** equipment and inventory from the SRD item list, weapons that become attacks, Armor Class from gear, coins, XP and
+  gold awards (after a fight or by hand), level-up badges, a Loot & XP journal log.
 - **Table-speed update:** group initiative, Surprised, Delay; ray-by-ray Scorching Ray / Magic Missile / Eldritch Blast and monster
   Multiattack; monster spellcasting with per-day counts; Exhaustion levels; Arcane Recovery-style slot recovery; the campaign journal
   with automatic combat summaries.

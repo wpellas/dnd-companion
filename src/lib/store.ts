@@ -1,4 +1,6 @@
 import { db } from '../db'
+import type { Character } from '../types'
+import { withGearAc } from './inventory'
 import { longRest, shortRest, type ShortRestInput } from './rest'
 
 /** Database mutations on characters / campaign state (kept apart from the pure rules in rest.ts / spells.ts). */
@@ -68,4 +70,12 @@ export async function applyLongRest(ids: number[]) {
     await setCampaign({ day: camp.day + 1, shortRestsSinceLong: 0 })
   })
   await syncPartyCombatants(ids)
+}
+
+/** Change a character's inventory, coins or XP; Armor Class follows the equipped gear when that is switched on. */
+export async function updateCharacter(id: number, patch: Partial<Character>) {
+  await db.transaction('rw', db.characters, async () => {
+    const c = await db.characters.get(id)
+    if (c) await db.characters.put(withGearAc({ ...c, ...patch }))
+  })
 }

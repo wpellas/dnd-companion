@@ -14,8 +14,7 @@ characters is a setting (`allowPlayerAppRolls`, default **off**); respect it eve
 `canAppRoll(kind, settings)` from `lib/settings.ts`). "Automatic" features must stay rules assistance (advantage hints, auto-fail
 saves, bonuses), never rolling for a player.
 
-Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): equipment/inventory, gold and XP tracking,
-level-up helper, battle map with tokens, players logging in as their characters.
+Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): level-up helper, battle map with tokens, players logging in as their characters.
 
 ## Commands
 
@@ -35,7 +34,7 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
 ## Architecture
 
 ### Data and storage
-- `src/types.ts` - all data models. `src/db.ts` - Dexie schema (**v5**). Tables: `characters`, `monsters` (custom monsters only),
+- `src/types.ts` - all data models. `src/db.ts` - Dexie schema (**v5**; inventory fields live on `Character` and need no migration). Tables: `characters`, `monsters` (custom monsters only),
   `combat` (one record, id `'current'`), `kv` (key/value: `api:*` = cached SRD API responses, plus `settings`, `campaign`,
   `lastBackup`), `encounters`, `journal` (DM-only notes, session recaps, combat summaries).
 - **Migrations:** schema/data changes need a new `this.version(n)` with `.upgrade()` (v2 actions, v3 class/hit dice/resources + `kv`,
@@ -46,7 +45,7 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
 ### Reference library (SRD API)
 - `src/lib/srdApi.ts` - cache-first client for `https://www.dnd5eapi.co/api/2024` (CORS open, no key). Responses are cached forever in
   `kv` under `api:*`. `ensureLibrary()` downloads everything once in the background after launch (339 spells, 12 classes + spell lists,
-  240 class level tables, 341 monsters, 15 conditions) and writes the `api:sync:library-v3` flag, after which the app makes no API
+  240 class level tables, 341 monsters, 15 conditions, 182 equipment entries, 262 magic items) and writes the `api:sync:library-v4` flag, after which the app makes no API
   requests. Started by `SpellLibraryStatus` (footer), Web-Lock guarded across tabs, retries on `online`. Bump the key's version to
   force a re-download when more data is added.
 - `src/lib/monsters.ts` - `srdToTemplate()` turns an SRD monster into a `MonsterTemplate` (actions with attack/save/DC/area/range, `multiattack` rows from the structured
@@ -86,7 +85,15 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
   while `spellcasting.auto`), `castingSnapshot`. `rest.ts` + `store.ts` - rest rules and DB mutations (`spendSlot`, rests, campaign counters). `shortRestRecoveries` / `RecoveryChoice`:
   Arcane Recovery, Natural Recovery (slots, budget = half level rounded up, max 5th) and Sorcerous Restoration (points, half level rounded down);
   a long rest takes one Exhaustion level off. After a rest `store.ts` refreshes the idle fight's PC entries (combatants are snapshots).
-- `src/lib/journal.ts` + `pages/JournalPage.tsx` - the DM journal; `addCombatSummary` runs from `endCombat`. Never sent to the player view.
+- `src/lib/journal.ts` + `pages/JournalPage.tsx` - the DM journal (kinds note / session / combat / loot); `addCombatSummary` runs from `endCombat`. Never sent to the player view.
+- `src/lib/inventory.ts` (pure) - `Item` rules: `armorClass(c)` (best body armor + shield + AC magic items, unarmored 10 + Dex, Barbarian / Monk Unarmored Defense),
+  `withGearAc` (keeps `ac` in step when `Character.acFromGear`), `weaponActions(c)` (equipped weapons -> attack actions with `ability` / `proficient` /
+  `magicBonus`, so `deriveAction` resolves them; `resolveCharacterActions` appends them), coins, carry weight, XP table (`levelForXp`, `canLevelUp`), `splitEvenly`,
+  `itemFromEquipment` / `itemFromMagicItem` (SRD -> `Item`). `itemCatalog.ts` = picker entries from the cached SRD library. Saves that change gear go
+  through `store.updateCharacter` (re-derives AC); the character form's `update` does the same.
+- `src/lib/rewards.ts` - `endCombat` stores the finished fight's XP in `kv.lastFight`; `RewardBanner` (Combat + Party pages) hands it out via `awardLastFight`;
+  `AwardPanel` / `awardRewards` split XP and gold evenly and write a `loot` journal entry. `components/InventoryEditor.tsx` is shared by the card and the form.
+- `src/lib/id.ts` - `newId()`: use it instead of `crypto.randomUUID()`, which doesn't exist on plain-http LAN addresses (the DM often opens the app that way).
 - `src/lib/encounters.ts` + `src/data/encounterBudget.ts` - 2024 XP budgets (verified against the published table) and difficulty rating;
   CR -> XP table (defaults for custom monsters). `src/data/classFeatures.ts` - catalog of limited-use SRD class features.
 - `src/lib/settings.ts`, `backup.ts` (whole-app JSON export/import, journal included; the SRD library is not included; restore keeps `api:*` and `lastBackup`).
@@ -146,8 +153,8 @@ volleys, delay and group initiative, Exhaustion, undo, relay privacy). Headless 
 
 ## TODO / ideas
 
-- Longer-term (agreed): equipment and inventory, gold and XP tracking, level-up helper, battle map with tokens, session notes / campaign log,
-  players logging in as their own characters. (Session notes / campaign log is built: the Journal tab.)
+- Longer-term (agreed): level-up helper, battle map with tokens, players logging in as their own characters. (Session notes, equipment,
+  inventory, gold and XP are built: Journal tab, 🎒 Items on the party card.)
 - Riders that need a second save as a flow; monster spells the API can't describe (Shield...).
 - Subclass-granted spells, ritual casting, non-SRD content import, Speed tracking (Exhaustion's speed penalty is only a reminder).
 - More per-attack multi-hit spells can be added to `VOLLEYS` in `spells.ts` (hexblade, Spiritual Weapon etc. aren't).

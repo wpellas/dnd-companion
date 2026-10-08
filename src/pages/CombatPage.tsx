@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { InitiativeInput } from '../components/InitiativeInput'
 import { Portrait } from '../components/Portrait'
+import { RewardBanner } from '../components/RewardBanner'
 import { TurnPanel } from '../components/TurnPanel'
 import { rateEncounter, encounterXp, entriesFromCombat } from '../lib/encounters'
 import { useSrdMonsters, useCustomMonsters } from '../lib/monsterLibrary'
@@ -106,6 +107,8 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
           </span>
         )}
       </div>
+
+      {!started && <RewardBanner />}
 
       {(combat?.prompts ?? []).map((p) => (
         <PromptBanner key={p.id} prompt={p} combatants={combatants} settings={settings} />

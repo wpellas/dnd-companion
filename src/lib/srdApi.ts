@@ -128,6 +128,51 @@ export async function getMonsterRefs(): Promise<{ index: string; name: string }[
   return (await cached<{ results: { index: string; name: string }[] }>('/monsters')).results
 }
 
+export interface SrdEquipment {
+  index: string
+  name: string
+  equipment_categories: { index: string }[]
+  cost?: { quantity: number; unit: string }
+  weight?: number
+  description?: string[]
+  damage?: { damage_dice: string; damage_type?: { index: string } }
+  two_handed_damage?: { damage_dice: string }
+  range?: { normal: number; long?: number }
+  throw_range?: { normal: number; long?: number }
+  properties?: { index: string }[]
+  mastery?: { name: string }
+  armor_class?: { base: number; dex_bonus: boolean; max_bonus?: number }
+}
+
+export interface SrdMagicItem {
+  index: string
+  name: string
+  desc: string[]
+  attunement?: boolean
+  rarity?: { name: string }
+  equipment_category?: { index: string; name: string }
+}
+
+export const getEquipment = (index: string) => cached<SrdEquipment>(`/equipment/${index}`)
+export const getMagicItem = (index: string) => cached<SrdMagicItem>(`/magic-items/${index}`)
+
+export async function getEquipmentRefs(): Promise<{ index: string; name: string }[]> {
+  return (await cached<{ results: { index: string; name: string }[] }>('/equipment')).results
+}
+export async function getMagicItemRefs(): Promise<{ index: string; name: string }[]> {
+  return (await cached<{ results: { index: string; name: string }[] }>('/magic-items')).results
+}
+
+/** Every stored SRD equipment entry / magic item (after the library download), read straight from the local cache. */
+export async function readCachedEquipment(): Promise<SrdEquipment[]> {
+  const rows = await db.kv.where('key').startsWith('api:/equipment/').toArray()
+  return rows.map((r) => r.value as SrdEquipment)
+}
+export async function readCachedMagicItems(): Promise<SrdMagicItem[]> {
+  const rows = await db.kv.where('key').startsWith('api:/magic-items/').toArray()
+  return rows.map((r) => r.value as SrdMagicItem)
+}
+
 export interface SrdCondition {
   index: string
   name: string
@@ -147,8 +192,8 @@ export async function getAllSpellRefs(): Promise<SrdSpellRef[]> {
   return r.results
 }
 
-/** kv key marking that the whole reference library (spells, classes, class level tables, monsters, conditions) has been downloaded. */
-export const LIBRARY_SYNC_KEY = 'api:sync:library-v3'
+/** kv key marking that the whole reference library (spells, classes, class level tables, monsters, conditions, equipment, magic items) has been downloaded. */
+export const LIBRARY_SYNC_KEY = 'api:sync:library-v4'
 
 let inflight: Promise<void> | null = null
 
@@ -163,10 +208,12 @@ export function ensureLibrary(onProgress?: (done: number, total: number) => void
   if (inflight) return inflight
   const run = async () => {
     if (await db.kv.get(LIBRARY_SYNC_KEY)) return
-    const [refs, monsterRefs] = await Promise.all([getAllSpellRefs(), getMonsterRefs()])
+    const [refs, monsterRefs, equipmentRefs, magicRefs] = await Promise.all([getAllSpellRefs(), getMonsterRefs(), getEquipmentRefs(), getMagicItemRefs()])
     const jobs: (() => Promise<unknown>)[] = [
       ...refs.map((r) => () => getSpell(r.index)),
       ...monsterRefs.map((m) => () => getMonster(m.index)),
+      ...equipmentRefs.map((e) => () => getEquipment(e.index)),
+      ...magicRefs.map((m) => () => getMagicItem(m.index)),
       ...CONDITIONS.map((c) => () => getCondition(c.toLowerCase())),
       ...CLASSES.flatMap((c) => [
         () => getClass(c.index),
@@ -183,7 +230,7 @@ export function ensureLibrary(onProgress?: (done: number, total: number) => void
       }
     }
     await Promise.all(Array.from({ length: 6 }, worker))
-    await db.kv.put({ key: LIBRARY_SYNC_KEY, value: { spells: refs.length, monsters: monsterRefs.length, classLevels: CLASSES.length * 20, at: Date.now() } })
+    await db.kv.put({ key: LIBRARY_SYNC_KEY, value: { spells: refs.length, monsters: monsterRefs.length, equipment: equipmentRefs.length, magicItems: magicRefs.length, classLevels: CLASSES.length * 20, at: Date.now() } })
   }
   inflight = (navigator.locks ? navigator.locks.request('srd-spell-sync', run) : run()).finally(() => {
     inflight = null

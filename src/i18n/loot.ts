@@ -66,6 +66,8 @@ export const loot = {
     'Kunde inte läsa in föremålet (offline och inte nedladdat än). Lägg till det som ett eget föremål i stället.',
   ],
   'inv.nothing': ['Nothing carried yet.', 'Bär ingenting än.'],
+  'inv.filter': ['Filter items…', 'Filtrera föremål…'],
+  'inv.name': ['Name', 'Namn'],
   'inv.carrying': ['Carrying {w} / {cap} lb', 'Bär {w} / {cap} lb'],
   'inv.carryingTitle': ['Carrying capacity is 15 pounds per point of Strength', 'Bärförmågan är 15 pund per styrkepoäng'],
   'inv.attunedCount': ['Attuned {n}/{max}', 'Bundna {n}/{max}'],

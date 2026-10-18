@@ -42,6 +42,7 @@ export function InventoryEditor({ c, onChange }: Props) {
   const items = c.items ?? []
   const catalog = useItemCatalog()
   const [adding, setAdding] = useState(false)
+  const [filter, setFilter] = useState('')
   const ac = armorClass(c)
   const attuned = attunedCount(items)
   const weight = carriedWeight(c)
@@ -105,8 +106,9 @@ export function InventoryEditor({ c, onChange }: Props) {
       </div>
 
       {items.length === 0 && <p className="muted">{t('inv.nothing')}</p>}
+      {items.length > 8 && <input className="inv-filter" type="search" value={filter} placeholder={t('inv.filter')} onChange={(e) => setFilter(e.target.value)} />}
       <div className="inv-list">
-        {items.map((item) => (
+        {items.filter((i) => i.name.toLowerCase().includes(filter.trim().toLowerCase())).map((item) => (
           <ItemRow key={item.id} item={item} c={c} attunementFull={attuned >= MAX_ATTUNED} onChange={(p) => patchItem(item.id, p)} onEquip={(on) => setEquipped(item, on)} onRemove={() => setItems(items.filter((i) => i.id !== item.id))} />
         ))}
       </div>
@@ -152,8 +154,9 @@ function ItemRow({
   return (
     <div className={`item-card inv-item ${item.equipped ? 'equipped' : ''}`}>
       <div className="inv-line">
+        <span className="kind-tag">{t(`kind.${item.kind}`)}</span>
         <label className="field grow">
-          <span>{t(`kind.${item.kind}`)}</span>
+          <span>{t('inv.name')}</span>
           <input value={item.name} placeholder={t('inv.namePlaceholder')} onChange={(e) => onChange({ name: e.target.value })} />
         </label>
         <NumberField label={t('inv.qty')} value={item.qty} min={0} onChange={(n) => onChange({ qty: Math.max(0, Math.floor(n)) })} />

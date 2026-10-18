@@ -725,13 +725,19 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .xp-box > span { align-self: center; }
 .inv-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .inv-add .target-select { min-width: 320px; flex: 1; }
-.inv-list { display: flex; flex-direction: column; gap: 8px; }
+.inv-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
+.inv-filter { width: 100%; }
+.inv-item { padding: 4px 8px; }
+.kind-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-muted); width: 62px; flex: none; }
+.inv-line .field > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } /* labels stay for screen readers; the row is compact */
 .inv-item.equipped { border-left: 4px solid var(--good); }
-.inv-line { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.inv-line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
 .inv-line .field.grow { flex: 1; min-width: 180px; }
-.inv-line .field input[type='number'] { width: 70px; }
-.inv-sub { font-size: 0.9rem; margin-top: 2px; }
-.inv-details { margin-top: 6px; }
+.inv-line .field input[type='number'] { width: 56px; }
+.inv-line .field, .inv-line .check { margin: 0; }
+.inv-line input, .inv-line button { padding-top: 3px; padding-bottom: 3px; }
+.inv-sub { font-size: 0.85rem; margin: 0 0 0 74px; }
+.inv-details { margin: 2px 0 0 74px; font-size: 0.85rem; }
 .inv-details summary { cursor: pointer; color: var(--ink-muted); font-style: italic; }
 .inv-details .field-grid { margin-top: 8px; }
 .inv-desc { white-space: pre-wrap; margin: 8px 0 0; }

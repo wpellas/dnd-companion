@@ -6,6 +6,7 @@ import { useHash } from './hooks'
 import { LiveHost, useHubStatus } from './lib/hub'
 import { setLang, t } from './lib/i18n'
 import { useStoredLanguage } from './lib/settings'
+import { useFightSync } from './lib/store'
 import { BestiaryPage } from './pages/BestiaryPage'
 import { CombatPage } from './pages/CombatPage'
 import { EncountersPage } from './pages/EncountersPage'
@@ -34,6 +35,8 @@ export default function App() {
   useEffect(() => {
     if (stored && hash !== '#player') setLang(stored)
   }, [stored, hash])
+
+  useFightSync(hash !== '#player')
 
   if (hash === '#player') return <PlayerView />
 

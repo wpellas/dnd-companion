@@ -1,6 +1,10 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect } from 'react'
 import { db } from '../db'
 import type { Character } from '../types'
+import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
 import { withGearAc } from './inventory'
+import { buildSaves } from './resolve'
 import { longRest, shortRest, type ShortRestInput } from './rest'
 
 /** Database mutations on characters / campaign state (kept apart from the pure rules in rest.ts / spells.ts). */
@@ -46,6 +50,47 @@ async function syncPartyCombatants(ids: number[]) {
     changed = true
   }
   if (changed) await db.combat.put(state)
+}
+
+/**
+ * Combatants are snapshots, so anything that changes a character mid-fight (new weapon, found item, AC, saves) is copied into their entry.
+ * HP, conditions and the turn trackers stay as they are. Only writes when something differs.
+ */
+export async function syncPartyToFight() {
+  await db.transaction('rw', db.combat, db.characters, async () => {
+    const state = await db.combat.get('current')
+    if (!state) return
+    let changed = false
+    for (const c of state.combatants) {
+      if (c.kind !== 'pc' || c.characterId === undefined) continue
+      const ch = await db.characters.get(c.characterId)
+      if (!ch) continue
+      const next = {
+        ac: ch.ac,
+        initiativeBonus: ch.initiativeBonus,
+        actions: resolveCharacterActions(ch),
+        casting: castingSnapshot(ch),
+        saves: buildSaves(ch.abilities, { proficient: ch.saveProficiencies ?? [], proficiencyBonus: proficiencyBonus(ch.level) }),
+        resistances: ch.resistances ?? [],
+        immunities: ch.immunities ?? [],
+        vulnerabilities: ch.vulnerabilities ?? [],
+      }
+      if (JSON.stringify(pick(c, next)) === JSON.stringify(next)) continue
+      Object.assign(c, next)
+      changed = true
+    }
+    if (changed) await db.combat.put(state)
+  })
+}
+
+const pick = (from: object, like: object) => Object.fromEntries(Object.keys(like).map((k) => [k, (from as Record<string, unknown>)[k]]))
+
+/** Keep the running fight in step with the party (DM window only: the player view never writes). */
+export function useFightSync(enabled: boolean) {
+  const characters = useLiveQuery(() => db.characters.toArray(), [])
+  useEffect(() => {
+    if (enabled && characters) void syncPartyToFight()
+  }, [enabled, characters])
 }
 
 export async function applyShortRest(inputs: ({ id: number } & ShortRestInput)[]) {

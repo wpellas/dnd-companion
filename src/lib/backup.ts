@@ -60,7 +60,7 @@ export async function exportBackup(): Promise<{ blob: Blob; filename: string; co
   }
   const json = JSON.stringify(await mapBlobs(data, true))
   await db.kv.put({ key: BACKUP_KEY, value: Date.now() })
-  const stamp = new Date().toISOString().slice(0, 10)
+  const stamp = new Date().toLocaleString('sv-SE').replace(' ', '_').replaceAll(':', '-') // local time, e.g. 2026-10-18_14-30-05 (no colons: not valid in file names)
   return {
     blob: new Blob([json], { type: 'application/json' }),
     filename: `dnd-companion-backup-${stamp}.json`,

@@ -8,6 +8,9 @@ import { LevelUpPanel } from '../components/LevelUpPanel'
 import { RewardBanner } from '../components/RewardBanner'
 import { NumberField } from '../components/NumberField'
 import { Portrait } from '../components/Portrait'
+import { ChecksPanel } from '../components/ChecksPanel'
+import { SpellFinder } from '../components/SpellFinder'
+import { CharacterResources } from '../components/CharacterResources'
 import { DamageTypeList } from '../components/DamageTypeList'
 import { RestPanel } from '../components/RestPanel'
 import { CheckField, Section } from '../components/Section'
@@ -29,8 +32,6 @@ import { useSession } from '../lib/session'
 import { getCampaign, updateCharacter } from '../lib/store'
 import { ABILITIES, CLASSES, type Character, type ClassIndex } from '../types'
 
-const RECHARGE_ICON = { short: '☾', 'short-one': '☾¹', long: '☀' } as const
-const RECHARGE_TITLE = { short: 'party.rt.short', 'short-one': 'party.rt.shortOne', long: 'party.rt.long' } as const
 
 const blank = (): Character => ({
   name: '',
@@ -102,6 +103,8 @@ export function PartyPage() {
       </div>
 
       {isDm && <RewardBanner />}
+      {isDm && !!characters?.length && <SpellFinder characters={characters.map(normalizeCharacter)} />}
+      {isDm && !!characters?.length && <ChecksPanel characters={characters.map(normalizeCharacter)} />}
       {awarding && characters && <AwardPanel characters={characters.map(normalizeCharacter)} onClose={() => setAwarding(false)} />}
 
       {resting && characters && <RestPanel kind={resting} characters={characters.map(normalizeCharacter)} onClose={() => setResting(undefined)} />}
@@ -186,23 +189,7 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
         </div>
       )}
 
-      {c.resources.length > 0 && (
-        <div className="slot-rows">
-          {c.resources.map((r) => (
-            <div key={r.id} className="slot-row">
-              <span className="muted" title={t(RECHARGE_TITLE[r.recharge])}>
-                {r.name || t('party.feature')} {RECHARGE_ICON[r.recharge]}
-              </span>
-              <UsePips
-                max={r.max}
-                used={r.used}
-                label={r.name}
-                onChange={(used) => update({ resources: c.resources.map((x) => (x.id === r.id ? { ...x, used } : x)) })}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <CharacterResources c={c} />
 
       {showItems && <InventoryEditor c={c} onChange={(patch) => updateCharacter(c.id!, patch)} />}
 

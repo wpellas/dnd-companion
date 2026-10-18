@@ -6,7 +6,7 @@ import { adjustForTarget, saveBonus } from '../../lib/resolve'
 import { rollD20 } from '../../lib/rules'
 import { consumeRoll, rollFor, useIncomingRolls } from '../../lib/rolls'
 import type { TargetOutcome } from '../../lib/combat'
-import type { Action, Combatant } from '../../types'
+import type { Ability, Action, Combatant } from '../../types'
 import { DamageEntry } from './DamageEntry'
 import { useDamageEntry } from './useDamageEntry'
 
@@ -35,6 +35,10 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
   const [rollNote, setRollNote] = useState<Record<string, string>>({})
   const [useLr, setUseLr] = useState<Record<string, boolean>>({})
   const [cond, setCond] = useState<Record<string, boolean>>({})
+  // when the target chooses (Grapple, Shove) each row starts with its better save; the DM can switch it to what the player says
+  const [picked, setPicked] = useState<Record<string, Ability>>({})
+  const abilityFor = (c: Combatant): Ability =>
+    picked[c.id] ?? (action.saveChoice ? [...action.saveChoice].sort((a, b) => saveBonus(c, b) - saveBonus(c, a))[0] : ability)
   const entry = useDamageEntry(action, { crit: false, advantage: false })
   // players' saves typed on their phones fill their rows (only empty ones), once
   const incoming = useIncomingRolls()
@@ -51,14 +55,15 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
   const hasDamage = entry.parts.length > 0
 
   const rows = targets.map((t) => {
-    const auto = autoFailsSave(t, ability)
+    const abil = abilityFor(t)
+    const auto = autoFailsSave(t, abil)
     const roll = d20[t.id] === undefined || d20[t.id] === '' ? undefined : Number(d20[t.id])
-    const bonus = saveBonus(t, ability)
+    const bonus = saveBonus(t, abil)
     const total = roll === undefined ? undefined : roll + bonus
     let saved: boolean | undefined = auto ? false : total === undefined ? undefined : total >= dc
     if (saved === false && useLr[t.id]) saved = true
     const adjusted = saved === undefined ? undefined : adjustForTarget(entry.out, t, saved ? (action.halfOnSave ? 'half' : 'none') : undefined)
-    return { t, auto, roll, bonus, total, saved, adjusted, dis: saveHasDisadvantage(t, ability), lr: lrCounter(t) }
+    return { t, abil, auto, roll, bonus, total, saved, adjusted, dis: saveHasDisadvantage(t, abil), lr: lrCounter(t) }
   })
   const allKnown = rows.every((r) => r.saved !== undefined)
   const canApply = allKnown && (!hasDamage || entry.complete)
@@ -67,10 +72,10 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
     onApply(
       rows.map((r): TargetOutcome => {
         const how = r.auto
-          ? t('save.autoFailDetail', { abil: tAbility(ability), conds: r.t.conditions.map(tCondition).join('/') })
+          ? t('save.autoFailDetail', { abil: tAbility(r.abil), conds: r.t.conditions.map(tCondition).join('/') })
           : useLr[r.t.id]
-            ? t('save.lrDetail', { abil: tAbility(ability), total: r.total ?? '', dc })
-            : t('save.rollDetail', { abil: tAbility(ability), roll: r.roll ?? '', bonus: formatMod(r.bonus), total: r.total ?? '', dc })
+            ? t('save.lrDetail', { abil: tAbility(r.abil), total: r.total ?? '', dc })
+            : t('save.rollDetail', { abil: tAbility(r.abil), roll: r.roll ?? '', bonus: formatMod(r.bonus), total: r.total ?? '', dc })
         return {
           targetId: r.t.id,
           result: r.saved ? 'saved' : 'failed',
@@ -88,7 +93,7 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
   return (
     <div className="resolve">
       <div className="muted">
-        {t('save.line', { abil: tAbility(ability), dc })}
+        {t('save.line', { abil: action.saveChoice ? action.saveChoice.map(tAbility).join(' / ') : tAbility(ability), dc })}
         {action.halfOnSave ? t('save.half') : hasDamage ? t('save.none') : ''}
         {action.area ? ` · ${action.area}` : ''}
       </div>
@@ -99,7 +104,7 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
         <thead>
           <tr>
             <th>{t('save.colCreature')}</th>
-            <th>{t('save.colSave', { abil: tAbility(ability) })}</th>
+            <th>{t('save.colSave', { abil: action.saveChoice ? action.saveChoice.map(tAbility).join('/') : tAbility(ability) })}</th>
             <th>{t('save.colD20')}</th>
             <th>{t('save.colResult')}</th>
             {hasDamage && <th>{t('save.colTakes')}</th>}
@@ -114,6 +119,11 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
                 {r.dis && <div className="dis small">{t('save.disConditions')}</div>}
               </td>
               <td>
+                {action.saveChoice ? (
+                  <select value={r.abil} aria-label={t('save.choiceAbility')} onChange={(e) => setPicked((s) => ({ ...s, [r.t.id]: e.target.value as Ability }))}>
+                    {action.saveChoice.map((a) => <option key={a} value={a}>{tAbility(a)}</option>)}
+                  </select>
+                ) : null}{' '}
                 {formatMod(r.bonus)}
                 {(r.t.exhaustion ?? 0) > 0 && <div className="muted small">Exhaustion -{2 * (r.t.exhaustion ?? 0)}</div>}
               </td>

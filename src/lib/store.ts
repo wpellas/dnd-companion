@@ -24,6 +24,17 @@ export async function getCampaign(): Promise<Campaign> {
 export const setCampaign = (value: Campaign) => db.kv.put({ key: 'campaign', value })
 
 /** Spend one slot of `level` on a character. Does nothing if none are left. */
+/** An attack with a bow or crossbow uses up a piece of ammunition (never below zero). */
+export async function spendAmmo(characterId: number, itemId: string, n = 1) {
+  await db.transaction('rw', db.characters, async () => {
+    const c = await db.characters.get(characterId)
+    const item = c?.items?.find((i) => i.id === itemId)
+    if (!c || !item || item.qty <= 0) return
+    item.qty = Math.max(0, item.qty - n)
+    await db.characters.put(c)
+  })
+}
+
 export async function spendSlot(characterId: number, level: number) {
   await db.transaction('rw', db.characters, async () => {
     const c = await db.characters.get(characterId)

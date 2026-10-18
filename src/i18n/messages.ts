@@ -6,6 +6,10 @@ import { combatui } from './combatui'
 import { editors } from './editors'
 import { effects } from './effects'
 import { hazard } from './hazard'
+import { ammo } from './ammo'
+import { spellfind } from './spellfind'
+import { checks } from './checks'
+import { unarmed } from './unarmed'
 import { maps } from './maps'
 import { glossary } from './glossary'
 import { movement } from './movement'
@@ -37,6 +41,10 @@ export const MESSAGES = {
   ...editors,
   ...effects,
   ...hazard,
+  ...ammo,
+  ...spellfind,
+  ...checks,
+  ...unarmed,
   ...maps,
   ...glossary,
   ...movement,

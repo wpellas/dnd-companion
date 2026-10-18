@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 class RollController extends Controller
 {
     /** Initiative is a total (d20 plus bonus); an attack roll or a save is the d20 itself, because the DM's panel adds the bonus. */
-    private const MAX = ['initiative' => 60, 'attack' => 20, 'save' => 20, 'death' => 20];
+    private const MAX = ['initiative' => 60, 'attack' => 20, 'save' => 20, 'death' => 20, 'check' => 60];
 
     public function store(Request $request, Campaign $campaign): JsonResponse
     {

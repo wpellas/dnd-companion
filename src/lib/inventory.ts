@@ -118,6 +118,17 @@ export const withGearAc = <T extends Character>(c: T): T => (c.acFromGear ? { ..
  * An attack for every equipped weapon (two for a Versatile weapon), derived from the character's stats like any
  * "from my stats" action: Strength for melee, Dexterity for ranged, the better of the two for Finesse.
  */
+/** Which inventory item a weapon fires: the one picked on the weapon, or by name (a crossbow shoots Bolts, a sling Bullets, a blowgun Needles, other bows Arrows). */
+const AMMO_NAMES: [RegExp, RegExp][] = [[/crossbow/i, /bolt/i], [/sling/i, /bullet/i], [/blowgun/i, /needle/i], [/bow/i, /arrow/i]]
+export function ammoFor(items: Item[], weapon: Item): Item | undefined {
+  const w = weapon.weapon
+  if (!w) return undefined
+  if (w.ammoId) return items.find((i) => i.id === w.ammoId)
+  if (!w.ammunition) return undefined
+  const rule = AMMO_NAMES.find(([weaponName]) => weaponName.test(weapon.name))
+  return rule && items.find((i) => i.kind !== 'weapon' && rule[1].test(i.name))
+}
+
 export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action[] {
   const str = c.abilities?.str ?? 10
   const dex = c.abilities?.dex ?? 10
@@ -138,6 +149,7 @@ export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action
         damageType: w.damageType,
         range: w.range ?? (w.ranged ? 'range' : 'reach 5 ft.'),
         mastery: w.masteryKnown ? w.mastery : undefined,
+        ammoItem: ammoFor(c.items ?? [], i)?.id,
       }
       return w.versatile ? [base, { ...base, id: `item:${i.id}:2h`, name: `${i.name} (two-handed)`, damage: w.versatile }] : [base]
     })
@@ -165,7 +177,7 @@ const text = (lines?: string[]) => (lines?.length ? lines.join('\n\n') : undefin
 export function itemFromEquipment(e: SrdEquipment): Item {
   const cats = e.equipment_categories.map((c) => c.index)
   const props = (e.properties ?? []).map((p) => p.index)
-  const base: Item = { id: newId(), name: e.name, kind: 'gear', qty: 1, weight: e.weight || undefined, desc: text(e.description), srd: { source: 'equipment', index: e.index } }
+  const base: Item = { id: newId(), name: e.name, kind: 'gear', qty: cats.includes('ammunition') ? (e.quantity ?? 1) : 1, weight: e.weight || undefined, desc: text(e.description), srd: { source: 'equipment', index: e.index } }
   if (e.damage) {
     const ranged = cats.includes('ranged-weapons')
     const range = ranged && e.range ? `range ${e.range.normal}${e.range.long ? `/${e.range.long}` : ''} ft.` : props.includes('reach') ? 'reach 10 ft.' : 'reach 5 ft.'
@@ -180,6 +192,7 @@ export function itemFromEquipment(e: SrdEquipment): Item {
         finesse: props.includes('finesse'),
         range,
         mastery: e.mastery?.name,
+        ammunition: props.includes('ammunition') || undefined,
         proficient: true,
       },
     }
@@ -194,7 +207,11 @@ export function itemFromEquipment(e: SrdEquipment): Item {
 
 /** An inventory item from an SRD magic item. */
 export function itemFromMagicItem(m: SrdMagicItem): Item {
+  const full = m.desc.join(' ')
+  const max = Number(/has (\d+) charges/i.exec(full)?.[1])
+  const dawn = /regains all expended charges|regains all its charges/i.test(full) ? 'all' : /regains ([\dd +]+?) expended charges/i.exec(full)?.[1]?.replace(/\s/g, '')
   return {
+    charges: max > 0 ? { max, used: 0, dawn } : undefined,
     id: newId(),
     name: m.name,
     kind: 'magic',

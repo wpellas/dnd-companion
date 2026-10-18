@@ -10,7 +10,7 @@ import { possessive, t, tAbility, tDamage, tn } from '../lib/i18n'
 import { canAppRoll, useSettings } from '../lib/settings'
 import { castableLevels, levelLabel, levelName, slotsLeft, slotsLeftAtOrAbove, spellToAction } from '../lib/spells'
 import { getSpell } from '../lib/srdApi'
-import { spendSlot } from '../lib/store'
+import { spendAmmo, spendSlot } from '../lib/store'
 import { stepsFromMultiattack, stepsFromVolley } from '../lib/volley'
 import type { Action, Combatant, CombatState, KnownSpell, TurnUsed } from '../types'
 import { Combobox } from './Combobox'
@@ -21,6 +21,8 @@ import { useDamageEntry } from './turn/useDamageEntry'
 import { SaveResolver } from './turn/SaveResolver'
 import { UsePips } from './UsePips'
 import { MovementBar } from './MovementBar'
+import { CharacterResources } from './CharacterResources'
+import { unarmedActions } from '../lib/unarmed'
 
 const TIMING_LABEL = { action: 'turn.timing.action', bonus: 'turn.timing.bonus', reaction: 'turn.timing.reaction', legendary: 'turn.timing.legendary' } as const
 const ECONOMY: { key: keyof TurnUsed; label: 'turn.pillAction' | 'turn.pillBonus' | 'turn.pillReaction' }[] = [
@@ -69,7 +71,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
 
   if (!active || !attacker || attacker.kind === 'lair') return active?.kind === 'lair' ? <LairPanel combat={combat} lair={active} /> : null
 
-  const actions = attacker.actions ?? []
+  const actions = [...(attacker.actions ?? []), ...unarmedActions(attacker)]
   const castLevels = sc && known ? castableLevels(sc, known.level) : []
   const slotLevel = !known || known.level === 0 ? 0 : monsterCaster ? known.level : castLevels.includes(slotChoice ?? -1) ? slotChoice! : (castLevels[0] ?? known.level)
   const monsterSpell = monsterCaster && known ? attacker.spells!.find((s) => s.index === known.index) : undefined
@@ -118,6 +120,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
       }
     }
     await resolveAction({ attackerId: attacker.id, action, targets: outcomes, cast, detail })
+    if (action.kind === 'attack' && action.ammoItem && attacker.characterId !== undefined) await spendAmmo(attacker.characterId, action.ammoItem, outcomes.length || 1)
     setNonce((n) => n + 1)
   }
 
@@ -205,7 +208,20 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
         ))}
       </div>
 
-      <MovementBar c={attacker} />
+      {character && <CharacterResources c={character} />}
+
+      <MovementBar
+        c={attacker}
+        all={combatants}
+        onReact={(id) => {
+          // the reactor makes the attack: switch to it with the mover as the target
+          setAttackerId(id)
+          setActionId(undefined)
+          setSpellIndex(undefined)
+          setTargetIds([attacker.id])
+          setNonce((n) => n + 1)
+        }}
+      />
 
       {reminders.length > 0 && (
         <div className="reminders">
@@ -227,7 +243,9 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
               <div className="chips" key={timing}>
                 <span className="muted">{t(TIMING_LABEL[timing])}</span>
                 {list.map((a) => {
-                  const avail = actionAvailable(attacker, a)
+                  const base = actionAvailable(attacker, a)
+                  const ammoLeft = a.ammoItem ? character?.items?.find((i) => i.id === a.ammoItem)?.qty : undefined
+                  const avail = ammoLeft === 0 ? { ok: false, why: t('ammo.out') } : base
                   return (
                     <button
                       key={a.id}
@@ -241,6 +259,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                         {a.kind === 'attack' && ` ${formatMod(a.attackBonus ?? 0)}`}
                         {a.kind === 'save' && ` DC ${a.saveDc ?? 10} ${tAbility(a.saveAbility ?? 'dex')}`}
                         {a.damage && ` · ${a.damage}`}
+                        {ammoLeft !== undefined && ` · ➶${ammoLeft}`}
                         {a.limited?.kind === 'recharge' && ` · ↻${a.limited.min}${a.limited.min < 6 ? '-6' : ''}`}
                         {a.limited?.kind === 'day' && ` · ${(a.limited.times ?? 1) - (attacker.spent?.[a.id] ?? 0)}/${a.limited.times}`}
                         {!avail.ok && ` · ${avail.why}`}

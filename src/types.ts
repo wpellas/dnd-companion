@@ -130,6 +130,8 @@ export interface Action {
   saveAbility?: Ability
   saveDc?: number
   halfOnSave?: boolean
+  /** The target picks which of these abilities to save with (Grapple, Shove: Strength or Dexterity); the app starts with the better bonus */
+  saveChoice?: Ability[]
   /**
    * Characters only: when set, the numbers are derived from the character's stats at the time they join a
    * fight (see lib/character.ts) instead of using the flat `attackBonus` / `saveDc` / damage modifier.
@@ -162,6 +164,8 @@ export interface Action {
   multiattack?: { choices: string[] }[]
   /** 2024 Weapon Mastery property the wielder has unlocked with this weapon: its effect is shown when the attack lands */
   mastery?: string
+  /** Characters: the inventory item (id) this attack spends one piece of per shot */
+  ammoItem?: string
 }
 
 export const COIN_TYPES = ['pp', 'gp', 'ep', 'sp', 'cp'] as const
@@ -187,6 +191,8 @@ export interface Item {
   /** Where it came from in the SRD list, so the picker can show what you already have */
   srd?: { source: 'equipment' | 'magic-items'; index: string }
   equipped?: boolean
+  /** A wand, staff or ring with charges: pips in the fight and on the sheet; a long rest restores them when it regains all at dawn */
+  charges?: { max: number; used: number; /** "all" = a long rest restores every charge; dice text ("1d6+1") = a reminder, you adjust by hand */ dawn?: string }
   requiresAttunement?: boolean
   attuned?: boolean
   /** Magic bonus: added to attack and damage rolls (weapons) or to Armor Class (armor and shields) */
@@ -204,6 +210,10 @@ export interface Item {
     mastery?: string
     /** The wielder has unlocked that mastery with this weapon (Weapon Mastery is chosen per weapon): only then is it offered in combat */
     masteryKnown?: boolean
+    /** Uses ammunition (bows, crossbows, slings, blowguns): each attack spends one piece from the matching item (Arrows, Bolts...) or from `ammoId` */
+    ammunition?: boolean
+    /** The inventory item this weapon fires, when it is not the one found by name */
+    ammoId?: string
     /** Is the character proficient with it? (adds the proficiency bonus to hit) */
     proficient: boolean
   }
@@ -398,6 +408,8 @@ export interface Combatant {
   initiative: number | null
   initiativeBonus: number
   ac: number
+  /** DC of its Grapple and Shove: 8 + Strength modifier + Proficiency Bonus */
+  unarmedDc?: number
   /** Walking Speed in feet (a snapshot, like AC) */
   speed?: number
   /** Wild Shape: the beast form the creature is in */

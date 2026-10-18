@@ -18,7 +18,8 @@ import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './ch
 import { effectiveSpeed, exhaustionLevel } from './conditionRules'
 import { shortCondition } from './explain'
 import { possessive, t, tCondition, tDamage } from './i18n'
-import { rollDice, rollInitiative } from './dice'
+import { abilityMod, rollDice, rollInitiative } from './dice'
+import { crValue } from './monsters'
 import { newId } from './id'
 import { isParty } from './sides'
 import { addCombatSummary } from './journal'
@@ -141,6 +142,7 @@ export function pcCombatant(c: Character): Combatant {
     initiativeBonus: c.initiativeBonus,
     ac: c.ac,
     speed: c.speed,
+    unarmedDc: 8 + abilityMod(c.abilities.str) + proficiencyBonus(c.level),
     hp: c.currentHp,
     maxHp: c.maxHp,
     tempHp: 0,
@@ -172,6 +174,7 @@ export function monsterCombatants(t: MonsterTemplate, count: number, existing: C
       initiativeBonus: t.initiativeBonus,
       ac: t.ac,
       speed: t.speed,
+      unarmedDc: 8 + abilityMod(t.abilities.str) + proficiencyBonus(Math.ceil(crValue(t.cr))),
       hp: t.hp,
       maxHp: t.hp,
       tempHp: 0,
@@ -865,6 +868,14 @@ export function leaveForm(s: CombatState, c: Combatant, quiet = false) {
 export function moveFeet(_s: CombatState, c: Combatant, feet: number) {
   c.turn ??= freshTurn()
   c.turn.moved = Math.max(0, (c.turn.moved ?? 0) + feet)
+}
+
+/** An opportunity attack: the reactor spends its Reaction (the attack itself is resolved like any other, with the reactor as the one acting). */
+export function opportunityAttack(s: CombatState, reactor: Combatant, mover: Combatant) {
+  reactor.turn ??= freshTurn()
+  reactor.turn.reaction = true
+  logEvent(s, t('log.opportunity', { a: reactor.name, b: mover.name }))
+  announce(s, t('ann.opportunity', { a: reactor.name, b: mover.name }))
 }
 
 /** Dash: the action, and Speed again as extra movement. */

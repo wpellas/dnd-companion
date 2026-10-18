@@ -15,5 +15,6 @@ export const movement = {
   'move.standTitle': ['Standing up from Prone costs half the Speed ({ft} ft)', 'Att resa sig från liggande kostar halva farten ({ft} ft)'],
   'move.over': ['{n} ft over its Speed', '{n} ft över farten'],
   'move.oa': ['Leaving an enemy\'s reach provokes an opportunity attack (a Reaction).', 'Att lämna en fiendes räckvidd ger en tillfällesattack (en Reaktion).'],
+  'move.oaPick': ['Opportunity attack by…', 'Tillfällesattack av…'],
   'move.disengaged': ['Disengaged: no opportunity attacks this turn.', 'Disengage: inga tillfällesattacker denna tur.'],
 } as const satisfies Record<string, Msg>

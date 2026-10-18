@@ -18,6 +18,7 @@ import { buildItem, useItemCatalog, type CatalogEntry } from '../lib/itemCatalog
 import { COIN_TYPES, DAMAGE_TYPES, type ArmorDex, type Character, type Item } from '../types'
 import { Combobox } from './Combobox'
 import { NumberField } from './NumberField'
+import { UsePips } from './UsePips'
 import { CheckField } from './Section'
 
 interface Props {
@@ -186,6 +187,13 @@ function ItemRow({
             : t('inv.armorAc', { n: item.armor.base + (item.magicBonus ?? 0), dex: t(DEX_KEY[item.armor.dex]).toLowerCase() })}
         </div>
       )}
+      {item.charges && item.charges.max > 0 && (
+        <div className="inv-sub row gap">
+          <span className="muted">{t('inv.charges')}</span>
+          <UsePips max={item.charges.max} used={item.charges.used} label={item.name} onChange={(used) => onChange({ charges: { ...item.charges!, used } })} />
+          {item.charges.dawn && item.charges.dawn !== 'all' && <span className="muted small">{t('inv.dawnDice', { dice: item.charges.dawn })}</span>}
+        </div>
+      )}
       {item.notes && !item.desc && <div className="muted inv-sub">{item.notes}</div>}
 
       <details className="inv-details">
@@ -215,6 +223,8 @@ function ItemRow({
           {(item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'shield') && (
             <NumberField label={item.kind === 'weapon' ? t('inv.magicWeapon') : t('inv.magicArmor')} value={item.magicBonus ?? 0} onChange={(n) => onChange({ magicBonus: n || undefined })} />
           )}
+          <NumberField label={t('inv.chargesMax')} value={item.charges?.max ?? 0} min={0} onChange={(n) => onChange({ charges: n > 0 ? { used: 0, ...item.charges, max: Math.floor(n) } : undefined })} />
+          {item.charges && <CheckField label={t('inv.dawnAll')} title={t('inv.dawnAllTitle')} checked={item.charges.dawn === 'all'} onChange={(on) => onChange({ charges: { ...item.charges!, dawn: on ? 'all' : undefined } })} />}
           {item.kind === 'magic' && <NumberField label={t('inv.acBonus')} value={item.magicBonus ?? 0} onChange={(n) => onChange({ magicBonus: n || undefined })} />}
           {item.kind === 'magic' && <CheckField label={t('inv.reqAttune')} checked={!!item.requiresAttunement} onChange={(on) => onChange({ requiresAttunement: on || undefined })} />}
           <label className="field span-2">
@@ -250,6 +260,16 @@ function ItemRow({
             <CheckField label={t('inv.ranged')} checked={!!w?.ranged} onChange={(on) => setWeapon({ ranged: on })} />
             <CheckField label={t('inv.finesse')} checked={!!w?.finesse} onChange={(on) => setWeapon({ finesse: on })} />
             <CheckField label={t('inv.proficient')} checked={w?.proficient ?? true} onChange={(on) => setWeapon({ proficient: on })} />
+            <CheckField label={t('inv.ammunition')} title={t('inv.ammunitionTitle')} checked={!!w?.ammunition} onChange={(on) => setWeapon({ ammunition: on || undefined })} />
+            {w?.ammunition && (
+              <label className="field">
+                <span>{t('inv.ammoItem')}</span>
+                <select value={w.ammoId ?? ''} onChange={(e) => setWeapon({ ammoId: e.target.value || undefined })}>
+                  <option value="">{t('inv.ammoAuto')}</option>
+                  {(c.items ?? []).filter((i) => i.kind !== 'weapon' && i.id !== item.id).map((i) => <option key={i.id} value={i.id}>{i.name || t('common.unnamed')}</option>)}
+                </select>
+              </label>
+            )}
             <label className="field">
               <span>{t('inv.mastery')}</span>
               <input value={w?.mastery ?? ''} onChange={(e) => setWeapon({ mastery: e.target.value || undefined })} />

@@ -3,7 +3,7 @@ import { t } from '../lib/i18n'
 import { ROLL_MAX, sendRoll, type RollKind } from '../lib/rolls'
 import type { Character } from '../types'
 
-const KINDS: RollKind[] = ['attack', 'save', 'initiative', 'death']
+const KINDS: RollKind[] = ['attack', 'save', 'initiative', 'death', 'check']
 
 /**
  * Interactive mode only: type what the physical die showed and it appears on the DM's screen, ready to use. Optional (the DM can always just

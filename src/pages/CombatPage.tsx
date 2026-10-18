@@ -8,6 +8,8 @@ import { RewardBanner } from '../components/RewardBanner'
 import { EffectsEditor } from '../components/EffectsEditor'
 import { WildShape } from '../components/WildShape'
 import { HazardPanel } from '../components/HazardPanel'
+import { SpellFinder } from '../components/SpellFinder'
+import { normalizeCharacter } from '../lib/character'
 import { RollsTray } from '../components/RollsTray'
 import { effectLine } from '../lib/effects'
 import { TurnPanel } from '../components/TurnPanel'
@@ -136,6 +138,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
         )}
       </div>
 
+      {!!characters?.length && <SpellFinder characters={characters.map(normalizeCharacter)} />}
       {combatants.length > 0 && <HazardPanel combatants={combatants} settings={settings} />}
 
       {!started && <RewardBanner />}

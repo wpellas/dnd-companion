@@ -115,6 +115,15 @@ breathes fire.
 - **Roll or average hit points:** a setting makes new monsters roll their hit point dice instead of using the average.
 - **Hazards:** falling (per 10 feet), burning or your own trap (dice, type, optional save) against any creatures you tick; the table hears who got hurt.
 - **Movement without a map:** count the feet each creature walks (Haste, Slow, Exhaustion and conditions like Grappled change its Speed), with Dash, Disengage, standing up from Prone and a reminder about opportunity attacks.
+- **Grapple and Shove:** two extra options in everyone's action list with the right DC (8 + Strength modifier + Proficiency Bonus); the target saves with Strength or Dexterity (it starts on the better one and you can switch it to what the player says).
+- **Opportunity attacks:** after someone moves without Disengaging, pick who takes the opportunity attack: their Reaction is spent and the turn panel jumps to them with the mover as the target.
+
+- **Resources in the fight:** the acting character's class features (Rage, Second Wind, Bardic Inspiration, Focus Points...), magic item charges and ammunition show as pips right in the turn panel, so you (or the player, on their own sheet) tick them off when used.
+- **Ammunition and charges:** a bow or crossbow spends one piece of its ammunition (Arrows, Bolts...) with every attack and can't fire when it runs out; wands and staffs keep their charges, read from the SRD text, and a long rest refills those that regain everything at dawn.
+- **Spells at the table:** search a spell and see who has it prepared and whether they have a slot left (Counterspell? Shield?), plus every caster's list. On the Party and Combat pages.
+
+### Checks ✅
+On the Party page, a **Checks** panel for group checks and "who notices?": set the DC, see everyone's Passive Perception against it, and type in what the players rolled (or let them send it from their phone). It tells you whether a group check succeeds (at least half).
 
 ### Maps 🗺️
 Upload battle maps and handouts in the Maps tab and **show one to the players**, the way you show a character sheet: their phones and the table screen switch to the picture until you go back to the feed. One thing is shown at a time, a reminder bar stays on
@@ -213,6 +222,8 @@ Fog of war and tokens on the maps, and treasure generation after a fight.
 
 ## 📖 Changelog
 
+- **Table-speed update 5:** class resources, ammunition and item charges in the fight, a spell finder for the DM, Grapple and Shove, opportunity attacks and a checks panel.
+- **Table-speed update 4:** maps you can show to the players, colour-coded conditions, plain-language help for players, Grapple and Shove, opportunity attacks and a checks panel.
 - **Table-speed update 3:** effects that change AC / resistances / attack advantage, allies and summons, Wild Shape, death saves typed on the phone, rolled monster hit points, hazards and movement tracking.
 - **Table-speed update 2:** effects with durations and repeat saves, a level-up helper (hit points, features, ability score improvement), Heroic Inspiration, Weapon Mastery and cover, a spectator-first player screen with an "It's your turn!" banner, optional phone rolls for the DM, an admin log, and a lighter fight sync.
 - **Player characters:** players create and edit their own characters from their phones; the DM assigns characters to accounts.

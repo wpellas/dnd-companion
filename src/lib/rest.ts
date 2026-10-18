@@ -133,6 +133,7 @@ export function longRest(c: Character): Character {
     exhaustion: Math.max(0, (c.exhaustion ?? 0) - 1),
     hitDiceUsed: Math.max(0, (c.hitDiceUsed ?? 0) - longRestHitDice(c)),
     resources: (c.resources ?? []).map((r) => ({ ...r, used: 0 })),
+    items: c.items?.map((i) => (i.charges?.dawn === 'all' ? { ...i, charges: { ...i.charges, used: 0 } } : i)),
     spellcasting: c.spellcasting
       ? { ...c.spellcasting, slots: c.spellcasting.slots.map((s) => ({ ...s, used: 0 })) }
       : c.spellcasting,

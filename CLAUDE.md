@@ -242,6 +242,22 @@ volleys, delay and group initiative, Exhaustion, undo, live-view privacy). Headl
 **Fog of war (next):** add a mask to `MapRecord` (what the players may see) and make `publicMap()` in `lib/maps.ts` compose the picture in the DM's browser with the hidden parts blacked out. It must be composed before upload: the server and any player can read what is sent, so a client-side overlay would leak the whole map.
 Test note: `php artisan serve` drops POST bodies over a few hundred KB when run from a sandboxed shell (PHP "Unable to create temporary file"); run the e2e server as `php -S 127.0.0.1:8000 -t backend/public backend/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` with cwd `backend/public` and TMP/TEMP set to a writable folder. Kill leftover servers on 8000 / 5199 before a run.
 
+## Grapple / Shove, opportunity attacks, group checks (built)
+
+- **Grapple and Shove** (`lib/unarmed.ts`, `i18n/unarmed.ts`): `Combatant.unarmedDc` (8 + Strength modifier + Proficiency Bonus; monsters use a proficiency bonus from their CR) makes the turn panel append two save actions. `Action.saveChoice` = the target picks Strength or Dexterity: `SaveResolver` pre-picks the better save per row and has a select
+  to follow what the player says. Shove applies Prone (untick it to push 5 ft instead). The rules text is from memory of the 2024 Unarmed Strike (the SRD API has none): check it against the book.
+- **Opportunity attacks:** after a creature has moved without Disengaging, `MovementBar` lists the other side's creatures that are up, able to act and have their Reaction; picking one runs `opportunityAttack` (Reaction spent, log + announcement) and switches the turn panel to that creature with the mover as target. No positions exist: the DM decides who was in reach.
+- **Checks panel** (`components/ChecksPanel.tsx`, Party page, DM only): a DC, each character's Passive Perception against it, typed totals (or the phone roll kind `check`, a total up to 60, `RollController::MAX`) and the 2024 group-check result (at least half succeed). The character record has no skill bonuses, so only Passive Perception is known; other skills are typed totals.
+
+## Resources, ammunition, charges, spell finder (built)
+
+- **`components/CharacterResources.tsx`** is the one place that shows what a character spends: class features (`Character.resources`, the existing catalog in `data/classFeatures.ts`), magic item charges and ammunition. It is on the party card (so a player ticks their own on their phone) and in the DM's turn panel for the acting PC, so a Rage or an arrow is ticked off at the moment it happens.
+  Not done: using a feature does not apply its effect (Rage does not add the Rage effect by itself).
+- **Charges:** `Item.charges` {max, used, dawn}. `itemFromMagicItem` reads "has N charges" and the dawn text from the SRD (`dawn` = 'all' restores on a long rest in `longRest`; dice text is a reminder, adjusted by hand because the player rolls it). Editable in the item details.
+- **Ammunition:** weapons with the SRD `ammunition` property get `weapon.ammunition`; `ammoFor(items, weapon)` finds what they fire (`weapon.ammoId` if picked, else by name: crossbow -> Bolts, sling -> Bullets, blowgun -> Needles, other bows -> Arrows) and `weaponActions` sets `Action.ammoItem`. SRD ammunition comes in bundles
+  (`SrdEquipment.quantity`, Arrows = 20). `TurnPanel.submit` calls `store.spendAmmo` after a PC's attack (hit or miss); the action chip shows ➶N and is disabled at 0. Undo does not hand the arrow back (the DM edits the quantity). Retrieving arrows after a fight is by hand.
+- **`components/SpellFinder.tsx`** (Party page and Combat page, DM): pick a spell the party has prepared and see who can cast it now (a prepared spell needs a free slot of its level or higher; cantrips are always ready), plus every caster's spell list with slots left.
+
 ## Player help (built): what the words mean
 
 `lib/explain.ts` + `i18n/glossary.ts`: on the player screen every badge (condition, effect, concentration, Inspiration, Wild Shape form) is a button that opens a plain-language note under the row (conditions reuse the DM's `remind.*` texts, effects use `modsLine` of their preset; a line defining Advantage / Disadvantage

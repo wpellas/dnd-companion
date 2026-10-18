@@ -9,6 +9,8 @@ export const rolls = {
   'roll.kind.initiative': ['Initiative', 'Initiativ'],
   'roll.kind.attack': ['Attack', 'Attack'],
   'roll.kind.save': ['Save', 'Räddning'],
+  'roll.kind.check': ['Check', 'Färdighetsslag'],
+  'roll.hint.check': ['Your total for the check: the d20 plus your bonus', 'Din summa för slaget: d20 plus din bonus'],
   'roll.kind.death': ['Death save', 'Dödsräddning'],
   'roll.hint.death': ['Just the number on the d20', 'Bara talet på d20'],
   'roll.deathUse': ['Death save {value} from the phone: {outcome}. Click to apply.', 'Dödsräddning {value} från mobilen: {outcome}. Klicka för att använda.'],

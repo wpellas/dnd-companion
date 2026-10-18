@@ -40,6 +40,8 @@ export const log = {
   'log.hazardSaved': ['{t} saves against {action} and takes {dmg}', '{t} klarar räddningen mot {action} och tar {dmg}'],
   'ann.hazard': ['{t} is caught by {action}', '{t} drabbas av {action}'],
   'ann.hazardDmg': ['{t} takes {n} damage from {action}', '{t} tar {n} skada från {action}'],
+  'log.opportunity': ['{a} takes an opportunity attack against {b} (Reaction)', '{a} gör en tillfällesattack mot {b} (Reaktion)'],
+  'ann.opportunity': ['{a} gets an opportunity attack on {b}', '{a} får en tillfällesattack mot {b}'],
   'log.dash': ['{name} takes the Dash action', '{name} gör Dash-handlingen'],
   'log.disengage': ['{name} takes the Disengage action', '{name} gör Disengage-handlingen'],
   'log.standsUp': ['{name} stands up', '{name} reser sig'],

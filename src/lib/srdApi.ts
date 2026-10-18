@@ -139,6 +139,8 @@ export interface SrdEquipment {
   cost?: { quantity: number; unit: string }
   weight?: number
   description?: string[]
+  /** Ammunition comes in bundles (Arrows: 20) */
+  quantity?: number
   damage?: { damage_dice: string; damage_type?: { index: string } }
   two_handed_damage?: { damage_dice: string }
   range?: { normal: number; long?: number }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { attackAdvice, exhaustionPenalty } from '../../lib/conditionRules'
+import { attackAdvice, effectiveAc, exhaustionPenalty } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
 import { t } from '../../lib/i18n'
 import { masteryOnMiss, masteryText } from '../../lib/mastery'
@@ -32,7 +32,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
   const [pickedMode, setPickedMode] = useState<RollMode | null>(null)
   const [d20Note, setD20Note] = useState('')
   const [cover, setCover] = useState(0) // +2 half, +5 three-quarters
-  const ac = target.ac + cover
+  const ac = effectiveAc(target) + cover
   // a player may have typed their d20 on their phone: it fills the field when it is empty, and is offered when it is not
   const sent = useSentRoll(attacker.characterId, 'attack')
   useEffect(() => {
@@ -78,13 +78,14 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
 
   return (
     <div className="resolve">
-      {(advice.advReasons.length > 0 || advice.disReasons.length > 0 || advice.critOnHit) && (
+      {(advice.advReasons.length > 0 || advice.disReasons.length > 0 || advice.critOnHit || advice.notes.length > 0) && (
         <div className="advice">
           {advice.advReasons.map((r) => <div key={r} className="adv">{t('res.advLine', { why: r })}</div>)}
           {advice.disReasons.map((r) => <div key={r} className="dis">{t('res.disLine', { why: r })}</div>)}
           {advice.mode === 'normal' && advice.advReasons.length > 0 && advice.disReasons.length > 0 && (
             <div className="muted">{t('res.cancel')}</div>
           )}
+          {advice.notes.map((n) => <div key={n} className="small muted">{n}</div>)}
           {advice.critOnHit && <div className="crit-note">{t('res.critNote', { why: advice.critOnHit })}</div>}
         </div>
       )}

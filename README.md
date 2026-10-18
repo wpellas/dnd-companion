@@ -73,7 +73,8 @@ player (or take it back) with the **Player account** field in the character form
   (Sorcerer) show up in the short-rest panel once per long rest, with a budget so you can't over-recover.
 
 ### The Bestiary 🐉
-All 341 SRD monsters with search, CR / type / size filters, sortable columns and full stat blocks, plus custom monsters. Attacks,
+All 341 SRD monsters with search, CR / type / size filters, sortable columns and full stat blocks, plus custom monsters. Give any creature a **picture** (in the Bestiary: on its entry or while creating or editing it) and every one of that kind shows it, to you and to the players. Add several pictures (also while creating or editing a monster) and the 1st goblin of a fight gets the 1st picture, the 2nd the 2nd, and extra goblins a random one: the Goblin
+Warrior finally has a face. Attacks,
 saves, recharge, legendary actions, resistances and immunities are read from the official data, so the Adult Red Dragon actually
 breathes fire.
 
@@ -107,6 +108,14 @@ breathes fire.
   The table sees the spell names, and players see their own rounds left.
 - **2024 details:** Heroic Inspiration (a star on the party card, in the fight and on the table), Weapon Mastery (tick "I have Mastery with this weapon" and the property's effect shows when the attack lands: Topple, Push, Graze...), and cover on attacks.
 
+- **Effects that change numbers:** Shield of Faith, Shield, Haste and Slow change AC (the attack panel and target list use it), Rage gives resistance to bludgeoning / piercing / slashing, Dodge, Blur and Faerie Fire give attackers Disadvantage / Advantage (as a hint on the attack panel), and Bless, Bane, Rage and Haste show a reminder on the attacker's own rolls.
+- **Allies and summons:** add a creature "as ally" from the Bestiary (or tick it on its row) and it fights on the party's side: the table sees its hit points like a character's, it gives no XP, and it can act right after the creature that controls it.
+- **Wild Shape:** a druid's row can take a beast's form (the 2024 rules: temporary hit points equal to the druid's level, the beast's AC, Speed and actions, own hit points kept) and go back; undo covers it, the table sees the form.
+- **Death saves from the phone:** an interactive player can type the d20 of a death save; the DM sees it on the row and applies it with a click (10+ success, 1 = two failures, 20 = back up with 1 HP).
+- **Roll or average hit points:** a setting makes new monsters roll their hit point dice instead of using the average.
+- **Hazards:** falling (per 10 feet), burning or your own trap (dice, type, optional save) against any creatures you tick; the table hears who got hurt.
+- **Movement without a map:** count the feet each creature walks (Haste, Slow, Exhaustion and conditions like Grappled change its Speed), with Dash, Disengage, standing up from Prone and a reminder about opportunity attacks.
+
 ### The Journal 📖
 A private campaign log for you: free-form notes (NPCs, clues, loot), session recaps, and an automatic summary of every fight you end
 (who fought, who fell, XP, the full combat log). Search it, filter it, pin the important bits. Players never see it, and it travels
@@ -130,6 +139,8 @@ row, and you can ignore it or type your own: nothing waits for it. The dice stay
 feed (stats, saves, attacks, spells and slots, features, and optionally inventory and gold), so you and the player can check you agree
 on their numbers. It is only a switch: the fight keeps running underneath, the sheet follows HP changes live, and "Back to the feed"
 restores the view exactly as it was. A bar on every DM tab reminds you it is on.
+
+- **Plain-language help:** tap any badge (Poisoned, Faerie Fire, Concentrating...) to see what it means, with Advantage and Disadvantage explained; a "?" in the header lists the common terms (Resistance, Death saves, Bloodied...); and when a creature gets a condition the table is told what it does. All optional, and in the DM's language.
 
 ### Administration 🛡️
 The administrator account (made by `php artisan db:seed` from `ADMIN_EMAIL` / `ADMIN_PASSWORD`) gets an **Administration** page, linked from the campaign
@@ -188,7 +199,8 @@ before anything leaves your browser, so the server never holds their HP or AC), 
   level the stat block lists. Retype the damage if your table rules differently.
 - Equipment doesn't track per-item charges, ammunition use or encumbrance penalties, and monster loot isn't generated.
 - Gold and XP are split evenly; an uneven split means awarding it twice.
-- Speed isn't tracked, so Exhaustion's speed penalty is only a reminder.
+- Movement is counted by hand (there is no map). Crawling's extra cost, Cunning Action and "leaves the form when Incapacitated" are not automatic.
+- Hazard presets (falling, burning) come from memory of the 2024 rules because the SRD API has no text for them: check them against your book.
 - Two people editing the very same record at the same moment: the last save wins (the DM's fight state is only ever written by the DM).
 
 ## 🔮 On the horizon
@@ -197,6 +209,7 @@ A battle map with tokens, and treasure generation after a fight.
 
 ## 📖 Changelog
 
+- **Table-speed update 3:** effects that change AC / resistances / attack advantage, allies and summons, Wild Shape, death saves typed on the phone, rolled monster hit points, hazards and movement tracking.
 - **Table-speed update 2:** effects with durations and repeat saves, a level-up helper (hit points, features, ability score improvement), Heroic Inspiration, Weapon Mastery and cover, a spectator-first player screen with an "It's your turn!" banner, optional phone rolls for the DM, an admin log, and a lighter fight sync.
 - **Player characters:** players create and edit their own characters from their phones; the DM assigns characters to accounts.
 - **Administration:** an admin page for site invites, accounts (lock, reset link, admin rights, delete) and campaigns.

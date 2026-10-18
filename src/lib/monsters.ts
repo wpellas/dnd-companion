@@ -180,6 +180,7 @@ export function srdToTemplate(m: SrdMonster): MonsterTemplate {
     cr: crLabel(m.challenge_rating),
     ac: m.armor_class[0]?.value ?? 10,
     hp: m.hit_points,
+    hpRoll: m.hit_points_roll,
     speed: num(m.speed.walk ?? Object.values(m.speed)[0]),
     initiativeBonus: abilityMod(m.dexterity),
     abilities,

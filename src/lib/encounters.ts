@@ -1,7 +1,9 @@
 import { db } from '../db'
 import { XP_BY_CR, difficultyOf, partyBudget } from '../data/encounterBudget'
 import type { Combatant, Encounter, EncounterEntry, MonsterTemplate } from '../types'
-import { monsterCombatants, mutateCombat, pcCombatant, sortCombatants } from './combat'
+import { isEnemy } from './sides'
+import { getSettings } from './settings'
+import { addMonsters, mutateCombat, pcCombatant, sortCombatants } from './combat'
 import { t } from './i18n'
 
 /** The monster template an encounter entry points at (an SRD monster by index, or a custom one by id). */
@@ -31,7 +33,7 @@ export function rateEncounter(totalXp: number, partyLevels: number[]) {
 export function entriesFromCombat(combatants: Combatant[]): EncounterEntry[] {
   const groups = new Map<string, EncounterEntry>()
   for (const c of combatants) {
-    if (c.kind !== 'monster') continue
+    if (!isEnemy(c)) continue
     const ref = c.templateRef ?? { name: c.name.replace(/ \d+$/, '') }
     const key = ref.srdIndex ?? (ref.templateId !== undefined ? `custom-${ref.templateId}` : ref.name)
     const g = groups.get(key)
@@ -44,6 +46,7 @@ export function entriesFromCombat(combatants: Combatant[]): EncounterEntry[] {
 /** Put an encounter's monsters into the fight (and the party too, if they aren't there yet). Returns what couldn't be found. */
 export async function loadEncounter(enc: Encounter, srd: MonsterTemplate[], custom: MonsterTemplate[], addParty = true): Promise<string[]> {
   const characters = addParty ? await db.characters.toArray() : []
+  const rollHp = (await getSettings()).rollMonsterHp
   const missing: string[] = []
   await mutateCombat((s) => {
     if (addParty) {
@@ -56,7 +59,7 @@ export async function loadEncounter(enc: Encounter, srd: MonsterTemplate[], cust
         missing.push(e.name)
         continue
       }
-      s.combatants.push(...monsterCombatants(t, e.count, s.combatants))
+      addMonsters(s, t, e.count, { rollHp })
     }
     if (s.started) sortCombatants(s)
   }, t('enc.loadedLabel', { name: enc.name }))

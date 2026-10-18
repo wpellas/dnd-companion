@@ -23,7 +23,7 @@ export function EffectsEditor({ c, all, onAdd, onRemove }: { c: Combatant; all: 
     setName(p?.name ?? '')
     setCondition(p?.condition ?? '')
     setRounds(p?.rounds !== undefined ? String(p.rounds) : '')
-    setAt(p?.ticks === 'caster' ? 'start' : 'end')
+    setAt(p?.at ?? (p?.ticks === 'caster' ? 'start' : 'end'))
     setOfCaster(p?.ticks === 'caster')
     setSaveAbility(p?.save ?? '')
     setSaveAt('end')
@@ -45,6 +45,7 @@ export function EffectsEditor({ c, all, onAdd, onRemove }: { c: Combatant; all: 
       save: saveAbility ? { ability: saveAbility, dc: Number(dc), at: saveAt } : undefined,
       sourceId: caster,
       concentration: !!caster && concentration,
+      mods: presetFor(name.trim())?.mods,
     })
     setOpen(false)
     pick('')

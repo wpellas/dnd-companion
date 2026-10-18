@@ -67,6 +67,7 @@ export const rules = {
   ],
   'reason.attackerGrappled': ['attacker is Grappled (unless attacking the grappler)', 'angriparen är Gripen (om den inte attackerar den som håller fast den)'],
   'reason.targetIs': ['target is {cond}', 'målet är {cond}'],
+  'reason.targetEffect': ['target has {effect}', 'målet har {effect}'],
   'reason.proneNear': ['target is Prone (within 5 ft)', 'målet är Liggande (inom 5 ft)'],
   'reason.proneFar': ['target is Prone (farther than 5 ft)', 'målet är Liggande (längre bort än 5 ft)'],
   'reason.crit': ['target is {cond} and the attacker is within 5 ft', 'målet är {cond} och angriparen är inom 5 ft'],

@@ -1,9 +1,13 @@
 import { account } from './account'
+import { avatars } from './avatars'
 import { admin } from './admin'
 import { bestiary } from './bestiary'
 import { combatui } from './combatui'
 import { editors } from './editors'
 import { effects } from './effects'
+import { hazard } from './hazard'
+import { glossary } from './glossary'
+import { movement } from './movement'
 import { journal } from './journal'
 import { levelup } from './levelup'
 import { loot } from './loot'
@@ -24,12 +28,16 @@ import { vocab } from './vocab'
 export const MESSAGES = {
   ...vocab,
   ...account,
+  ...avatars,
   ...admin,
   ...shell,
   ...bestiary,
   ...combatui,
   ...editors,
   ...effects,
+  ...hazard,
+  ...glossary,
+  ...movement,
   ...journal,
   ...levelup,
   ...loot,

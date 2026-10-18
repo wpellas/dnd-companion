@@ -6,6 +6,8 @@ import { Portrait } from '../components/Portrait'
 import { Rich } from '../components/Rich'
 import { RewardBanner } from '../components/RewardBanner'
 import { EffectsEditor } from '../components/EffectsEditor'
+import { WildShape } from '../components/WildShape'
+import { HazardPanel } from '../components/HazardPanel'
 import { RollsTray } from '../components/RollsTray'
 import { effectLine } from '../lib/effects'
 import { TurnPanel } from '../components/TurnPanel'
@@ -24,6 +26,14 @@ import {
   rollAllMonsterInitiative,
   setDeathSaves,
   setConcentrating,
+  announce,
+  applyDeathSave,
+  conditionNote,
+  enterForm,
+  leaveForm,
+  deathOutcome,
+  setAlly,
+  setController,
   setExhaustion,
   settleConcentration,
   settleEffectSave,
@@ -37,13 +47,16 @@ import {
 import { formatMod, rollDie, rollInitiative } from '../lib/dice'
 import { t, tAbility, tCondition, tDamage } from '../lib/i18n'
 import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/settings'
+import { pictureFor, useAvatars } from '../lib/avatars'
 import { useSentRoll } from '../lib/rolls'
 import { updateCharacter } from '../lib/store'
 import { saveBonus } from '../lib/resolve'
-import { exhaustionLevel } from '../lib/conditionRules'
-import { CONDITIONS, type Combatant, type Condition, type Prompt, type TurnUsed } from '../types'
+import { effectiveAc, exhaustionLevel } from '../lib/conditionRules'
+import { isEnemy } from '../lib/sides'
+import { CONDITIONS, type Character, type Combatant, type Condition, type Prompt, type TurnUsed } from '../types'
 
 export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
+  useSingleOpenMenu()
   const settings = useSettings()
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
@@ -51,7 +64,8 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
   const custom = useCustomMonsters()
   const combatants = combat?.combatants ?? []
   const started = combat?.started ?? false
-  const imageFor = (c: Combatant) => characters?.find((ch) => ch.id === c.characterId)?.image
+  const avatars = useAvatars()
+  const imageFor = (c: Combatant) => (c.kind === 'pc' ? characters?.find((ch) => ch.id === c.characterId)?.image : pictureFor(c, combatants, avatars)?.blob)
   const lastUndo = combat?.history?.at(-1)
 
   const addParty = () =>
@@ -69,7 +83,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
   }
 
   const allSet = combatants.length > 0 && combatants.every((c) => c.initiative !== null)
-  const monsters = combatants.filter((c) => c.kind === 'monster')
+  const monsters = combatants.filter(isEnemy)
   const partyLevels = (characters ?? []).filter((ch) => combatants.some((c) => c.characterId === ch.id)).map((ch) => ch.level)
   const xp = encounterXp(entriesFromCombat(combatants), srd, custom)
   const rating = monsters.length && partyLevels.length ? rateEncounter(xp, partyLevels) : null
@@ -121,6 +135,8 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
         )}
       </div>
 
+      {combatants.length > 0 && <HazardPanel combatants={combatants} settings={settings} />}
+
       {!started && <RewardBanner />}
 
       <RollsTray names={new Map(combatants.filter((c) => c.characterId !== undefined).map((c) => [String(c.characterId), c.name]))} />
@@ -136,7 +152,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
 
       <div className="combatants">
         {combatants.map((c, i) => (
-          <CombatantRow key={c.id} c={c} all={combatants} active={started && i === combat?.turnIndex} started={started} image={imageFor(c)} settings={settings} />
+          <CombatantRow key={c.id} c={c} all={combatants} active={started && i === combat?.turnIndex} started={started} image={imageFor(c)} settings={settings} character={c.characterId !== undefined ? characters?.find((ch) => ch.id === c.characterId) : undefined} />
         ))}
       </div>
     </div>
@@ -226,7 +242,27 @@ const ECON: { key: keyof TurnUsed; letter: 'econ.aLetter' | 'econ.bLetter' | 'ec
   { key: 'reaction', letter: 'econ.rLetter', title: 'econ.reaction' },
 ]
 
-function CombatantRow({ c, all, active, started, image, settings }: { c: Combatant; all: Combatant[]; active: boolean; started: boolean; image?: Blob; settings: Settings }) {
+/** Only one row menu (effects, Wild Shape, conditions) is open at a time; a click anywhere else closes it. */
+function useSingleOpenMenu() {
+  useEffect(() => {
+    const menus = () => [...document.querySelectorAll<HTMLDetailsElement>('.row-menus > details')]
+    const onToggle = (e: Event) => {
+      const el = e.target as HTMLDetailsElement
+      if (el.open && el.matches?.('.row-menus > details')) menus().forEach((d) => d !== el && (d.open = false))
+    }
+    const onClick = (e: MouseEvent) => {
+      if (!(e.target as Element).closest?.('.row-menus')) menus().forEach((d) => (d.open = false))
+    }
+    document.addEventListener('toggle', onToggle, true)
+    document.addEventListener('click', onClick)
+    return () => {
+      document.removeEventListener('toggle', onToggle, true)
+      document.removeEventListener('click', onClick)
+    }
+  }, [])
+}
+
+function CombatantRow({ c, all, active, started, image, settings, character }: { c: Combatant; all: Combatant[]; active: boolean; started: boolean; image?: Blob; settings: Settings; character?: Character }) {
   const [amount, setAmount] = useState('')
   const update = (fn: (c: Combatant) => void, resort = false, label?: string) =>
     mutateCombat((s) => {
@@ -243,6 +279,7 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
     }, label)
 
   // a player's initiative typed on their phone: set when none is set yet, offered (next to the name) when one is
+  const sentDeath = useSentRoll(c.characterId, 'death')
   const sentInit = useSentRoll(c.characterId, 'initiative')
   const takePhoneInitiative = () => {
     withState((s, who) => { who.initiative = sentInit.roll!.value; if (settings.groupInitiative) shareInitiative(s, who); else sortCombatants(s) }, t('lbl.initFromPhone', { name: c.name }))
@@ -253,9 +290,14 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentInit.roll?.id, c.initiative])
   const toggleCondition = (cond: Condition) =>
-    update((who) => {
-      who.conditions = who.conditions.includes(cond) ? who.conditions.filter((x) => x !== cond) : [...who.conditions, cond]
-    }, false, `${c.name}: ${tCondition(cond)}`)
+    mutateCombat((s) => {
+      const who = s.combatants.find((x) => x.id === c.id)
+      if (!who) return
+      const adding = !who.conditions.includes(cond)
+      who.conditions = adding ? [...who.conditions, cond] : who.conditions.filter((x) => x !== cond)
+      const note = adding ? conditionNote(who, cond) : ''
+      if (note) announce(s, note)
+    }, `${c.name}: ${tCondition(cond)}`)
   const pct = c.maxHp ? Math.round((c.hp / c.maxHp) * 100) : 0
   const down = c.kind !== 'lair' && c.hp === 0
   const none = '-'
@@ -297,7 +339,7 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
           </button>
         )}
         <span className="muted">
-          {t('row.ac', { n: c.ac })}
+          {t('row.ac', { n: effectiveAc(c) })}
           {(c.resistances?.length || c.immunities?.length || c.vulnerabilities?.length) ? (
             <span
               className="defences"
@@ -345,6 +387,19 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
           </div>
         )}
         {c.legendary && <span className="muted tiny">{t('row.legendary', { left: c.legendary.max - c.legendary.used, max: c.legendary.max })}</span>}
+        {c.kind === 'pc' && down && sentDeath.roll && (
+          <button
+            className="tiny-button"
+            title={t('roll.deathUse', { value: sentDeath.roll.value, outcome: t(`roll.deathOutcome.${deathOutcome(sentDeath.roll.value)}`) })}
+            onClick={() => {
+              const v = sentDeath.roll!.value
+              withState((s, who) => applyDeathSave(s, who, v), t('lbl.deathFromPhone', { name: c.name }))
+              sentDeath.take()
+            }}
+          >
+            📱 {sentDeath.roll.value}
+          </button>
+        )}
         {c.kind === 'pc' && down && (
           <div className="saves" title={t('row.deathSaves')}>
             <Pips label="✓" n={c.deathSaves.successes} onChange={(n) => withState((s, who) => setDeathSaves(s, who, 'successes', n), t('lbl.deathSave', { name: c.name }))} />
@@ -393,6 +448,7 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
         </button>
       </div>
 
+      <div className="row-menus">
       <details className="conditions effects">
         <summary>{c.effects?.length ? t('eff.summary', { n: c.effects.length }) : t('eff.summaryNone')}</summary>
         <div className="popover">
@@ -410,6 +466,15 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
         </div>
       </details>
 
+      {character?.classIndex === 'druid' && (
+        <WildShape
+          c={c}
+          level={character.level}
+          onEnter={(beast) => withState((s, who) => enterForm(s, who, beast, character.level), t('lbl.form', { name: c.name }))}
+          onLeave={() => withState((s, who) => leaveForm(s, who), t('lbl.form', { name: c.name }))}
+        />
+      )}
+
       <details className="conditions">
         <summary title={[...c.conditions.map(tCondition), c.concentrating ? t('row.concentratingTitle') : ''].filter(Boolean).join(', ')}>
           {c.conditions.length ? c.conditions.map((x) => (x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x))).join(', ') : t('row.conditions')}
@@ -421,6 +486,23 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
             <input type="checkbox" checked={c.concentrating} onChange={(e) => withState((s, who) => setConcentrating(s, who, e.target.checked), t('lbl.concentration', { name: c.name }))} />
             {t('row.concentratingTitle')}
           </label>
+          {c.kind === 'monster' && (
+            <>
+              <label title={t('row.allyTitle')}>
+                <input type="checkbox" checked={!!c.ally} onChange={(e) => withState((s, who) => setAlly(s, who, e.target.checked), t('lbl.ally', { name: c.name }))} />
+                {t('row.ally')}
+              </label>
+              {c.ally && (
+                <label>
+                  {t('row.controlledBy')}{' '}
+                  <select value={c.controlledBy ?? ''} onChange={(e) => withState((s, who) => setController(s, who, e.target.value || undefined), t('lbl.ally', { name: c.name }))}>
+                    <option value="">{t('row.ownInitiative')}</option>
+                    {all.filter((x) => x.kind !== 'lair' && x.id !== c.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                  </select>
+                </label>
+              )}
+            </>
+          )}
           {c.kind === 'pc' && c.characterId !== undefined && (
             <label title={t('insp.title')}>
               <input
@@ -448,6 +530,8 @@ function CombatantRow({ c, all, active, started, image, settings }: { c: Combata
           ))}
         </div>
       </details>
+
+      </div>
 
       <button title={t('row.removeTitle')} onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), t('lbl.removed', { name: c.name }))}>
         ✕

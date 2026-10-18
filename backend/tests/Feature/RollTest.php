@@ -75,8 +75,10 @@ class RollTest extends TestCase
         $this->send($this->player, ['character' => '7', 'kind' => 'initiative', 'value' => 21])->assertOk(); // but an initiative total can
         $this->send($this->player, ['character' => '7', 'kind' => 'initiative', 'value' => 61])->assertStatus(422);
         $this->send($this->player, ['character' => '7', 'kind' => 'attack', 'value' => 0])->assertStatus(422);
+        $this->send($this->player, ['character' => '7', 'kind' => 'death', 'value' => 20])->assertOk(); // a death save is a bare d20
+        $this->send($this->player, ['character' => '7', 'kind' => 'death', 'value' => 21])->assertStatus(422);
         $this->send($this->player, ['character' => '7', 'kind' => 'damage', 'value' => 5])->assertStatus(422);
-        $this->assertCount(1, $this->dmSees());
+        $this->assertCount(2, $this->dmSees());
     }
 
     public function test_the_dm_clears_a_roll_and_players_cannot(): void

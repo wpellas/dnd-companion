@@ -4,9 +4,9 @@ import { api } from './api'
 /**
  * Numbers players typed on their own phones (they rolled the physical die). They arrive with the DM's sync poll, wait here, and fill in
  * the matching field of a panel when the DM gets to it. Nothing ever waits for them: they are a shortcut, not a step.
- * `initiative` is a total (d20 + bonus); `attack` and `save` are the d20 itself, because the panels add the bonus.
+ * `initiative` is a total (d20 + bonus); `attack`, `save` and `death` are the d20 itself, because the panels add the bonus.
  */
-export type RollKind = 'initiative' | 'attack' | 'save'
+export type RollKind = 'initiative' | 'attack' | 'save' | 'death'
 
 export interface IncomingRoll {
   id: number
@@ -17,7 +17,7 @@ export interface IncomingRoll {
   at: string
 }
 
-export const ROLL_MAX: Record<RollKind, number> = { initiative: 60, attack: 20, save: 20 }
+export const ROLL_MAX: Record<RollKind, number> = { initiative: 60, attack: 20, save: 20, death: 20 }
 
 let rolls: IncomingRoll[] = []
 let campaignId: number | undefined

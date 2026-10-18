@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { usePromise } from '../hooks'
 import { actionAvailable, advanceTurn, delayTurn, isDown, mutateCombat, resolveAction, type TargetOutcome } from '../lib/combat'
-import { conditionReminders, isIncapacitated } from '../lib/conditionRules'
+import { isEnemy, isParty } from '../lib/sides'
+import { conditionReminders, effectiveAc, isIncapacitated } from '../lib/conditionRules'
 import { formatMod } from '../lib/dice'
 import { possessive, t, tAbility, tDamage, tn } from '../lib/i18n'
 import { canAppRoll, useSettings } from '../lib/settings'
@@ -19,6 +20,7 @@ import { DamageEntry } from './turn/DamageEntry'
 import { useDamageEntry } from './turn/useDamageEntry'
 import { SaveResolver } from './turn/SaveResolver'
 import { UsePips } from './UsePips'
+import { MovementBar } from './MovementBar'
 
 const TIMING_LABEL = { action: 'turn.timing.action', bonus: 'turn.timing.bonus', reaction: 'turn.timing.reaction', legendary: 'turn.timing.legendary' } as const
 const ECONOMY: { key: keyof TurnUsed; label: 'turn.pillAction' | 'turn.pillBonus' | 'turn.pillReaction' }[] = [
@@ -203,6 +205,8 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
         ))}
       </div>
 
+      <MovementBar c={attacker} />
+
       {reminders.length > 0 && (
         <div className="reminders">
           {isIncapacitated(attacker) && <div className="warn">{t('turn.incapacitated', { name: attacker.name })}</div>}
@@ -323,15 +327,15 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                   options={pickable.map((c) => ({
                     value: c.id,
                     label: c.name,
-                    group: c.kind === 'pc' ? t('turn.groupParty') : t('turn.groupEnemies'),
-                    hint: `${t('turn.targetHint', { ac: c.ac, hp: c.hp, max: c.maxHp })}${c.hp === 0 ? t('turn.down') : ''}`,
+                    group: isParty(c) ? t('turn.groupParty') : t('turn.groupEnemies'),
+                    hint: `${t('turn.targetHint', { ac: effectiveAc(c), hp: c.hp, max: c.maxHp })}${c.hp === 0 ? t('turn.down') : ''}`,
                   }))}
                   onChange={addTarget}
                 />
                 {multi && (
                   <>
-                    <button onClick={() => { setTargetIds(pickable.filter((c) => c.kind === 'monster' && c.hp > 0 && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>{t('turn.allEnemies')}</button>
-                    <button onClick={() => { setTargetIds(pickable.filter((c) => c.kind === 'pc' && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>{t('turn.allParty')}</button>
+                    <button onClick={() => { setTargetIds(pickable.filter((c) => isEnemy(c) && c.hp > 0 && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>{t('turn.allEnemies')}</button>
+                    <button onClick={() => { setTargetIds(pickable.filter((c) => isParty(c) && c.id !== attacker.id).map((c) => c.id)); setNonce((n) => n + 1) }}>{t('turn.allParty')}</button>
                     {targets.length > 0 && <button onClick={() => { setTargetIds([]); setNonce((n) => n + 1) }}>{t('common.clear')}</button>}
                   </>
                 )}

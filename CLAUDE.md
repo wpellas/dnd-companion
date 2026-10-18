@@ -34,9 +34,9 @@ code is the Laravel backend in `backend/`. `qrcode` renders the Settings QR.
 ## Architecture
 
 ### Data and storage
-- `src/types.ts` - all data models. `src/db.ts` - Dexie schema (**v5**; inventory fields live on `Character` and need no migration). Tables: `characters`, `monsters` (custom monsters only),
+- `src/types.ts` - all data models. `src/db.ts` - Dexie schema (**v6**; inventory fields live on `Character` and need no migration). Tables: `characters`, `monsters` (custom monsters only),
   `combat` (one record, id `'current'`), `kv` (key/value: `api:*` = cached SRD API responses, plus `settings`, `campaign`,
-  `lastBackup`), `encounters`, `journal` (DM-only notes, session recaps, combat summaries).
+  `lastBackup`), `encounters`, `journal` (DM-only notes, session recaps, combat summaries), `avatars` (pictures for creature types).
 - **Migrations:** schema/data changes need a new `this.version(n)` with `.upgrade()` (v2 actions, v3 class/hit dice/resources + `kv`,
   v4 encounters + save proficiencies + resistances, SRD monsters dropped from the table, v5 journal). Stored records can predate new fields:
   read optional fields defensively (`?? []`) and use `normalizeCharacter` / `normalize()` in `mutateCombat`.
@@ -127,6 +127,9 @@ It never touches combat state. `SpotlightBar` (in `App`) keeps a reminder on eve
   feature uses via `mergeClassTable` / `refreshResources`. A feat or boon is only noted (a journal entry for the DM), its rules are not applied.
 - **2024 details:** Heroic Inspiration (`Character.heroicInspiration`, copied to `Combatant.inspired` by `useFightSync`, shown to the table); Weapon Mastery (`Item.weapon.masteryKnown` makes `weaponActions` set `Action.mastery`; `lib/mastery.ts` +
   `AttackResolver` show the property's effect on a hit, Graze also on a miss); cover (+2 / +5 AC) on the attack panel.
+- **Enemy avatars** (`lib/avatars.ts`, `components/AvatarGallery.tsx`, table `avatars`, synced like a portrait): a bestiary entry has one or MORE pictures (key = `srdIndex`, `custom-<id>` or `name-<lowercase>` = `avatarKey(templateRef)`; the first picture is stored under that key, further ones as `key#1`, `key#2`...;
+  `avatarList` gives them in order, `addAvatar` / `replaceAvatars` / `clearAvatar` change them). `pictureFor(combatant, all, map)` deals them out: the 1st goblin of the fight shows the 1st picture, the 2nd the 2nd... and once they run out a stable pseudo-random one (hash of the combatant id); computed at render time, so adding pictures re-deals live. Set from the bestiary info panel
+  (gallery), the monster form (new / edit / SRD copy; pictures wait in the form until saved, because a new monster has no id yet; an SRD copy starts with the original's) only in the Bestiary: combat rows just show them; shrunk to 256 px JPEG (`lib/image.ts`). `LiveHost` adds each enemy's chosen picture to the `portraits` part keyed by **combatant id** (characters by character id); players never pull the `avatars` records (only the live view carries them).
 
 ### UI
 - Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `JournalPage`, `SettingsPage`, `PlayerView`.
@@ -231,10 +234,40 @@ No test framework is installed; checks were done with throwaway scripts: pure lo
 volleys, delay and group initiative, Exhaustion, undo, live-view privacy). Headless Edge launched for these tests outlives `proc.kill()`: kill leftover
 `msedge.exe` processes whose command line has your throwaway profile before the next run, or the debugging port will refuse.
 
+## Player help (built): what the words mean
+
+`lib/explain.ts` + `i18n/glossary.ts`: on the player screen every badge (condition, effect, concentration, Inspiration, Wild Shape form) is a button that opens a plain-language note under the row (conditions reuse the DM's `remind.*` texts, effects use `modsLine` of their preset; a line defining Advantage / Disadvantage
+is appended when the text mentions them), a "?" in the header opens a legend (Advantage, Disadvantage, Resistance... Bloodied), and a newly applied condition is announced with its first clause (`conditionNote` / `shortCondition`: "Goblin is now Poisoned: Disadvantage on attack rolls and ability checks"; not for Exhaustion).
+All optional: a spectator never has to tap. Only generic rules text, nothing about a particular monster. The TV (no touch) only gets the announcements. Effects applied by a spell preset are not announced with their consequences yet.
+
+## Combat additions (all built, tested; battle map and loot stay parked)
+
+- **Effects that change numbers** (`Effect.mods`: `ac`, `resist`, `attackersAdvantage/Disadvantage`, `speed` 'double'|'half', `note` = i18n key). `conditionRules.ts`: `effectiveAc` (used by AttackResolver, volley, target hints, the row), `effectResists` (joins `damageEffect` in `resolve.ts`),
+  `attackAdvice` reads the target's effects (Dodge, Blur, Faerie Fire) and returns `notes` from the attacker's (Bless, Bane, Rage, Haste, Slow). Presets in `effects.ts` (`at` overrides the tick moment: Shield, Dodge = until the start of the target's next turn). Only presets carry mods (the by-hand
+  form copies them when the name matches a preset); Shield of Faith is 100 rounds (10 minutes).
+- **Allies / summons:** `Combatant.ally` (a monster-kind creature on the party's side; gives no XP, dies at 0 like a monster) and `controlledBy` (acts right after that combatant: `sortCombatants` copies the controller's initiative and ranks one step behind). `lib/sides.ts` has `isParty` / `isEnemy`
+  (own file because combat.ts, rewards.ts and journal.ts all need it) - use them instead of `kind === 'monster'` when the question is "which side". `monsterCombatants(..., ally)`; Bestiary "Ally" checkbox; row popover toggle + "Acts right after". Public: allies carry hp / `ally`, so the table shows them like PCs.
+- **Wild Shape** (2024 text read from `/api/2024/features/druid-wild-shape`): `Combatant.form` {name, actions (the beast's), revert}; `enterForm` (temp hit points = druid level, the beast's AC / Speed / actions / resistances, own hit points kept, saves = the higher of own and the beast's, no spellcasting) and `leaveForm`;
+  `components/WildShape.tsx` on druid rows (`classIndex === 'druid'`, beasts from the bestiary). `undoCombat` takes a combatant's actions from its form (snapshots carry none). Public: `form` name. Not automatic: ending on Incapacitated / death (the DM reverts), the hours limit, the Wild Shape use counter.
+- **Death saves typed on the phone:** roll kind `death` (d20) in `rolls.ts`, `RollController::MAX`, `RollSender`. The DM row shows the number as a button; `applyDeathSave` (`deathOutcome`: 10+ success, 2-9 failure, 1 = two failures, 20 = up with 1 HP). Never applied by itself.
+- **Monster hit points:** `MonsterTemplate.hpRoll` (SRD `hit_points_roll`, tested on all 341; custom monsters have a field), setting `rollMonsterHp` (Settings > Dice), `addMonsters(s, template, count, {ally, rollHp})` is the one way to put monsters into a fight (Bestiary and encounters) and logs each roll.
+- **Hazards** (`components/HazardPanel.tsx`, Combat page): Falling (1d6 Bludgeoning per 10 ft, max 20d6, lands Prone), Burning (1d4 Fire), or custom dice / type / optional save. `ActionResolution.source` makes the environment the actor (a stand-in lair combatant, never added to the fight; the log and announcement name the hazard).
+  The SRD API has no rules-text endpoint for hazards: the two presets are from memory of the 2024 rules, check them against the book.
+- **Movement without a map:** `Combatant.speed` (snapshot), `TurnUsed.moved / dashes / disengaged` (reset each turn), `effectiveSpeed` / `movementLeft` in `conditionRules.ts` (Haste x2, Slow /2, Exhaustion -5 ft per level, 0 for Grappled / Restrained / Paralyzed / Petrified / Unconscious), `moveFeet`, `dash`, `disengage`, `standUp` (half Speed, from Prone) and
+  `components/MovementBar.tsx` in the turn panel (with the opportunity-attack reminder). Fights saved before this have no speed: the bar is hidden. Crawling's extra cost and Rogue's Cunning Action are not modelled.
+
+Working notes for whoever continues (the user's machine is Windows; Herd serves the site at the address in `backend/.env` `APP_URL`):
+- Shell quoting is fragile in the Bash tool: write patch scripts with the Write tool as `scratch-*.mjs` in the repo root, run them with `node`, delete them. Use Edit for small changes (Read the file first).
+- Throwaway tests live in the *session scratchpad* (outside the repo, so they can vanish): `levelup-test.mts`, `effects-test.mts` (logic, `pnpm dlx tsx`), and browser suites `e2e-sync`, `e2e-live`, `e2e-own`, `e2e-admin`, `e2e-email`,
+  `e2e-new`, `e2e-avatar` (each = the first 92 lines of `e2e-own.mjs`, a CDP/Edge helper, plus a body; they start `php artisan serve --port=8000` with `MAIL_MAILER=log` and `vite --port 5199` with `API_URL=http://127.0.0.1:8000`,
+  register through the UI with a site invite made by `php artisan tinker --execute="echo App\Models\Invite::create(['created_by'=>1,'max_uses'=>10,'expires_at'=>now()->addDay()])->code;"`, and delete their test rows afterwards).
+  Moving them into `e2e/` in the repo is on the list. Queries with double quotes inside the `mysql -e "..."` string break on Windows: use `JSON_EXTRACT` and single quotes.
+- Browser-test tricks that worked: type into a Combobox with the `setVal` helper (focus() does not fire in an unfocused window), put a real file in a hidden input with `DataTransfer`, `React` inputs need the native value setter + an `input` event.
+
 ## TODO / ideas
 
 - Longer-term (agreed, waiting): battle map with tokens, loot generation. (Session notes, equipment, inventory, gold and XP, players with their own accounts, effects with durations and the level-up helper are built.)
-- Effects: more presets (`PRESETS` in `lib/effects.ts`), and an effect that ends when the target takes damage; monster spells the API can't describe (Shield...).
+- Effects: more presets (`PRESETS` in `lib/effects.ts`), mods on by-hand effects, and an effect that ends when the target takes damage; monster spells the API can't describe (Shield...).
 - The throwaway browser test scripts live outside the repo (see Testing): port them into an `e2e/` folder.
-- Subclass-granted spells, ritual casting, non-SRD content import, Speed tracking (Exhaustion's speed penalty is only a reminder).
+- Subclass-granted spells, ritual casting, non-SRD content import.
 - More per-attack multi-hit spells can be added to `VOLLEYS` in `spells.ts` (hexblade, Spiritual Weapon etc. aren't).

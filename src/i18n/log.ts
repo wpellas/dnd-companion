@@ -2,6 +2,7 @@ import type { Msg } from './types'
 
 /** Lines of the combat log (DM only), announcements for the players, and the short notes inside them. */
 export const log = {
+  'log.hpRolled': ['{name} rolls {roll} for hit points: {n}', '{name} slår {roll} för hitpoints: {n}'],
   'log.begins': ['Combat begins', 'Striden börjar'],
   'undo.last': ['last change', 'senaste ändringen'],
 
@@ -30,6 +31,18 @@ export const log = {
   'log.healed': ['{name} is healed for {amount}', '{name} får {amount} HP tillbaka'],
   'note.wakes': ['regains consciousness', 'återfår medvetandet'],
   'ann.wakes': ['{name} regains consciousness', '{name} återfår medvetandet'],
+  'log.deathSave': ['{name} death save {value}: {outcome}', '{name} dödsräddning {value}: {outcome}'],
+  'log.formTakes': ['{name} takes the form of a {form} (AC {ac}, {temp} temporary HP)', '{name} antar formen av {form} (AC {ac}, {temp} tillfälliga HP)'],
+  'log.formEnds': ['{name} leaves the {form} form', '{name} lämnar formen {form}'],
+  'ann.formTakes': ['{name} becomes a {form}', '{name} blir {form}'],
+  'ann.formEnds': ['{name} returns to their own shape', '{name} återgår till sin egen gestalt'],
+  'log.hazard': ['{t} takes {dmg} from {action}', '{t} tar {dmg} från {action}'],
+  'log.hazardSaved': ['{t} saves against {action} and takes {dmg}', '{t} klarar räddningen mot {action} och tar {dmg}'],
+  'ann.hazard': ['{t} is caught by {action}', '{t} drabbas av {action}'],
+  'ann.hazardDmg': ['{t} takes {n} damage from {action}', '{t} tar {n} skada från {action}'],
+  'log.dash': ['{name} takes the Dash action', '{name} gör Dash-handlingen'],
+  'log.disengage': ['{name} takes the Disengage action', '{name} gör Disengage-handlingen'],
+  'log.standsUp': ['{name} stands up', '{name} reser sig'],
   'log.thirdFail': ['{name} fails their third death save and dies', '{name} misslyckas med sin tredje dödsräddning och dör'],
   'log.stable': ['{name} succeeds three death saves and is stable at 0 HP', '{name} lyckas med tre dödsräddningar och är stabil på 0 HP'],
   'ann.stable': ['{name} is stable', '{name} är stabil'],

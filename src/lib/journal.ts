@@ -2,6 +2,7 @@ import { db } from '../db'
 import type { CombatState, JournalEntry } from '../types'
 import { MESSAGES } from '../i18n/messages'
 import { t, tn } from './i18n'
+import { isEnemy, isParty } from './sides'
 import { getCampaign } from './store'
 
 /** The DM's campaign journal: notes, session recaps, and a summary of every fight that ends. Nothing here reaches the player view. */
@@ -43,8 +44,8 @@ function monsterSummary(names: string[]): string {
 
 /** Write the finished fight into the journal: who fought, how it ended, XP, and the DM's combat log. */
 export async function addCombatSummary(state: CombatState) {
-  const monsters = state.combatants.filter((c) => c.kind === 'monster')
-  const party = state.combatants.filter((c) => c.kind === 'pc')
+  const monsters = state.combatants.filter(isEnemy)
+  const party = state.combatants.filter(isParty)
   const defeated = monsters.filter((c) => c.hp === 0)
   const xp = defeated.reduce((n, c) => n + (c.xp ?? 0), 0)
   const down = party.filter((c) => c.hp === 0)

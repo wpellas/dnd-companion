@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('campaign_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('character_key', 190); // the character's id in the campaign, as the browser knows it
-            $table->string('kind', 12); // initiative | attack | save
+            $table->string('kind', 12); // initiative | attack | save | death
             $table->unsignedSmallInteger('value');
             $table->timestamps();
             $table->unique(['campaign_id', 'character_key', 'kind']);

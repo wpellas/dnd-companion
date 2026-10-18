@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { CLASS_HIT_DIE, CLASS_SAVES, guessClassIndex } from './lib/classes'
-import type { Character, CombatState, Encounter, JournalEntry, MonsterTemplate } from './types'
+import type { Avatar, Character, CombatState, Encounter, JournalEntry, MonsterTemplate } from './types'
 
 /** Generic key-value store: `api:*` keys cache SRD API responses, other keys hold settings and campaign counters. */
 export interface KvRecord {
@@ -16,6 +16,8 @@ export class AppDB extends Dexie {
   kv!: EntityTable<KvRecord, 'key'>
   encounters!: EntityTable<Encounter, 'id'>
   journal!: EntityTable<JournalEntry, 'id'>
+  /** Pictures for creature types, keyed by bestiary entry */
+  avatars!: EntityTable<Avatar, 'key'>
 
   constructor(name = 'dnd-companion') {
     super(name)
@@ -84,6 +86,16 @@ export class AppDB extends Dexie {
       kv: 'key',
       encounters: '++id, name',
       journal: '++id, kind, createdAt',
+    })
+    // v6: pictures for enemy creatures. No data to migrate.
+    this.version(6).stores({
+      characters: '++id, name',
+      monsters: '++id, name, source',
+      combat: 'id',
+      kv: 'key',
+      encounters: '++id, name',
+      journal: '++id, kind, createdAt',
+      avatars: 'key',
     })
   }
 }

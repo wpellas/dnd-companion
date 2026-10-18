@@ -5,6 +5,8 @@ import heroLogo from '../assets/images/logo-360.png'
 import navLogo from '../assets/images/logo-128.png'
 import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
+import { explainCondition, explainEffect, GLOSSARY } from '../lib/explain'
+import { pictureFor } from '../lib/avatars'
 import { useRemoteView, type LiveSource } from '../lib/hub'
 import { possessive, setLang, t, tCondition } from '../lib/i18n'
 import { useStoredLanguage } from '../lib/settings'
@@ -46,6 +48,13 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
 
   const combat: PublicCombat | undefined = remote.combat ?? toPublic(localState)
   const portraitFor = (characterId?: number) => (characterId === undefined ? undefined : remote.portraits[characterId])
+  // the DM's own second window has no live view: enemies' pictures come from the local database, by combatant
+  const localAvatars = useLiveQuery(async () => {
+    const fight = await db.combat.get('current')
+    const byKey = new Map((await db.avatars.toArray()).map((a) => [a.key, a.image]))
+    const all = fight?.combatants ?? []
+    return new Map(all.flatMap((c) => { const p = c.kind === 'monster' ? pictureFor(c, all, byKey) : undefined; return p ? [[c.id, p.blob] as const] : [] }))
+  }, [])
   const imageFor = (characterId?: number) => characters?.find((ch) => ch.id === characterId)?.image
 
   // "Merlin's turn!" banner when the turn moves on
@@ -91,6 +100,15 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
   const sheet = remote.sheet !== undefined ? remote.sheet : localSheet
   const showingSheet = !!sheet
 
+  // tap a badge for what it means, and a "?" for the terms; both are optional help, nothing here asks anything of a spectator
+  const [explain, setExplain] = useState<{ row: string; text: string }>()
+  const [glossary, setGlossary] = useState(false)
+  const badge = (row: string, key: string, text: () => string, label: React.ReactNode) => (
+    <button className="badge" key={key} aria-expanded={explain?.row === row && explain.text === text()} onClick={() => setExplain(explain?.row === row && explain.text === text() ? undefined : { row, text: text() })}>
+      {label}
+    </button>
+  )
+
   // keep the creature whose turn it is on screen: a long list would otherwise leave them below the fold
   useEffect(() => {
     if (!turnKey) return
@@ -125,7 +143,21 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
         <img src={navLogo} alt="" />
         {combat.started ? t('player.round', { n: combat.round }) : t('player.rolling')}
         {remote.connected && !remote.hostOnline && <span className="player-note">{t('player.dmOffline')}</span>}
+        <button className="glossary-btn" title={t('gloss.title')} aria-label={t('gloss.title')} aria-expanded={glossary} onClick={() => setGlossary(!glossary)}>
+          ?
+        </button>
       </header>
+
+      {glossary && (
+        <dl className="glossary">
+          {GLOSSARY.map((k) => (
+            <div key={k}>
+              <dt>{t(`gloss.${k}`)}</dt>
+              <dd>{t(`gloss.${k}.text`)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       {yourTurn && (
         <div className="your-turn" role="status">
@@ -150,18 +182,18 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
           const down = c.kind !== 'lair' && c.hp === 0 || (c.kind === 'monster' && c.status === 'Defeated')
           const pct = c.maxHp ? Math.round(((c.hp ?? 0) / c.maxHp) * 100) : 0
           return (
-            <div key={c.id} className={`player-row ${c.kind} ${isActive ? 'active' : ''} ${down ? 'down' : ''}`}>
+            <div key={c.id} className={`player-row ${c.kind} ${c.ally ? 'ally' : ''} ${isActive ? 'active' : ''} ${down ? 'down' : ''}`}>
               {/* The portrait sits outside the info bar, overlapping its left edge like a medallion. */}
               {c.kind === 'lair' ? (
                 <div className="portrait placeholder" style={{ width: 140, height: 140, fontSize: 64 }}>☗</div>
               ) : (
-                <Portrait name={c.name} src={portraitFor(c.characterId)} image={imageFor(c.characterId)} size={140} />
+                <Portrait name={c.name} src={c.characterId !== undefined ? portraitFor(c.characterId) : remote.portraits[c.id]} image={c.characterId !== undefined ? imageFor(c.characterId) : localAvatars?.get(c.id)} size={140} />
               )}
               <div className="player-card">
                 <span className="init-badge">{c.initiative ?? '–'}</span>
                 <div className="grow">
                   <div className="player-name">{c.kind === 'lair' ? t('player.lair') : c.name}</div>
-                  {c.kind === 'pc' && (
+                  {c.hp !== undefined && (
                     <>
                       <div className="bar big">
                         <div className="fill" style={{ width: `${pct}%` }} data-low={pct <= 50} />
@@ -177,24 +209,17 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
                       )}
                     </>
                   )}
-                  {c.kind === 'monster' && <div className={`status ${c.status.toLowerCase()}`}>{t(`status.${c.status}`)}</div>}
-                  {(c.conditions.length > 0 || c.concentrating || c.inspired || !!c.effects?.length) && (
+                  {c.kind === 'monster' && !c.ally && <div className={`status ${c.status.toLowerCase()}`}>{t(`status.${c.status}`)}</div>}
+                  {(c.conditions.length > 0 || c.concentrating || c.inspired || !!c.form || !!c.effects?.length) && (
                     <div className="badges">
-                      {c.inspired && <span className="badge">★ {t('insp.button')}</span>}
-                      {c.concentrating && <span className="badge">{t('player.concentrating')}</span>}
-                      {c.effects?.map((e) => (
-                        <span className="badge" key={e.name}>
-                          ✦ {e.name}
-                          {e.rounds !== undefined && ` · ${e.rounds}`}
-                        </span>
-                      ))}
-                      {c.conditions.map((cond) => (
-                        <span className="badge" key={cond}>
-                          {cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond)}
-                        </span>
-                      ))}
+                      {c.form && badge(c.id, 'form', () => t('gloss.form', { form: c.form! }), <>🐾 {c.form}</>)}
+                      {c.inspired && badge(c.id, 'insp', () => t('gloss.inspiration.text'), <>★ {t('insp.button')}</>)}
+                      {c.concentrating && badge(c.id, 'conc', () => t('gloss.concentration.text'), t('player.concentrating'))}
+                      {c.effects?.map((e) => badge(c.id, `e-${e.name}`, () => explainEffect(e.name), <>✦ {e.name}{e.rounds !== undefined && ` · ${e.rounds}`}</>))}
+                      {c.conditions.map((cond) => badge(c.id, cond, () => explainCondition(cond), cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond)))}
                     </div>
                   )}
+                  {explain?.row === c.id && <div className="explain" role="note">{explain.text}</div>}
                 </div>
               </div>
             </div>

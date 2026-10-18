@@ -107,6 +107,14 @@ class SyncTest extends TestCase
         $this->push($this->player, [$this->doc('characters', '7', '{"edited":1}')])->assertJsonCount(1, 'rejected'); // and no longer theirs to change
     }
 
+    public function test_enemy_pictures_sync_for_the_dm_but_are_never_sent_to_players(): void
+    {
+        $this->push($this->dm, [$this->doc('avatars', 'goblin', '{"key":"goblin","imageData":"data:image/jpeg;base64,AAAA"}')])->assertOk()->assertJsonPath('rejected', []);
+        $this->assertSame(['goblin'], array_column($this->pull($this->dm)->json('docs'), 'key'));
+        $this->assertSame([], $this->pull($this->player)->json('docs')); // players get theirs from the live view
+        $this->push($this->player, [$this->doc('avatars', 'goblin', '{}')])->assertJsonCount(1, 'rejected');
+    }
+
     public function test_strangers_are_turned_away_and_an_empty_push_does_not_move_the_revision(): void
     {
         $this->pull(User::factory()->create())->assertNotFound();

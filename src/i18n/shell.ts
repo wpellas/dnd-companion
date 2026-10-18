@@ -57,6 +57,8 @@ export const shell = {
     "Everyone sees this language, including the players' screens. Spell, monster and item names are not translated.",
     'Alla ser det här språket, även spelarnas skärmar. Namn på besvärjelser, monster och föremål översätts inte.',
   ],
+  'settings.hpRollLabel': ['Roll monster hit points when they join a fight', 'Slå monstrens hitpoints när de går med i en strid'],
+  'settings.hpRollTitle': ['Off: the average from the stat block. On: each monster rolls its own hit point dice (the DM\'s dice).', 'Av: genomsnittet från monsterbladet. På: varje monster slår sina egna hitpoint-tärningar (SL:s tärningar).'],
   'settings.dice': ['Dice', 'Tärningar'],
   'settings.diceLabel': ['Let the app roll dice for player characters', 'Låt appen slå tärningar för spelarkaraktärer'],
   'settings.diceTitle': ['Off: players roll their own dice and tell you the number', 'Av: spelarna slår sina egna tärningar och säger vilket tal det blev'],

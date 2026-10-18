@@ -102,6 +102,8 @@ export interface SrdMonster {
   type: string
   armor_class: { value: number }[]
   hit_points: number
+  /** e.g. "3d6" or "10d8+40" (the average is hit_points) */
+  hit_points_roll?: string
   challenge_rating: number
   xp: number
   xp_in_lair?: number

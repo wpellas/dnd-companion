@@ -1,5 +1,6 @@
 import { ABILITIES, type Character, type Combatant, type CombatState, type Condition, type PublicEvent } from '../types'
 import { hpStatus, type HpStatus } from './combat'
+import { isParty } from './sides'
 import { normalizeCharacter, proficiencyBonus, castingSnapshot, resolveCharacterActions } from './character'
 import { abilityMod, formatMod } from './dice'
 import { carriedWeight, carryingCapacity, xpForNextLevel } from './inventory'
@@ -16,7 +17,9 @@ export interface PublicCombatant {
   name: string
   characterId?: number
   initiative: number | null
-  /** Player characters only */
+  /** On the party's side (an ally rather than an enemy) */
+  ally?: boolean
+  /** Player characters and allies only */
   hp?: number
   maxHp?: number
   tempHp?: number
@@ -28,6 +31,8 @@ export interface PublicCombatant {
   concentrating: boolean
   /** Player characters with Heroic Inspiration */
   inspired?: boolean
+  /** Wild Shape: the beast it has become */
+  form?: string
   /** Spells and effects running on this creature; only player characters show how many rounds are left */
   effects?: { name: string; rounds?: number }[]
 }
@@ -58,9 +63,10 @@ export function toPublic(s: CombatState | undefined): PublicCombat | undefined {
         conditions: c.conditions ?? [],
         exhaustion: c.exhaustion || undefined,
         concentrating: c.concentrating,
-        effects: c.effects?.length ? c.effects.map((e) => ({ name: e.name, rounds: c.kind === 'pc' ? e.rounds : undefined })) : undefined,
+        form: c.form?.name,
+        effects: c.effects?.length ? c.effects.map((e) => ({ name: e.name, rounds: isParty(c) ? e.rounds : undefined })) : undefined,
       }
-      return c.kind === 'pc' ? { ...base, hp: c.hp, maxHp: c.maxHp, tempHp: c.tempHp, deathSaves: c.hp === 0 ? c.deathSaves : undefined, inspired: c.inspired || undefined } : base
+      return isParty(c) ? { ...base, ally: c.ally || undefined, hp: c.hp, maxHp: c.maxHp, tempHp: c.tempHp, deathSaves: c.hp === 0 ? c.deathSaves : undefined, inspired: c.inspired || undefined } : base
     }),
   }
 }

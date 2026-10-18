@@ -2,11 +2,15 @@ import { useMemo, useState } from 'react'
 import { db } from '../db'
 import { newId } from '../lib/id'
 import { ActionsEditor } from '../components/ActionsEditor'
+import { Portrait } from '../components/Portrait'
 import { DamageTypeList } from '../components/DamageTypeList'
 import { NumberField } from '../components/NumberField'
 import { Section } from '../components/Section'
 import { XP_BY_CR } from '../data/encounterBudget'
-import { monsterCombatants, mutateCombat, sortCombatants } from '../lib/combat'
+import { addMonsters, mutateCombat, sortCombatants } from '../lib/combat'
+import { useSettings } from '../lib/settings'
+import { addAvatar, avatarList, clearAvatar, replaceAvatars, useAvatars, type Picture } from '../lib/avatars'
+import { AvatarGallery } from '../components/AvatarGallery'
 import { abilityMod, defaultAbilities, formatMod } from '../lib/dice'
 import { t, tAbility, tCondition, tDamage, tMonsterType, tn, tSize } from '../lib/i18n'
 import { crValue } from '../lib/monsters'
@@ -71,6 +75,7 @@ export function BestiaryPage() {
   }, [all, search, crMin, crMax, type, size, source, sort])
 
   const keyOf = (m: MonsterTemplate) => m.srdIndex ?? `custom-${m.id}`
+  const avatars = useAvatars()
   const sortBy = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))
   const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : '')
   const filtered = search || crMin !== '0' || crMax !== '30' || type || size || source !== 'all'
@@ -151,6 +156,7 @@ export function BestiaryPage() {
             <MonsterRow
               key={keyOf(m)}
               m={m}
+              avatars={avatarList(avatars, keyOf(m)).map((p) => p)}
               expanded={open === keyOf(m)}
               onToggle={() => setOpen(open === keyOf(m) ? undefined : keyOf(m))}
               onEdit={() => setEditing(m)}
@@ -170,11 +176,13 @@ export function BestiaryPage() {
   )
 }
 
-function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; expanded: boolean; onToggle: () => void; onEdit: () => void }) {
+function MonsterRow({ m, avatars, expanded, onToggle, onEdit }: { m: MonsterTemplate; avatars: Picture[]; expanded: boolean; onToggle: () => void; onEdit: () => void }) {
   const [count, setCount] = useState('1')
+  const [ally, setAlly] = useState(false)
+  const rollHp = useSettings().rollMonsterHp
   const add = () =>
     mutateCombat((s) => {
-      s.combatants.push(...monsterCombatants(m, Math.max(1, Math.floor(Number(count)) || 1), s.combatants))
+      addMonsters(s, m, Math.max(1, Math.floor(Number(count)) || 1), { ally, rollHp })
       if (s.started) sortCombatants(s)
     }, t('bestiary.added', { name: m.name }))
   const xp = m.xp ?? XP_BY_CR[m.cr]
@@ -183,11 +191,14 @@ function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; exp
     <>
       <tr className={expanded ? 'expanded' : ''}>
         <td>
-          <button className="link-btn name-btn" onClick={onToggle} aria-expanded={expanded}>
-            {expanded ? '▾' : '▸'} {m.name}
-          </button>{' '}
-          {m.source === 'custom' && <span className="tag">{t('bestiary.tagCustom')}</span>}
-          {m.legendaryUses ? <span className="tag legendary">{t('bestiary.tagLegendary')}</span> : null}
+          <div className="name-cell">
+            {avatars[0] && <Portrait name={m.name} image={avatars[0].blob} size={28} />}
+            <button className="link-btn name-btn" onClick={onToggle} aria-expanded={expanded}>
+              {expanded ? '▾' : '▸'} {m.name}
+            </button>
+            {m.source === 'custom' && <span className="tag">{t('bestiary.tagCustom')}</span>}
+            {m.legendaryUses ? <span className="tag legendary">{t('bestiary.tagLegendary')}</span> : null}
+          </div>
         </td>
         <td>{m.cr}</td>
         <td className="muted">{m.type ? tMonsterType(m.type) : '-'}</td>
@@ -197,6 +208,10 @@ function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; exp
         <td>
           <div className="row gap">
             <input className="narrow" type="number" min={1} value={count} onChange={(e) => setCount(e.target.value)} aria-label={t('bestiary.howMany', { name: m.name })} />
+            <label className="check small" title={t('bestiary.allyTitle')}>
+              <input type="checkbox" checked={ally} onChange={(e) => setAlly(e.target.checked)} />
+              <span>{t('bestiary.ally')}</span>
+            </label>
             <button onClick={add}>{t('common.add')}</button>
           </div>
         </td>
@@ -214,7 +229,7 @@ function MonsterRow({ m, expanded, onToggle, onEdit }: { m: MonsterTemplate; exp
       {expanded && (
         <tr className="details-row">
           <td colSpan={8}>
-            <MonsterDetails m={m} />
+            <MonsterDetails m={m} avatars={avatars} />
           </td>
         </tr>
       )}
@@ -230,10 +245,18 @@ const GROUPS: { timing: NonNullable<Action['timing']>; title: 'stat.group.action
 ]
 
 /** A compact stat block. */
-export function MonsterDetails({ m }: { m: MonsterTemplate }) {
+export function MonsterDetails({ m, avatars }: { m: MonsterTemplate; avatars: Picture[] }) {
   const line = (label: string, items?: string[]) => (items && items.length ? <div><strong>{label}</strong> {items.join(', ')}</div> : null)
   return (
     <div className="stat-block">
+      <div className="row gap">
+        <AvatarGallery
+          name={m.name}
+          images={avatars.map((p) => p.blob)}
+          onAdd={(files) => files.forEach((f) => void addAvatar(m.srdIndex ?? `custom-${m.id}`, f).catch(() => alert(t('avatar.failed'))))}
+          onRemove={(i) => void clearAvatar(avatars[i].key)}
+        />
+      </div>
       <div className="muted">
         {t('stat.cr', { kind: [m.size ? tSize(m.size) : '', m.type ? tMonsterType(m.type) : ''].filter(Boolean).join(' '), cr: m.cr })}
         {m.xp !== undefined && (m.xpLair ? t('stat.xpLair', { xp: m.xp, lair: m.xpLair }) : t('stat.xp', { xp: m.xp }))}
@@ -290,11 +313,18 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
   })
   const set = <K extends keyof MonsterTemplate>(key: K, value: MonsterTemplate[K]) => setM((p) => ({ ...p, [key]: value }))
 
+  // the picture belongs to the bestiary entry; a new one has no id yet, so a chosen file waits here (undefined = untouched, null = removed)
+  const avatars = useAvatars()
+  const [pics, setPics] = useState<Blob[] | undefined>(undefined)
+  const inherited = avatarList(avatars, initial.srdIndex ?? `custom-${initial.id}`).map((p) => p.blob) // an SRD copy starts with the original's pictures
+  const shown = pics ?? inherited
+
   const save = async () => {
     if (!m.name.trim()) return
     const clean = { ...m, name: m.name.trim(), xp: m.xp ?? XP_BY_CR[m.cr] }
-    if (clean.id === undefined) await db.monsters.add(clean)
-    else await db.monsters.put(clean)
+    const id = clean.id === undefined ? ((await db.monsters.add(clean)) as number) : ((await db.monsters.put(clean)), clean.id)
+    const key = `custom-${id}`
+    if (pics !== undefined || (initial.id === undefined && inherited.length)) await replaceAvatars(key, pics ?? inherited).catch(() => alert(t('avatar.failed')))
     onClose()
   }
 
@@ -315,10 +345,19 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
           <NumberField label={t('mform.xp', { n: XP_BY_CR[m.cr] ?? '-' })} value={m.xp ?? XP_BY_CR[m.cr] ?? 0} onChange={(n) => set('xp', n)} />
           <NumberField label={t('mform.ac')} value={m.ac} onChange={(n) => set('ac', n)} />
           <NumberField label={t('mform.hp')} value={m.hp} min={1} onChange={(n) => set('hp', n)} />
+          <label className="field">
+            <span>{t('mform.hpRoll')}</span>
+            <input value={m.hpRoll ?? ''} placeholder="2d8+4" onChange={(e) => set('hpRoll', e.target.value.trim() || undefined)} />
+          </label>
           <NumberField label={t('mform.speed')} value={m.speed} onChange={(n) => set('speed', n)} />
           <NumberField label={t('mform.init')} value={m.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
           <NumberField label={t('mform.legendary')} value={m.legendaryUses ?? 0} min={0} onChange={(n) => set('legendaryUses', n > 0 ? Math.floor(n) : undefined)} />
         </div>
+      </Section>
+
+      <Section title={t('form.portrait')}>
+        <AvatarGallery name={m.name} images={shown} onAdd={(files) => setPics([...shown, ...files])} onRemove={(i) => setPics(shown.filter((_, j) => j !== i))} />
+        <p className="muted note-line">{t('avatar.manyHint')}</p>
       </Section>
 
       <Section title={t('mform.abilities')}>

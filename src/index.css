@@ -185,18 +185,18 @@ tbody tr:hover { background: rgba(217, 169, 46, 0.18); }
   border-radius: 6px; padding: 10px 14px;
   box-shadow: 0 2px 5px rgba(60, 35, 10, 0.4);
 }
-/* Wide screens: fixed columns so initiative / HP / controls / conditions line up across every row.
-   The name column takes the leftover space. Narrower screens fall back to the wrapping flex layout. */
-@media (min-width: 1280px) {
-  .combatant {
-    display: grid; align-items: center; column-gap: 12px; flex-wrap: nowrap;
-    grid-template-columns: 64px 40px 48px minmax(150px, 1fr) 140px max-content 170px 40px;
-  }
-  .combatant .who { min-width: 0; }
-  .combatant .hp { min-width: 0; }
-  .combatant .conditions { min-width: 0; }
-  .combatant .conditions summary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The name takes the leftover space; the menus (effects, conditions, Wild Shape) sit together as small buttons at the right. */
+.combatant .who { flex: 1 1 160px; min-width: 0; }
+.row-menus { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
+.row-menus > details.conditions { flex: 0 0 auto; min-width: 0; }
+.row-menus > details > summary {
+  list-style: none; cursor: pointer; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+  padding: 4px 10px; border: 1px solid var(--leather); border-radius: 4px; background: rgba(255, 255, 255, 0.35); font-size: 0.85rem;
 }
+.row-menus > details > summary::-webkit-details-marker { display: none; }
+.row-menus > details > summary::after { content: ' ▾'; }
+.row-menus > details[open] > summary { background: var(--parchment-3); border-color: var(--gold-dark); }
+.row-menus .popover { left: auto; right: 0; }
 .combatant.monster { border-left-color: var(--red); }
 .combatant.active {
   border-color: var(--gold-dark);
@@ -205,7 +205,7 @@ tbody tr:hover { background: rgba(217, 169, 46, 0.18); }
 }
 .combatant.down { opacity: 0.55; filter: grayscale(0.7); }
 .combatant .init { width: 64px; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; }
-.combatant .who { display: flex; flex-direction: column; min-width: 140px; }
+.combatant .who { display: flex; flex-direction: column; }
 .combatant .who strong { font-family: var(--font-display); color: var(--ink); }
 .combatant .hp { display: flex; flex-direction: column; gap: 3px; min-width: 150px; font-family: var(--font-display); font-weight: 600; font-size: 0.9rem; }
 .combatant .hp em { color: var(--gold-dark); font-style: normal; }
@@ -339,6 +339,12 @@ tbody tr:hover { background: rgba(217, 169, 46, 0.18); }
 .status.healthy { color: var(--good); }
 .status.bloodied { color: var(--red); }
 .status.defeated { color: var(--ink-muted); }
+.glossary-btn { margin-left: auto; width: 32px; height: 32px; border-radius: 50%; padding: 0; font-weight: 800; }
+.glossary { margin: 8px 12px; padding: 10px 14px; background: var(--parchment-3); border: 2px solid var(--leather); border-radius: 6px; color: var(--ink); }
+.glossary dt { font-family: var(--font-display); font-weight: 700; }
+.glossary dd { margin: 0 0 8px; }
+.explain { margin-top: 6px; padding: 6px 10px; background: rgba(255, 255, 255, 0.45); border-left: 4px solid var(--gold-dark); border-radius: 4px; font-size: 0.9rem; }
+button.badge { cursor: pointer; font: inherit; }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .badge {
   background: var(--leather); color: var(--parchment-3); border: 1px solid #2d1a09; border-radius: 999px;
@@ -853,3 +859,9 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .roll-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; display: flex; justify-content: center; padding: 8px; pointer-events: none; }
 .roll-dock > * { pointer-events: auto; }
 .roll-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Pictures for enemy creatures ---------- */
+.avatar-gallery { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.avatar-thumb { position: relative; display: inline-flex; }
+.avatar-thumb button { position: absolute; top: -6px; right: -6px; padding: 0 5px; font-size: 0.7rem; line-height: 1.3; }
+.name-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

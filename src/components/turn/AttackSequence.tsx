@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import type { TargetOutcome } from '../../lib/combat'
+import { isParty } from '../../lib/sides'
 import { formatMod, rollDice } from '../../lib/dice'
 import { RIDER_NOTE } from '../../lib/monsters'
+import { effectiveAc } from '../../lib/conditionRules'
 import { t, tDamage, tn } from '../../lib/i18n'
 import { rollD20 } from '../../lib/rules'
 import { evaluateRow, newRow, type RowState, type Step } from '../../lib/volley'
@@ -42,8 +44,8 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
   const options = pickable.map((c) => ({
     value: c.id,
     label: c.name,
-    group: c.kind === 'pc' ? t('turn.groupParty') : t('turn.groupEnemies'),
-    hint: `${t('turn.targetHint', { ac: c.ac, hp: c.hp, max: c.maxHp })}${c.hp === 0 ? t('turn.down') : ''}`,
+    group: isParty(c) ? t('turn.groupParty') : t('turn.groupEnemies'),
+    hint: `${t('turn.targetHint', { ac: effectiveAc(c), hp: c.hp, max: c.maxHp })}${c.hp === 0 ? t('turn.down') : ''}`,
   }))
 
   /** Roll one attack for the app-rolled creature: the d20 (with the advantage the conditions give), then damage (dice doubled on a crit). */

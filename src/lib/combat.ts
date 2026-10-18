@@ -1,22 +1,26 @@
 import { db } from '../db'
-import type {
-  Action,
-  Character,
-  Combatant,
-  CombatSnapshot,
-  CombatState,
-  Condition,
-  Counter,
-  Effect,
-  MonsterTemplate,
-  TurnUsed,
+import {
+  ABILITIES,
+  type Ability,
+  type Action,
+  type Character,
+  type Combatant,
+  type CombatSnapshot,
+  type CombatState,
+  type Condition,
+  type Counter,
+  type Effect,
+  type MonsterTemplate,
+  type TurnUsed,
 } from '../types'
 import { XP_BY_CR } from '../data/encounterBudget'
 import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
-import { exhaustionLevel } from './conditionRules'
+import { effectiveSpeed, exhaustionLevel } from './conditionRules'
+import { shortCondition } from './explain'
 import { possessive, t, tCondition, tDamage } from './i18n'
-import { rollInitiative } from './dice'
+import { rollDice, rollInitiative } from './dice'
 import { newId } from './id'
+import { isParty } from './sides'
 import { addCombatSummary } from './journal'
 import { rememberFight } from './rewards'
 import { effectFromPreset, presetFor } from './effects'
@@ -97,7 +101,12 @@ export async function undoCombat(): Promise<string | undefined> {
     const entry = state?.history?.pop()
     if (!state || !entry) return
     const current = new Map(state.combatants.map((c) => [c.id, c.actions]))
-    state.combatants = entry.snapshot.combatants.map((c) => ({ ...c, actions: current.get(c.id) ?? entry.restoreActions?.[c.id] ?? [] }))
+    // actions are not in the snapshot: a form decides them (the beast's inside it, the creature's own in its revert), otherwise the live ones stay
+    const live = new Map(state.combatants.map((c) => [c.id, c]))
+    state.combatants = entry.snapshot.combatants.map((c) => ({
+      ...c,
+      actions: c.form?.actions ?? live.get(c.id)?.form?.revert.actions ?? current.get(c.id) ?? entry.restoreActions?.[c.id] ?? [],
+    }))
     state.round = entry.snapshot.round
     state.turnIndex = entry.snapshot.turnIndex
     state.started = entry.snapshot.started
@@ -131,6 +140,7 @@ export function pcCombatant(c: Character): Combatant {
     initiative: null,
     initiativeBonus: c.initiativeBonus,
     ac: c.ac,
+    speed: c.speed,
     hp: c.currentHp,
     maxHp: c.maxHp,
     tempHp: 0,
@@ -149,7 +159,7 @@ export function pcCombatant(c: Character): Combatant {
   }
 }
 
-export function monsterCombatants(t: MonsterTemplate, count: number, existing: Combatant[]): Combatant[] {
+export function monsterCombatants(t: MonsterTemplate, count: number, existing: Combatant[], ally = false): Combatant[] {
   const sameBase = existing.filter((c) => c.kind === 'monster' && (c.name === t.name || c.name.startsWith(`${t.name} `)))
   const numbered = count > 1 || sameBase.length > 0
   return Array.from({ length: count }, (_, i): Combatant => {
@@ -161,6 +171,7 @@ export function monsterCombatants(t: MonsterTemplate, count: number, existing: C
       initiative: null,
       initiativeBonus: t.initiativeBonus,
       ac: t.ac,
+      speed: t.speed,
       hp: t.hp,
       maxHp: t.hp,
       tempHp: 0,
@@ -181,8 +192,24 @@ export function monsterCombatants(t: MonsterTemplate, count: number, existing: C
       spent: {},
       xp: t.xp ?? XP_BY_CR[t.cr],
       templateRef: { srdIndex: t.srdIndex, templateId: t.id, name: t.name },
+      ally: ally || undefined,
     }
   })
+}
+
+/** Put monsters into the fight. With `rollHp` each one gets its own rolled hit points (the stat block's dice) and the rolls are logged. */
+export function addMonsters(s: CombatState, tpl: MonsterTemplate, count: number, opts: { ally?: boolean; rollHp?: boolean } = {}) {
+  const made = monsterCombatants(tpl, count, s.combatants, opts.ally)
+  if (opts.rollHp && tpl.hpRoll) {
+    for (const m of made) {
+      const r = rollDice(tpl.hpRoll)
+      if (!r) break
+      m.hp = m.maxHp = Math.max(1, r.total)
+      logEvent(s, t('log.hpRolled', { name: m.name, roll: tpl.hpRoll, n: m.hp }))
+    }
+  }
+  s.combatants.push(...made)
+  return made
 }
 
 /** The "lair actions on initiative count 20" marker. It loses initiative ties, as in the rules. */
@@ -354,6 +381,14 @@ const tieRankOf = (c: Combatant) => c.tieRank ?? -c.initiativeBonus
 
 /** Sort by initiative (desc), ties broken by bonus (or by hand after a delay), keeping the active combatant active. */
 export function sortCombatants(s: CombatState) {
+  // a controlled ally takes its controller's place in the order, one step behind
+  for (const c of s.combatants) {
+    const boss = c.controlledBy ? s.combatants.find((x) => x.id === c.controlledBy) : undefined
+    if (boss) {
+      c.initiative = boss.initiative
+      c.tieRank = tieRankOf(boss) + 0.001
+    }
+  }
   const currentId = s.combatants[s.turnIndex]?.id
   s.combatants.sort((a, b) => (b.initiative ?? -Infinity) - (a.initiative ?? -Infinity) || tieRankOf(a) - tieRankOf(b))
   const idx = s.combatants.findIndex((c) => c.id === currentId)
@@ -508,6 +543,20 @@ export function healRow(s: CombatState, c: Combatant, amount: number) {
   if (notes.length) announce(s, t('ann.wakes', { name: c.name }))
 }
 
+export const deathOutcome = (d20: number) => (d20 === 20 ? 'twenty' : d20 === 1 ? 'two' : d20 >= 10 ? 'success' : 'failure') as 'twenty' | 'two' | 'success' | 'failure'
+
+/** A death save's d20 (typed by the player, never rolled here): 10+ success, 1-9 failure, 1 = two failures, 20 = back up with 1 hit point. */
+export function applyDeathSave(s: CombatState, c: Combatant, d20: number) {
+  const outcome = deathOutcome(d20)
+  logEvent(s, t('log.deathSave', { name: c.name, value: d20, outcome: t(`roll.deathOutcome.${outcome}`) }))
+  if (outcome === 'twenty') {
+    c.deathSaves = { successes: 0, failures: 0 }
+    const notes = healTarget(c, 1)
+    if (notes.length) announce(s, t('ann.wakes', { name: c.name }))
+  } else if (outcome === 'success') setDeathSaves(s, c, 'successes', Math.min(3, c.deathSaves.successes + 1))
+  else setDeathSaves(s, c, 'failures', Math.min(3, c.deathSaves.failures + (outcome === 'two' ? 2 : 1)))
+}
+
 /** Set a death-save pip count by hand, noting when it settles the character's fate. */
 export function setDeathSaves(s: CombatState, c: Combatant, which: 'successes' | 'failures', n: number) {
   c.deathSaves[which] = n
@@ -541,7 +590,10 @@ export interface TargetOutcome {
 }
 
 export interface ActionResolution {
+  /** Who acts; ignored when `source` is set */
   attackerId: string
+  /** The environment instead of a creature (a hazard such as Falling): named in the log, nothing to track on an attacker */
+  source?: string
   action: Action
   targets: TargetOutcome[]
   /** Set when the action is a spell: slot level spent (0 = cantrip / free), whether a slot was actually spent, and concentration */
@@ -558,7 +610,7 @@ const fmtParts = (parts: DamageAmount[]) => {
 /** Applies an already-resolved action to its targets and records it in the log and the player announcements. */
 export function applyResolution(s: CombatState, r: ActionResolution): MutationMeta | void {
   {
-    const attacker = s.combatants.find((c) => c.id === r.attackerId)
+    const attacker = r.source ? { ...lairCombatant(), name: r.source } : s.combatants.find((c) => c.id === r.attackerId)
     if (!attacker) return
     const lines: string[] = []
     const publicLines: string[] = []
@@ -581,7 +633,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
       } else if (o.result === 'heal') {
         notes.push(...healTarget(target, total))
         line = t('log.heals', { a: attacker.name, t: target.name, n: total, action: action.name })
-        pub = target.kind === 'pc' ? t('ann.healsPc', { a: attacker.name, t: target.name, n: total }) : t('ann.heals', { a: attacker.name, t: target.name })
+        pub = isParty(target) ? t('ann.healsPc', { a: attacker.name, t: target.name, n: total }) : t('ann.heals', { a: attacker.name, t: target.name })
       } else if (o.result === 'miss') {
         line = t('log.misses', { a: attacker.name, t: target.name, action: action.name })
         pub = t('ann.misses', { a: attacker.name, t: target.name })
@@ -589,8 +641,12 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
         report = dealDamage(s, target, o.parts, o.result === 'crit')
         notes.push(...report.notes)
         const who = possessive(attacker.name)
-        const showDamage = target.kind === 'pc' && total > 0
-        if (o.result === 'saved' || o.result === 'failed') {
+        const showDamage = isParty(target) && total > 0
+        if (r.source) {
+          const saved = o.result === 'saved'
+          line = t(saved ? 'log.hazardSaved' : 'log.hazard', { t: target.name, action: action.name, dmg: dmgText || '0' })
+          pub = t(showDamage ? 'ann.hazardDmg' : 'ann.hazard', { t: target.name, action: action.name, n: total })
+        } else if (o.result === 'saved' || o.result === 'failed') {
           const saved = o.result === 'saved'
           line = t(saved ? (dmgText ? 'log.savedDmg' : 'log.savedNone') : dmgText ? 'log.failedDmg' : 'log.failedNone', { t: target.name, who, action: action.name, dmg: dmgText })
           pub = t(saved ? (showDamage ? 'ann.resistsDmg' : 'ann.resists') : showDamage ? 'ann.caughtDmg' : 'ann.caught', { t: target.name, who, action: action.name, n: total })
@@ -616,6 +672,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
           if (!target.conditions.includes(cond)) {
             target.conditions.push(cond)
             notes.push(t('note.now', { cond: tCondition(cond) }))
+            publicLines.push(...[conditionNote(target, cond)].filter(Boolean))
           }
           // a known spell (Hold Person...) also gets its timer and repeat save
           const preset = presetFor(action.name)
@@ -746,6 +803,109 @@ export function delayTurn(s: CombatState, afterId: string) {
   logEvent(s, t('log.delays', { a: me.name, b: anchor.name }))
   announce(s, t('ann.delays', { a: me.name }))
   advanceTurn(s)
+}
+
+/**
+ * Wild Shape (2024): the creature gains temporary hit points and takes the beast's AC, Speed and actions, keeps its own hit points,
+ * and uses the higher of its own and the beast's saving throw bonus. It can't cast spells while shaped. Taking another form leaves the first.
+ */
+export function enterForm(s: CombatState, c: Combatant, beast: MonsterTemplate, tempHp: number) {
+  if (c.form) leaveForm(s, c, true)
+  const beastSaves = buildSaves(beast.abilities, { totals: beast.saves })
+  c.form = {
+    name: beast.name,
+    actions: structuredClone(beast.actions ?? []),
+    revert: {
+      ac: c.ac,
+      speed: c.speed,
+      actions: c.actions,
+      saves: c.saves,
+      resistances: c.resistances,
+      immunities: c.immunities,
+      vulnerabilities: c.vulnerabilities,
+      conditionImmunities: c.conditionImmunities,
+      casting: c.casting,
+    },
+  }
+  c.ac = beast.ac
+  c.speed = beast.speed
+  c.actions = structuredClone(c.form.actions)
+  c.saves = c.saves ? (Object.fromEntries(ABILITIES.map((a) => [a, Math.max(c.saves![a], beastSaves[a])])) as Record<Ability, number>) : beastSaves
+  c.resistances = beast.resistances ?? []
+  c.immunities = beast.immunities ?? []
+  c.vulnerabilities = beast.vulnerabilities ?? []
+  c.conditionImmunities = beast.conditionImmunities ?? []
+  c.casting = undefined
+  c.tempHp = Math.max(c.tempHp, tempHp)
+  logEvent(s, t('log.formTakes', { name: c.name, form: beast.name, ac: beast.ac, temp: tempHp }))
+  announce(s, t('ann.formTakes', { name: c.name, form: beast.name }))
+}
+
+/** Back to the creature's own shape (the temporary hit points stay, as the rules say). */
+export function leaveForm(s: CombatState, c: Combatant, quiet = false) {
+  const f = c.form
+  if (!f) return
+  const r = f.revert
+  c.ac = r.ac
+  c.speed = r.speed
+  c.actions = r.actions
+  c.saves = r.saves
+  c.resistances = r.resistances
+  c.immunities = r.immunities
+  c.vulnerabilities = r.vulnerabilities
+  c.conditionImmunities = r.conditionImmunities
+  c.casting = r.casting
+  c.form = undefined
+  if (quiet) return
+  logEvent(s, t('log.formEnds', { name: c.name, form: f.name }))
+  announce(s, t('ann.formEnds', { name: c.name }))
+}
+
+/** Add (or take back) feet of movement this turn. */
+export function moveFeet(_s: CombatState, c: Combatant, feet: number) {
+  c.turn ??= freshTurn()
+  c.turn.moved = Math.max(0, (c.turn.moved ?? 0) + feet)
+}
+
+/** Dash: the action, and Speed again as extra movement. */
+export function dash(s: CombatState, c: Combatant) {
+  c.turn ??= freshTurn()
+  c.turn.action = true
+  c.turn.dashes = (c.turn.dashes ?? 0) + 1
+  logEvent(s, t('log.dash', { name: c.name }))
+}
+
+/** Disengage: the action; moving away this turn provokes no opportunity attacks. */
+export function disengage(s: CombatState, c: Combatant) {
+  c.turn ??= freshTurn()
+  c.turn.action = true
+  c.turn.disengaged = true
+  logEvent(s, t('log.disengage', { name: c.name }))
+}
+
+/** Standing up from Prone costs half the creature's Speed (rounded down). */
+export function standUp(s: CombatState, c: Combatant) {
+  const speed = effectiveSpeed(c)
+  if (!speed || !c.conditions.includes('Prone')) return
+  c.conditions = c.conditions.filter((x) => x !== 'Prone')
+  moveFeet(s, c, Math.floor(speed / 2))
+  logEvent(s, t('log.standsUp', { name: c.name }))
+}
+
+/** The table's announcement that a creature got a condition, with the part to remember. */
+export const conditionNote = (c: Combatant, cond: Condition) => (cond === 'Exhaustion' ? '' : t('ann.condition', { name: c.name, cond: tCondition(cond), what: shortCondition(cond) }))
+
+/** Move a monster to the party's side (or back). An ally that is switched back stops following a controller. */
+export function setAlly(s: CombatState, c: Combatant, ally: boolean) {
+  c.ally = ally || undefined
+  if (!ally) c.controlledBy = undefined
+  sortCombatants(s)
+}
+
+/** Let an ally act right after another creature, on its initiative (undefined = its own initiative again). */
+export function setController(s: CombatState, ally: Combatant, controllerId: string | undefined) {
+  ally.controlledBy = controllerId && controllerId !== ally.id ? controllerId : undefined
+  sortCombatants(s)
 }
 
 /**

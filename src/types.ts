@@ -289,6 +289,8 @@ export interface MonsterTemplate {
   cr: string
   ac: number
   hp: number
+  /** Dice for the hit points (SRD "3d6", or typed for a custom monster); `hp` is the average. Used when the setting "roll monster hit points" is on */
+  hpRoll?: string
   speed: number
   initiativeBonus: number
   abilities: AbilityScores
@@ -318,6 +320,12 @@ export interface TurnUsed {
   action: boolean
   bonus: boolean
   reaction: boolean
+  /** Feet moved this turn (tracked by hand: there is no map) */
+  moved?: number
+  /** Times it took the Dash action this turn */
+  dashes?: number
+  /** Took the Disengage action: moving away provokes no opportunity attacks */
+  disengaged?: boolean
 }
 
 export interface Counter {
@@ -348,6 +356,37 @@ export interface Effect {
   /** The caster; with `concentration`, the effect ends when they lose concentration or go down */
   sourceId?: string
   concentration?: boolean
+  /** Numbers the effect changes (AC, resistances, how others attack it, speed) */
+  mods?: EffectMods
+}
+
+export interface EffectMods {
+  ac?: number
+  resist?: string[]
+  /** Attack rolls against the creature have Advantage / Disadvantage */
+  attackersAdvantage?: boolean
+  attackersDisadvantage?: boolean
+  speed?: 'double' | 'half'
+  /** i18n key of a reminder shown on this creature's own attack rolls (Bless +1d4, Rage damage...) */
+  note?: string
+}
+
+/** A Wild Shape (or similar) form: the beast's numbers replace the creature's until it leaves the form; `revert` is what comes back. */
+export interface Form {
+  name: string
+  /** The beast's actions (kept so an undo can put them back) */
+  actions: Action[]
+  revert: {
+    ac: number
+    speed?: number
+    actions: Action[]
+    saves?: Record<Ability, number>
+    resistances?: string[]
+    immunities?: string[]
+    vulnerabilities?: string[]
+    conditionImmunities?: Condition[]
+    casting?: CastingSnapshot
+  }
 }
 
 export interface Combatant {
@@ -359,6 +398,10 @@ export interface Combatant {
   initiative: number | null
   initiativeBonus: number
   ac: number
+  /** Walking Speed in feet (a snapshot, like AC) */
+  speed?: number
+  /** Wild Shape: the beast form the creature is in */
+  form?: Form
   hp: number
   maxHp: number
   tempHp: number
@@ -397,6 +440,10 @@ export interface Combatant {
   xp?: number
   /** Which template a monster came from, so a fight can be saved as an encounter */
   templateRef?: { srdIndex?: string; templateId?: number; name: string }
+  /** A monster-type creature on the party's side (familiar, companion, summon, hired help): shown to the table like a PC, gives no XP */
+  ally?: boolean
+  /** An ally acts on its controller's initiative, right after them (id of a combatant) */
+  controlledBy?: string
   /** Free text, used by the lair-actions marker */
   notes?: string
 }
@@ -465,6 +512,12 @@ export interface Encounter {
 }
 
 /** A DM-only entry in the campaign journal: a note, a session recap, or an automatic combat summary. */
+/** A picture for a kind of creature (see lib/avatars.ts) */
+export interface Avatar {
+  key: string
+  image: Blob
+}
+
 export interface JournalEntry {
   id?: number
   kind: 'note' | 'session' | 'combat' | 'loot'

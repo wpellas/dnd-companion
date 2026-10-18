@@ -1,4 +1,4 @@
-import { exhaustionPenalty, resistsAllDamage } from './conditionRules'
+import { effectResists, exhaustionPenalty, resistsAllDamage } from './conditionRules'
 import { abilityMod } from './dice'
 import { t, tDamage } from './i18n'
 import { ABILITIES, type Ability, type AbilityScores, type Action, type Combatant, type Condition, type DamagePart } from '../types'
@@ -11,13 +11,13 @@ export interface DamageAmount {
 
 export type DamageEffect = 'immune' | 'resist' | 'vuln' | 'both' | 'none'
 
-type Defences = Pick<Combatant, 'resistances' | 'immunities' | 'vulnerabilities' | 'conditions'>
+type Defences = Pick<Combatant, 'resistances' | 'immunities' | 'vulnerabilities' | 'conditions' | 'effects'>
 
 /** How the target's defences change damage of this type. Petrified counts as resistance to everything. */
 export function damageEffect(target: Defences, type: string): DamageEffect {
   const t = type.toLowerCase()
   if ((target.immunities ?? []).includes(t)) return 'immune'
-  const resist = (target.resistances ?? []).includes(t) || resistsAllDamage(target)
+  const resist = (target.resistances ?? []).includes(t) || resistsAllDamage(target) || effectResists(target, t)
   const vuln = (target.vulnerabilities ?? []).includes(t)
   return resist && vuln ? 'both' : resist ? 'resist' : vuln ? 'vuln' : 'none'
 }

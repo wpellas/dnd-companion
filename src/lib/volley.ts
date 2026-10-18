@@ -1,5 +1,5 @@
 import type { Action, Combatant, DamagePart } from '../types'
-import { attackAdvice, exhaustionPenalty, type AttackAdvice } from './conditionRules'
+import { attackAdvice, effectiveAc, exhaustionPenalty, type AttackAdvice } from './conditionRules'
 import { adjustForTarget, actionDamageParts, type AdjustedDamage, type DamageAmount } from './resolve'
 import { t } from './i18n'
 import { attackOutcome, attackRollText, type AttackOutcome } from './rules'
@@ -89,7 +89,7 @@ export function evaluateRow(row: RowState, step: Step, attacker: Combatant, targ
   if (target) {
     if (autoHit) outcome = 'hit'
     else if (roll !== undefined && !Number.isNaN(roll)) {
-      const base = attackOutcome(roll, bonus, target.ac)
+      const base = attackOutcome(roll, bonus, effectiveAc(target))
       outcome = base === 'hit' && advice?.critOnHit ? 'crit' : base
     }
   }
@@ -99,6 +99,6 @@ export function evaluateRow(row: RowState, step: Step, attacker: Combatant, targ
   const adjusted = target && hit ? adjustForTarget(out, target) : undefined
   const complete = !!target && outcome !== null && (!hit || parts.length === 0 || filled)
 
-  const how = autoHit ? t('detail.autoHit') : attackRollText({ roll, bonus, ac: target?.ac, mode: advice?.mode, exhaustion: penalty })
+  const how = autoHit ? t('detail.autoHit') : attackRollText({ roll, bonus, ac: target && effectiveAc(target), mode: advice?.mode, exhaustion: penalty })
   return { action, autoHit, parts, included, bonus, roll, outcome, hit, advice, out, adjusted, complete, detail: how }
 }

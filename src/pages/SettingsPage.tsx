@@ -78,6 +78,7 @@ export function SettingsPage() {
             onChange={(v) => updateSettings({ allowPlayerAppRolls: v })}
           />
           <p className="muted note-line">{settings.allowPlayerAppRolls ? t('settings.diceOn') : t('settings.diceOff')}</p>
+          <CheckField label={t('settings.hpRollLabel')} title={t('settings.hpRollTitle')} checked={settings.rollMonsterHp} onChange={(v) => updateSettings({ rollMonsterHp: v })} />
         </Section>
 
         <Section title={t('settings.backup')}>

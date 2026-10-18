@@ -11,11 +11,13 @@ export interface Settings {
   allowPlayerAppRolls: boolean
   /** Monsters of the same kind share one initiative (rolled once, or typed once), the way many tables run big groups */
   groupInitiative: boolean
+  /** New monsters get rolled hit points (the dice from the stat block) instead of the average. The DM's dice, so the app may roll them. */
+  rollMonsterHp: boolean
   /** Interface language for the DM and, through the live view, everyone else */
   language: Lang
 }
 
-export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false, language: 'en' }
+export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false, rollMonsterHp: false, language: 'en' }
 
 const KEY = 'settings'
 

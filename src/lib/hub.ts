@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { api } from './api'
+import { pictureFor, useAvatars } from './avatars'
 import { toPublic, toPublicSheet, type PublicCombat, type PublicSheet } from './publicState'
 import { setLang, useLang, type Lang } from './i18n'
 import { useSession } from './session'
@@ -50,6 +51,9 @@ export function LiveHost() {
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const spotlight = useSpotlight()
   const lang = useLang()
+  const avatars = useAvatars()
+  // which enemy in this fight has which picture (a stable string, so the effect below does not re-run on every HP change)
+  const monsterKeys = JSON.stringify((combat?.combatants ?? []).filter((c) => c.kind === 'monster').map((c) => [c.id, pictureFor(c, combat?.combatants ?? [], avatars)?.key]))
   const campaignId = campaign?.id
   const wanted = useRef(new Map<Part, string>()) // what the table should see
   const sent = useRef(new Map<Part, string>()) // what the server has
@@ -97,14 +101,19 @@ export function LiveHost() {
   useEffect(() => {
     if (!characters) return
     let off = false
-    Promise.all(characters.map(async (c) => [c.id!, c.image ? await smallPortrait(c.image, `${c.id}:${c.image.size}`) : undefined] as const)).then((pairs) => {
+    const people = characters.map(async (c) => [String(c.id), c.image ? await smallPortrait(c.image, `${c.id}:${c.image.size}`) : undefined] as const)
+    const enemies = (JSON.parse(monsterKeys) as [string, string | undefined][]).map(async ([id, key]) => {
+      const blob = key ? avatars.get(key) : undefined
+      return [id, blob ? await smallPortrait(blob, `avatar:${key}:${blob.size}`) : undefined] as const
+    })
+    Promise.all([...people, ...enemies]).then((pairs) => {
       if (!off) want('portraits', Object.fromEntries(pairs.filter(([, url]) => url)))
     })
     return () => {
       off = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters, campaignId])
+  }, [characters, campaignId, avatars, monsterKeys])
 
   // "the DM's app is open" for the viewers, and the retry for uploads that failed
   useEffect(() => {
@@ -131,7 +140,8 @@ export interface RemoteView {
   lang?: Lang
   /** The character sheet the DM is showing; null = none, undefined = nothing received yet */
   sheet?: PublicSheet | null
-  portraits: Record<number, string>
+  /** Data URLs by character id, or by combatant id for enemies */
+  portraits: Record<string, string>
   /** The last poll worked */
   connected: boolean
   /** The DM's app is open right now */
@@ -165,7 +175,7 @@ export function useRemoteView(source?: LiveSource): RemoteView {
           const value = data === null ? null : JSON.parse(data)
           if (part === 'combat') patch.combat = value as PublicCombat | null
           else if (part === 'sheet') patch.sheet = value as PublicSheet | null
-          else if (part === 'portraits') patch.portraits = (value as Record<number, string> | null) ?? {}
+          else if (part === 'portraits') patch.portraits = (value as Record<string, string> | null) ?? {}
           else if (part === 'lang' && value) {
             setLang(value as Lang)
             patch.lang = value as Lang

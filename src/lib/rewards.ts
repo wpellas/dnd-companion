@@ -3,6 +3,7 @@ import { db } from '../db'
 import type { CombatState } from '../types'
 import { canLevelUp, emptyCoins, splitEvenly } from './inventory'
 import { t } from './i18n'
+import { isEnemy } from './sides'
 import { addEntry } from './journal'
 
 /** Handing out experience and gold: after a fight, or whenever the party finds treasure. */
@@ -24,7 +25,7 @@ export const useLastFight = () => useLiveQuery(async () => ((await db.kv.get(LAS
 
 /** Remember a finished fight's XP (defeated monsters only) so it can be awarded to the party. */
 export async function rememberFight(state: CombatState) {
-  const defeated = state.combatants.filter((c) => c.kind === 'monster' && c.hp === 0)
+  const defeated = state.combatants.filter((c) => isEnemy(c) && c.hp === 0)
   const xp = defeated.reduce((n, c) => n + (c.xp ?? 0), 0)
   const characterIds = state.combatants.filter((c) => c.kind === 'pc' && c.characterId !== undefined).map((c) => c.characterId!)
   if (!xp || !characterIds.length) return

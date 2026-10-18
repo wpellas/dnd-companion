@@ -6,6 +6,8 @@ export const glossary = {
   'gloss.diceHint': ['(Advantage: roll two d20s, use the higher. Disadvantage: roll two d20s, use the lower.)', '(Fördel: slå två d20 och använd det högsta. Nackdel: slå två d20 och använd det lägsta.)'],
   'gloss.effectUnknown': ['a spell or effect on this creature. Ask the DM what it does.', 'en besvärjelse eller effekt på varelsen. Fråga spelledaren vad den gör.'],
   'gloss.form': ['{form}: this character has taken a beast\'s shape (Wild Shape) and uses its stats until it returns to normal.', '{form}: rollpersonen har antagit ett djurs form (Vildform) och använder dess värden tills den blir normal igen.'],
+  'gloss.colours': ['Condition colours', 'Färger på tillstånd'],
+  'gloss.colours.text': ['Red: cannot act. Orange: hindered. Blue: hidden (Invisible).', 'Röd: kan inte agera. Orange: hindrad. Blå: dold (Osynlig).'],
   'gloss.advantage': ['Advantage', 'Fördel'],
   'gloss.advantage.text': ['Roll two d20s and use the higher one.', 'Slå två d20 och använd det högsta.'],
   'gloss.disadvantage': ['Disadvantage', 'Nackdel'],

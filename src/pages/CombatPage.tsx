@@ -53,6 +53,7 @@ import { updateCharacter } from '../lib/store'
 import { saveBonus } from '../lib/resolve'
 import { effectiveAc, exhaustionLevel } from '../lib/conditionRules'
 import { isEnemy } from '../lib/sides'
+import { conditionTone } from '../lib/tones'
 import { CONDITIONS, type Character, type Combatant, type Condition, type Prompt, type TurnUsed } from '../types'
 
 export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
@@ -477,7 +478,14 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
 
       <details className="conditions">
         <summary title={[...c.conditions.map(tCondition), c.concentrating ? t('row.concentratingTitle') : ''].filter(Boolean).join(', ')}>
-          {c.conditions.length ? c.conditions.map((x) => (x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x))).join(', ') : t('row.conditions')}
+          {c.conditions.length
+            ? c.conditions.map((x, i) => (
+                <span key={x}>
+                  {i > 0 && ', '}
+                  <span className="cond" data-tone={conditionTone(x)}>{x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x)}</span>
+                </span>
+              ))
+            : t('row.conditions')}
           {c.concentrating && t('row.concentratingSummary')}
           {c.inspired && ' ★'}
         </summary>

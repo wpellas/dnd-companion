@@ -21,4 +21,4 @@ export function explainEffect(name: string) {
 /** The first clause of a condition's text: what to remember about it in one breath ("Disadvantage on attack rolls and ability checks"). */
 export const shortCondition = (c: Condition) => t(`remind.${c}`).split(/[;.]/)[0]
 
-export const GLOSSARY = ['advantage', 'disadvantage', 'resistance', 'vulnerability', 'immunity', 'concentration', 'tempHp', 'deathSaves', 'inspiration', 'bloodied'] as const
+export const GLOSSARY = ['colours', 'advantage', 'disadvantage', 'resistance', 'vulnerability', 'immunity', 'concentration', 'tempHp', 'deathSaves', 'inspiration', 'bloodied'] as const

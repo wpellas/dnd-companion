@@ -7,6 +7,7 @@ import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
 import { useMapShown, type PublicMap } from '../lib/maps'
 import { explainCondition, explainEffect, GLOSSARY } from '../lib/explain'
+import { conditionTone, type Tone } from '../lib/tones'
 import { pictureFor } from '../lib/avatars'
 import { useRemoteView, type LiveSource } from '../lib/hub'
 import { possessive, setLang, t, tCondition } from '../lib/i18n'
@@ -111,8 +112,8 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
   // tap a badge for what it means, and a "?" for the terms; both are optional help, nothing here asks anything of a spectator
   const [explain, setExplain] = useState<{ row: string; text: string }>()
   const [glossary, setGlossary] = useState(false)
-  const badge = (row: string, key: string, text: () => string, label: React.ReactNode) => (
-    <button className="badge" key={key} aria-expanded={explain?.row === row && explain.text === text()} onClick={() => setExplain(explain?.row === row && explain.text === text() ? undefined : { row, text: text() })}>
+  const badge = (row: string, key: string, text: () => string, label: React.ReactNode, tone?: Tone) => (
+    <button className="badge" data-tone={tone} key={key} aria-expanded={explain?.row === row && explain.text === text()} onClick={() => setExplain(explain?.row === row && explain.text === text() ? undefined : { row, text: text() })}>
       {label}
     </button>
   )
@@ -232,7 +233,7 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
                       {c.inspired && badge(c.id, 'insp', () => t('gloss.inspiration.text'), <>★ {t('insp.button')}</>)}
                       {c.concentrating && badge(c.id, 'conc', () => t('gloss.concentration.text'), t('player.concentrating'))}
                       {c.effects?.map((e) => badge(c.id, `e-${e.name}`, () => explainEffect(e.name), <>✦ {e.name}{e.rounds !== undefined && ` · ${e.rounds}`}</>))}
-                      {c.conditions.map((cond) => badge(c.id, cond, () => explainCondition(cond), cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond)))}
+                      {c.conditions.map((cond) => badge(c.id, cond, () => explainCondition(cond), cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond), conditionTone(cond)))}
                     </div>
                   )}
                   {explain?.row === c.id && <div className="explain" role="note">{explain.text}</div>}

@@ -345,6 +345,13 @@ tbody tr:hover { background: rgba(217, 169, 46, 0.18); }
 .glossary dd { margin: 0 0 8px; }
 .explain { margin-top: 6px; padding: 6px 10px; background: rgba(255, 255, 255, 0.45); border-left: 4px solid var(--gold-dark); border-radius: 4px; font-size: 0.9rem; }
 button.badge { cursor: pointer; font: inherit; }
+/* condition colours (see lib/tones.ts): red can't act, orange hindered, blue hidden */
+[data-tone='control'] { --tone: #8b1a1a; }
+[data-tone='impair'] { --tone: #b5651d; }
+[data-tone='cover'] { --tone: #2f6a8c; }
+.badge[data-tone] { background: var(--tone); border-color: rgba(0, 0, 0, 0.45); color: #fff7e0; }
+.cond[data-tone] { color: var(--tone); font-style: normal; font-weight: 700; }
+.status.bloodied { color: #c26a12; }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .badge {
   background: var(--leather); color: var(--parchment-3); border: 1px solid #2d1a09; border-radius: 999px;

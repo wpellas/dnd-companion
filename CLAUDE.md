@@ -246,7 +246,7 @@ Test note: `php artisan serve` drops POST bodies over a few hundred KB when run 
 
 `lib/explain.ts` + `i18n/glossary.ts`: on the player screen every badge (condition, effect, concentration, Inspiration, Wild Shape form) is a button that opens a plain-language note under the row (conditions reuse the DM's `remind.*` texts, effects use `modsLine` of their preset; a line defining Advantage / Disadvantage
 is appended when the text mentions them), a "?" in the header opens a legend (Advantage, Disadvantage, Resistance... Bloodied), and a newly applied condition is announced with its first clause (`conditionNote` / `shortCondition`: "Goblin is now Poisoned: Disadvantage on attack rolls and ability checks"; not for Exhaustion).
-All optional: a spectator never has to tap. Only generic rules text, nothing about a particular monster. The TV (no touch) only gets the announcements. Effects applied by a spell preset are not announced with their consequences yet.
+Conditions are colour-coded (`lib/tones.ts` `conditionTone`, CSS `[data-tone]`): red = cannot act, orange = hindered, blue = Invisible; on the player badges and in the DM row's Conditions menu; explained in the legend; the word is always shown too. All optional: a spectator never has to tap. Only generic rules text, nothing about a particular monster. The TV (no touch) only gets the announcements. Effects applied by a spell preset are not announced with their consequences yet.
 
 ## Combat additions (all built, tested; battle map and loot stay parked)
 

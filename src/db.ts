@@ -8,7 +8,7 @@ export interface KvRecord {
   value: unknown
 }
 
-class AppDB extends Dexie {
+export class AppDB extends Dexie {
   characters!: EntityTable<Character, 'id'>
   /** Custom monsters only: the SRD bestiary is read from the cached API library, not stored here */
   monsters!: EntityTable<MonsterTemplate, 'id'>
@@ -17,8 +17,8 @@ class AppDB extends Dexie {
   encounters!: EntityTable<Encounter, 'id'>
   journal!: EntityTable<JournalEntry, 'id'>
 
-  constructor() {
-    super('dnd-companion')
+  constructor(name = 'dnd-companion') {
+    super(name)
     this.version(1).stores({
       characters: '++id, name',
       monsters: '++id, name, source',
@@ -88,4 +88,34 @@ class AppDB extends Dexie {
   }
 }
 
-export const db = new AppDB()
+/**
+ * The browser's own database from before accounts. It still holds the downloaded SRD library (`api:*` in `kv`, shared by every campaign) and,
+ * until the user imports it, their old data.
+ */
+export const srdDb = new AppDB()
+
+/** The open campaign's local copy (the sync engine keeps it in step with the server). Until a campaign is opened it is the old database. */
+let current: AppDB = srdDb
+const opened = new Map<string, AppDB>()
+
+/**
+ * Everything imports `db`, so it forwards to whichever campaign is open now. One database per user and campaign keeps accounts and
+ * campaigns apart on a shared computer. Switching happens before the UI of the new campaign renders.
+ */
+export const db: AppDB = new Proxy({} as AppDB, {
+  get(_target, prop) {
+    const value = Reflect.get(current, prop)
+    return typeof value === 'function' ? value.bind(current) : value
+  },
+})
+
+export function openCampaignDb(userId: number, campaignId: number): AppDB {
+  const name = `dnd-companion-u${userId}-c${campaignId}`
+  let found = opened.get(name)
+  if (!found) opened.set(name, (found = new AppDB(name)))
+  return (current = found)
+}
+
+export const closeCampaignDb = () => {
+  current = srdDb
+}

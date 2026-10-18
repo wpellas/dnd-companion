@@ -4,6 +4,7 @@ import { db } from '../db'
 import { ActionsEditor } from '../components/ActionsEditor'
 import { AwardPanel } from '../components/AwardPanel'
 import { InventoryEditor } from '../components/InventoryEditor'
+import { LevelUpPanel } from '../components/LevelUpPanel'
 import { RewardBanner } from '../components/RewardBanner'
 import { NumberField } from '../components/NumberField'
 import { Portrait } from '../components/Portrait'
@@ -23,6 +24,8 @@ import { hitDiceRemaining } from '../lib/rest'
 import { levelLabel } from '../lib/spells'
 import { getClass, getClassLevel } from '../lib/srdApi'
 import { showToPlayers, stopShowing, useSpotlight } from '../lib/spotlight'
+import { useMembers } from '../lib/members'
+import { useSession } from '../lib/session'
 import { getCampaign, updateCharacter } from '../lib/store'
 import { ABILITIES, CLASSES, type Character, type ClassIndex } from '../types'
 
@@ -59,48 +62,55 @@ export function PartyPage() {
   const [editing, setEditing] = useState<Character | null>(null)
   const [resting, setResting] = useState<'short' | 'long'>()
   const [awarding, setAwarding] = useState(false)
+  const [levelling, setLevelling] = useState<Character | null>(null)
   const inCombat = combat?.started ?? false
+  const isDm = useSession().campaign?.role === 'dm' // a player sees and edits only their own characters
 
   return (
     <div className="page">
       <div className="toolbar">
         <h2>{t('party.title')}</h2>
-        {campaign && (
+        {isDm && campaign && (
           <span className="campaign-badge" title={t('party.campaignTitle')}>
             {tn('party.campaign', campaign.shortRestsSinceLong, { day: campaign.day })}
           </span>
         )}
-        <button
-          disabled={inCombat || !characters?.length}
-          title={inCombat ? t('party.finishFirst') : undefined}
-          onClick={() => setResting('short')}
-        >
-          {t('rest.short')}
-        </button>
-        <button
-          disabled={inCombat || !characters?.length}
-          title={inCombat ? t('party.finishFirst') : undefined}
-          onClick={() => setResting('long')}
-        >
-          {t('rest.long')}
-        </button>
-        <button disabled={!characters?.length} onClick={() => setAwarding(true)}>
-          {t('award.button')}
-        </button>
+        {isDm && (
+          <>
+            <button
+              disabled={inCombat || !characters?.length}
+              title={inCombat ? t('party.finishFirst') : undefined}
+              onClick={() => setResting('short')}
+            >
+              {t('rest.short')}
+            </button>
+            <button
+              disabled={inCombat || !characters?.length}
+              title={inCombat ? t('party.finishFirst') : undefined}
+              onClick={() => setResting('long')}
+            >
+              {t('rest.long')}
+            </button>
+            <button disabled={!characters?.length} onClick={() => setAwarding(true)}>
+              {t('award.button')}
+            </button>
+          </>
+        )}
         <button className="primary" onClick={() => setEditing(blank())}>
           {t('party.new')}
         </button>
       </div>
 
-      <RewardBanner />
+      {isDm && <RewardBanner />}
       {awarding && characters && <AwardPanel characters={characters.map(normalizeCharacter)} onClose={() => setAwarding(false)} />}
 
       {resting && characters && <RestPanel kind={resting} characters={characters.map(normalizeCharacter)} onClose={() => setResting(undefined)} />}
+      {levelling && <LevelUpPanel c={levelling} onClose={() => setLevelling(null)} />}
       {editing && <CharacterForm initial={editing} onClose={() => setEditing(null)} />}
 
       <div className="card-grid">
         {characters?.map(normalizeCharacter).map((c) => (
-          <CharacterCard key={c.id} c={c} onEdit={() => setEditing(c)} />
+          <CharacterCard key={c.id} c={c} onEdit={() => setEditing(c)} onLevelUp={() => setLevelling(c)} />
         ))}
         {characters?.length === 0 && <p className="muted">{t('party.empty')}</p>}
       </div>
@@ -108,7 +118,7 @@ export function PartyPage() {
   )
 }
 
-function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
+function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => void; onLevelUp: () => void }) {
   const [showItems, setShowItems] = useState(false)
   const spotlight = useSpotlight()
   const shown = spotlight?.characterId === c.id
@@ -117,6 +127,7 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
   const nextXp = xpForNextLevel(c.level)
   const slotRows = sc?.slots.map((s, i) => ({ ...s, level: i + 1 })).filter((s) => s.max > 0) ?? []
   const update = (patch: Partial<Character>) => db.characters.update(c.id!, patch)
+  const isDm = useSession().campaign?.role === 'dm'
 
   return (
     <div className={`card ${showItems ? 'wide' : ''}`}>
@@ -196,14 +207,24 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
       {showItems && <InventoryEditor c={c} onChange={(patch) => updateCharacter(c.id!, patch)} />}
 
       <div className="card-actions">
-        <button
-          className={shown ? 'selected' : ''}
-          title={shown ? t('party.showTitleOn') : t('party.showTitle')}
-          onClick={() => (shown ? stopShowing() : showToPlayers(c.id!))}
-        >
-          📺 {shown ? t('party.showcasing') : t('party.showcase')}
+        {isDm && (
+          <button
+            className={shown ? 'selected' : ''}
+            title={shown ? t('party.showTitleOn') : t('party.showTitle')}
+            onClick={() => (shown ? stopShowing() : showToPlayers(c.id!))}
+          >
+            📺 {shown ? t('party.showcasing') : t('party.showcase')}
+          </button>
+        )}
+        <button className={c.heroicInspiration ? 'selected' : ''} title={t('insp.title')} aria-pressed={!!c.heroicInspiration} onClick={() => updateCharacter(c.id!, { heroicInspiration: !c.heroicInspiration })}>
+          ★ {t('insp.button')}
         </button>
         <button onClick={() => setShowItems((v) => !v)}>{t('inv.items')}{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
+        {c.classIndex && c.level < 20 && (
+          <button className={canLevelUp(c) ? 'primary' : ''} title={t('lvl.buttonTitle')} onClick={onLevelUp}>
+            {t('lvl.button')}
+          </button>
+        )}
         <button onClick={onEdit}>{t('common.edit')}</button>
         <button className="danger" onClick={() => confirm(t('party.deleteConfirm', { name: c.name })) && db.characters.delete(c.id!)}>
           {t('common.delete')}
@@ -216,6 +237,8 @@ function CharacterCard({ c, onEdit }: { c: Character; onEdit: () => void }) {
 function CharacterForm({ initial, onClose }: { initial: Character; onClose: () => void }) {
   const [c, setC] = useState<Character>(() => normalizeCharacter(initial))
   const [syncError, setSyncError] = useState<string>()
+  const members = useMembers()
+  const me = useSession()
   const [classTable, setClassTable] = useState<Record<string, unknown>>()
   const tableRef = useRef<Record<string, unknown>>(undefined)
   // Every edit goes through update(), which re-derives official class features (Rage uses, Lay On Hands pool...)
@@ -272,6 +295,25 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
             <span>{t('form.player')}</span>
             <input value={c.playerName} onChange={(e) => set('playerName', e.target.value)} />
           </label>
+          {me.campaign?.role === 'dm' && members.length > 0 && (
+            <label className="field span-2" title={t('form.ownerHint')}>
+              <span>{t('form.owner')}</span>
+              <select
+                value={c.ownerId ?? me.user?.id ?? ''}
+                onChange={(e) => {
+                  const owner = members.find((m) => m.id === Number(e.target.value))
+                  update((p) => ({ ...p, ownerId: owner?.id, playerName: p.playerName || (owner?.role === 'player' ? owner.name : '') }))
+                }}
+              >
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                    {m.role === 'dm' ? t('form.ownerDm') : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="field">
             <span>{t('form.class')}</span>
             <select

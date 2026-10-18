@@ -5,11 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "api": "php backend/artisan serve --port=8000",
+    "build": "tsc -b && node -e \"fs.rmSync('backend/public/assets',{recursive:true,force:true})\" && vite build",
     "lint": "oxlint",
-    "preview": "vite preview",
-    "serve": "vite preview --port 4173",
-    "live": "pnpm build && pnpm serve"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource/alegreya": "^5.3.0",
@@ -18,15 +17,13 @@
     "dexie-react-hooks": "^4.4.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "ws": "^8.22.0"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",

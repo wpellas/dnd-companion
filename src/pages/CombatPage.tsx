@@ -1,25 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { InitiativeInput } from '../components/InitiativeInput'
 import { Portrait } from '../components/Portrait'
 import { Rich } from '../components/Rich'
 import { RewardBanner } from '../components/RewardBanner'
+import { EffectsEditor } from '../components/EffectsEditor'
+import { RollsTray } from '../components/RollsTray'
+import { effectLine } from '../lib/effects'
 import { TurnPanel } from '../components/TurnPanel'
 import { rateEncounter, encounterXp, entriesFromCombat } from '../lib/encounters'
 import { useSrdMonsters, useCustomMonsters } from '../lib/monsterLibrary'
 import {
+  addEffect,
   advanceTurn,
   damageRow,
   endCombat,
+  endEffect,
   healRow,
   lairCombatant,
   mutateCombat,
   pcCombatant,
   rollAllMonsterInitiative,
   setDeathSaves,
+  setConcentrating,
   setExhaustion,
   settleConcentration,
+  settleEffectSave,
   settleRecharge,
   shareInitiative,
   sortCombatants,
@@ -28,8 +35,10 @@ import {
   undoCombat,
 } from '../lib/combat'
 import { formatMod, rollDie, rollInitiative } from '../lib/dice'
-import { t, tCondition, tDamage } from '../lib/i18n'
+import { t, tAbility, tCondition, tDamage } from '../lib/i18n'
 import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/settings'
+import { useSentRoll } from '../lib/rolls'
+import { updateCharacter } from '../lib/store'
 import { saveBonus } from '../lib/resolve'
 import { exhaustionLevel } from '../lib/conditionRules'
 import { CONDITIONS, type Combatant, type Condition, type Prompt, type TurnUsed } from '../types'
@@ -114,6 +123,8 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
 
       {!started && <RewardBanner />}
 
+      <RollsTray names={new Map(combatants.filter((c) => c.characterId !== undefined).map((c) => [String(c.characterId), c.name]))} />
+
       {(combat?.prompts ?? []).map((p) => (
         <PromptBanner key={p.id} prompt={p} combatants={combatants} settings={settings} />
       ))}
@@ -125,7 +136,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
 
       <div className="combatants">
         {combatants.map((c, i) => (
-          <CombatantRow key={c.id} c={c} active={started && i === combat?.turnIndex} started={started} image={imageFor(c)} settings={settings} />
+          <CombatantRow key={c.id} c={c} all={combatants} active={started && i === combat?.turnIndex} started={started} image={imageFor(c)} settings={settings} />
         ))}
       </div>
     </div>
@@ -136,6 +147,16 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
 function PromptBanner({ prompt, combatants, settings }: { prompt: Prompt; combatants: Combatant[]; settings: Settings }) {
   const c = combatants.find((x) => x.id === prompt.combatantId)
   const [d, setD] = useState('')
+  // a player's save typed on their phone fills the box
+  const sent = useSentRoll(c?.characterId, 'save')
+  const wantsSave = prompt.kind === 'concentration' || prompt.kind === 'effectSave'
+  useEffect(() => {
+    if (wantsSave && sent.roll && d === '') {
+      setD(String(sent.roll.value)) // eslint-disable-line react-hooks/set-state-in-effect
+      sent.take()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sent.roll?.id])
   if (!c) return null
   const roll = d === '' ? undefined : Number(d)
   const canRoll = canAppRoll(c.kind, settings)
@@ -155,6 +176,30 @@ function PromptBanner({ prompt, combatants, settings }: { prompt: Prompt; combat
         </button>
         <button title={t('prompt.passedTitle')} onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, true), t('lbl.concKept', { name: c.name }))}>{t('prompt.passed')}</button>
         <button className="danger" onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, false), t('lbl.concLost', { name: c.name }))}>{t('prompt.failed')}</button>
+      </div>
+    )
+  }
+  if (prompt.kind === 'effectSave') {
+    const effect = c.effects?.find((e) => e.id === prompt.effectId)
+    if (!effect?.save) return null
+    const bonus = saveBonus(c, effect.save.ability)
+    const total = roll === undefined ? undefined : roll + bonus
+    const pass = total === undefined ? undefined : total >= effect.save.dc
+    const settle = (ok: boolean) => mutateCombat((s) => settleEffectSave(s, prompt.id, ok), t('lbl.effectSave', { who: c.name, effect: effect.name }))
+    return (
+      <div className="prompt-banner">
+        <Rich
+          text={t('prompt.effectSave', { ability: tAbility(effect.save.ability), effect: effect.name, dc: effect.save.dc, bonus: formatMod(bonus) })}
+          parts={{ name: <strong>{c.name}</strong> }}
+        />
+        <input className="narrow" type="number" placeholder="d20" value={d} onChange={(e) => setD(e.target.value)} aria-label="d20" />
+        {canRoll && <button onClick={() => setD(String(rollDie(20)))}>🎲</button>}
+        {total !== undefined && <span className={pass ? 'adv' : 'dis'}>{total} → {pass ? t('eff.saved') : t('eff.notSaved')}</span>}
+        <button className="primary" disabled={pass === undefined} onClick={() => settle(!!pass)}>
+          {t('prompt.apply')}
+        </button>
+        <button onClick={() => settle(true)}>{t('prompt.effectEnded')}</button>
+        <button onClick={() => settle(false)}>{t('prompt.effectKept')}</button>
       </div>
     )
   }
@@ -181,7 +226,7 @@ const ECON: { key: keyof TurnUsed; letter: 'econ.aLetter' | 'econ.bLetter' | 'ec
   { key: 'reaction', letter: 'econ.rLetter', title: 'econ.reaction' },
 ]
 
-function CombatantRow({ c, active, started, image, settings }: { c: Combatant; active: boolean; started: boolean; image?: Blob; settings: Settings }) {
+function CombatantRow({ c, all, active, started, image, settings }: { c: Combatant; all: Combatant[]; active: boolean; started: boolean; image?: Blob; settings: Settings }) {
   const [amount, setAmount] = useState('')
   const update = (fn: (c: Combatant) => void, resort = false, label?: string) =>
     mutateCombat((s) => {
@@ -197,6 +242,16 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
       if (who) fn(s, who)
     }, label)
 
+  // a player's initiative typed on their phone: set when none is set yet, offered (next to the name) when one is
+  const sentInit = useSentRoll(c.characterId, 'initiative')
+  const takePhoneInitiative = () => {
+    withState((s, who) => { who.initiative = sentInit.roll!.value; if (settings.groupInitiative) shareInitiative(s, who); else sortCombatants(s) }, t('lbl.initFromPhone', { name: c.name }))
+    sentInit.take()
+  }
+  useEffect(() => {
+    if (sentInit.roll && c.initiative === null) takePhoneInitiative()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentInit.roll?.id, c.initiative])
   const toggleCondition = (cond: Condition) =>
     update((who) => {
       who.conditions = who.conditions.includes(cond) ? who.conditions.filter((x) => x !== cond) : [...who.conditions, cond]
@@ -236,6 +291,11 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
       <Portrait name={c.name} image={image} size={48} />
       <div className="who">
         <strong>{c.name}</strong>
+        {sentInit.roll && c.initiative !== null && sentInit.roll.value !== c.initiative && (
+          <button className="tiny-button" title={t('roll.useTitle')} onClick={takePhoneInitiative}>
+            📱 {sentInit.roll.value}
+          </button>
+        )}
         <span className="muted">
           {t('row.ac', { n: c.ac })}
           {(c.resistances?.length || c.immunities?.length || c.vulnerabilities?.length) ? (
@@ -273,6 +333,16 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
               </button>
             ))}
           </span>
+        )}
+        {!!c.effects?.length && (
+          <div className="effect-chips">
+            {c.effects.map((e) => (
+              <span key={e.id} className="chip" title={effectLine(e, all)}>
+                ✦ {e.name}
+                {e.rounds !== undefined && ` · ${e.rounds}`}
+              </span>
+            ))}
+          </div>
         )}
         {c.legendary && <span className="muted tiny">{t('row.legendary', { left: c.legendary.max - c.legendary.used, max: c.legendary.max })}</span>}
         {c.kind === 'pc' && down && (
@@ -323,16 +393,47 @@ function CombatantRow({ c, active, started, image, settings }: { c: Combatant; a
         </button>
       </div>
 
+      <details className="conditions effects">
+        <summary>{c.effects?.length ? t('eff.summary', { n: c.effects.length }) : t('eff.summaryNone')}</summary>
+        <div className="popover">
+          <EffectsEditor
+            c={c}
+            all={all}
+            onAdd={(e) => withState((s, who) => addEffect(s, who, e), t('lbl.effectAdd', { who: c.name, effect: e.name }))}
+            onRemove={(id) =>
+              withState((s, who) => {
+                const e = who.effects?.find((x) => x.id === id)
+                if (e) endEffect(s, who, e, 'removed')
+              }, t('lbl.effectEnd', { who: c.name, effect: c.effects?.find((x) => x.id === id)?.name ?? '' }))
+            }
+          />
+        </div>
+      </details>
+
       <details className="conditions">
         <summary title={[...c.conditions.map(tCondition), c.concentrating ? t('row.concentratingTitle') : ''].filter(Boolean).join(', ')}>
           {c.conditions.length ? c.conditions.map((x) => (x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x))).join(', ') : t('row.conditions')}
           {c.concentrating && t('row.concentratingSummary')}
+          {c.inspired && ' ★'}
         </summary>
         <div className="popover">
           <label>
-            <input type="checkbox" checked={c.concentrating} onChange={(e) => update((who) => (who.concentrating = e.target.checked), false, t('lbl.concentration', { name: c.name }))} />
+            <input type="checkbox" checked={c.concentrating} onChange={(e) => withState((s, who) => setConcentrating(s, who, e.target.checked), t('lbl.concentration', { name: c.name }))} />
             {t('row.concentratingTitle')}
           </label>
+          {c.kind === 'pc' && c.characterId !== undefined && (
+            <label title={t('insp.title')}>
+              <input
+                type="checkbox"
+                checked={!!c.inspired}
+                onChange={(e) => {
+                  update((who) => (who.inspired = e.target.checked || undefined), false, t('lbl.inspiration', { name: c.name }))
+                  void updateCharacter(c.characterId!, { heroicInspiration: e.target.checked })
+                }}
+              />
+              ★ {t('insp.button')}
+            </label>
+          )}
           <div className="exhaustion" title={t('row.exhaustionTitle')}>
             <span>{tCondition('Exhaustion')}</span>
             <button aria-label={t('row.lowerExhaustion')} disabled={exhaustionLevel(c) === 0} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) - 1), t('lbl.exhaustion', { name: c.name }))}>−</button>

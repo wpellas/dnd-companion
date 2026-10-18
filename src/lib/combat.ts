@@ -7,6 +7,7 @@ import type {
   CombatState,
   Condition,
   Counter,
+  Effect,
   MonsterTemplate,
   TurnUsed,
 } from '../types'
@@ -18,6 +19,7 @@ import { rollInitiative } from './dice'
 import { newId } from './id'
 import { addCombatSummary } from './journal'
 import { rememberFight } from './rewards'
+import { effectFromPreset, presetFor } from './effects'
 import { buildSaves, isConditionImmune, type DamageAmount } from './resolve'
 import { concentrationDc } from './rules'
 
@@ -143,6 +145,7 @@ export function pcCombatant(c: Character): Combatant {
     vulnerabilities: c.vulnerabilities ?? [],
     turn: freshTurn(),
     exhaustion: c.exhaustion ?? 0,
+    inspired: c.heroicInspiration || undefined,
   }
 }
 
@@ -221,13 +224,16 @@ export function announce(s: CombatState, text: string) {
 type NewPrompt =
   | { kind: 'concentration'; combatantId: string; dc: number }
   | { kind: 'recharge'; combatantId: string; actionId: string; min: number }
+  | { kind: 'effectSave'; combatantId: string; effectId: string }
 
 /** Queue something for the DM to resolve. A second concentration check for the same creature keeps the higher DC. */
 export function addPrompt(s: CombatState, prompt: NewPrompt) {
   s.prompts ??= []
   const dup = s.prompts.find((p) => {
     if (p.kind !== prompt.kind || p.combatantId !== prompt.combatantId) return false
-    return p.kind === 'recharge' && prompt.kind === 'recharge' ? p.actionId === prompt.actionId : true
+    if (p.kind === 'recharge' && prompt.kind === 'recharge') return p.actionId === prompt.actionId
+    if (p.kind === 'effectSave' && prompt.kind === 'effectSave') return p.effectId === prompt.effectId
+    return true
   })
   if (dup) {
     if (dup.kind === 'concentration' && prompt.kind === 'concentration') dup.dc = Math.max(dup.dc, prompt.dc)
@@ -246,10 +252,81 @@ export function settleConcentration(s: CombatState, promptId: string, success: b
   if (success) {
     logEvent(s, t('log.keepsConc', { name: c.name, dc: p.dc }))
   } else {
-    c.concentrating = false
+    setConcentrating(s, c, false)
     logEvent(s, t('log.losesConc', { name: c.name, dc: p.dc }))
     announce(s, t('ann.losesConc', { name: c.name }))
   }
+}
+
+/* ------------------------------------------------------------------------------------------------------------ */
+/* Effects: spells and conditions that last a while                                                              */
+/* ------------------------------------------------------------------------------------------------------------ */
+
+/** Put an effect on a creature (the same spell from the same caster is replaced, not stacked) and give it the condition it carries. */
+export function addEffect(s: CombatState, target: Combatant, effect: Effect) {
+  target.effects = (target.effects ?? []).filter((e) => !(e.name === effect.name && e.sourceId === effect.sourceId))
+  // added during the very turn that would end it: that turn's end does not count ("until the end of your next turn")
+  const active = s.started ? s.combatants[s.turnIndex] : undefined
+  if (effect.at === 'end' && active?.id === effect.whose) effect.skip = true
+  target.effects.push(effect)
+  if (effect.condition && !isConditionImmune(target, effect.condition)) addCondition(target, effect.condition)
+}
+
+/** Take an effect off. The condition it gave goes too, unless another effect still gives it. */
+export function endEffect(s: CombatState, target: Combatant, effect: Effect, why: 'expired' | 'saved' | 'removed' | 'concentration') {
+  target.effects = (target.effects ?? []).filter((e) => e.id !== effect.id)
+  if (effect.condition && !target.effects.some((e) => e.condition === effect.condition)) target.conditions = target.conditions.filter((x) => x !== effect.condition)
+  s.prompts = (s.prompts ?? []).filter((p) => !(p.kind === 'effectSave' && p.effectId === effect.id))
+  const caster = s.combatants.find((c) => c.id === effect.sourceId)
+  const key = { expired: 'log.effectExpired', saved: 'log.effectSaved', removed: 'log.effectRemoved', concentration: 'log.effectConc' } as const
+  logEvent(s, t(key[why], { effect: effect.name, who: target.name, caster: caster?.name ?? '' }))
+  if (why !== 'removed') announce(s, t('ann.effectEnds', { effect: effect.name, who: target.name }))
+}
+
+/** The counters of every effect that follows `who`'s turn tick down at `when`; the affected creature's own repeat saves are queued. */
+export function tickEffects(s: CombatState, who: Combatant, when: 'start' | 'end') {
+  for (const target of s.combatants) {
+    for (const e of [...(target.effects ?? [])]) {
+      if (e.whose === who.id && e.at === when && e.rounds !== undefined) {
+        if (e.skip) e.skip = false
+        else {
+          e.rounds -= 1
+          if (e.rounds <= 0) {
+            endEffect(s, target, e, 'expired')
+            continue
+          }
+        }
+      }
+      if (target.id === who.id && e.save?.at === when) addPrompt(s, { kind: 'effectSave', combatantId: target.id, effectId: e.id })
+    }
+  }
+}
+
+/** The repeat save of an effect was made: success ends it, failure keeps it. */
+export function settleEffectSave(s: CombatState, promptId: string, success: boolean) {
+  const p = s.prompts?.find((x) => x.id === promptId)
+  if (!p || p.kind !== 'effectSave') return
+  const target = s.combatants.find((c) => c.id === p.combatantId)
+  const effect = target?.effects?.find((e) => e.id === p.effectId)
+  s.prompts = s.prompts!.filter((x) => x.id !== promptId)
+  if (!target || !effect) return
+  if (success) endEffect(s, target, effect, 'saved')
+  else logEvent(s, t('log.effectSaveFailed', { who: target.name, effect: effect.name }))
+}
+
+/** End every effect this caster is holding up by concentration (except the ones in `keep`). */
+export function endConcentrationEffects(s: CombatState, caster: Combatant, keep?: Set<string>) {
+  for (const target of s.combatants) {
+    for (const e of [...(target.effects ?? [])]) {
+      if (e.sourceId === caster.id && e.concentration && !keep?.has(e.id)) endEffect(s, target, e, 'concentration')
+    }
+  }
+}
+
+/** Start or stop concentrating; stopping ends the spells it held up. */
+export function setConcentrating(s: CombatState, c: Combatant, on: boolean) {
+  c.concentrating = on
+  if (!on) endConcentrationEffects(s, c)
 }
 
 /** Recharge roll made for a monster's action (5-6 etc.). */
@@ -289,6 +366,7 @@ export const isDown = (c: Combatant) => c.kind !== 'lair' && c.hp === 0
 /** Start-of-turn bookkeeping: economy trackers and legendary actions reset, spent recharge actions ask for a roll. */
 function beginTurn(s: CombatState, c: Combatant) {
   c.turn = freshTurn()
+  tickEffects(s, c, 'start')
   if (c.legendary) c.legendary.used = 0
   for (const a of c.actions ?? []) {
     if (a.limited?.kind === 'recharge' && c.spent?.[a.id]) addPrompt(s, { kind: 'recharge', combatantId: c.id, actionId: a.id, min: a.limited.min })
@@ -312,6 +390,8 @@ export function startCombat(s: CombatState) {
 /** Move to the next turn, skipping defeated monsters. */
 export function advanceTurn(s: CombatState) {
   const n = s.combatants.length
+  const ending = s.combatants[s.turnIndex]
+  if (ending && s.started) tickEffects(s, ending, 'end')
   for (let i = 0; i < n; i++) {
     s.turnIndex++
     if (s.turnIndex >= n) {
@@ -379,7 +459,7 @@ export function dealDamage(s: CombatState, target: Combatant, parts: DamageAmoun
   const absorbed = Math.min(target.tempHp, total)
   applyDamage(target, total)
   if (target.hp === 0) {
-    target.concentrating = false
+    setConcentrating(s, target, false)
     // a creature that is down can't be concentrating, so a pending check is moot
     s.prompts = (s.prompts ?? []).filter((p) => !(p.kind === 'concentration' && p.combatantId === target.id))
     const overflow = total - absorbed - hpBefore
@@ -482,6 +562,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
     if (!attacker) return
     const lines: string[] = []
     const publicLines: string[] = []
+    const madeHere = new Set<string>() // effects this very cast created: dropping the old concentration spell must not end them
 
     for (const o of r.targets) {
       const target = s.combatants.find((c) => c.id === o.targetId)
@@ -531,9 +612,19 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
       const afflicted = o.result === 'hit' || o.result === 'crit' || o.result === 'failed'
       if (cond && o.applyCondition && afflicted) {
         if (isConditionImmune(target, cond)) notes.push(t('note.immuneTo', { cond: tCondition(cond) }))
-        else if (!target.conditions.includes(cond)) {
-          target.conditions.push(cond)
-          notes.push(t('note.now', { cond: tCondition(cond) }))
+        else {
+          if (!target.conditions.includes(cond)) {
+            target.conditions.push(cond)
+            notes.push(t('note.now', { cond: tCondition(cond) }))
+          }
+          // a known spell (Hold Person...) also gets its timer and repeat save
+          const preset = presetFor(action.name)
+          if (preset?.condition === cond) {
+            const effect = effectFromPreset(preset, { targetId: target.id, casterId: attacker.id, dc: action.saveDc })
+            addEffect(s, target, effect)
+            madeHere.add(effect.id)
+            notes.push(t('note.effectTracked', { effect: effect.name }))
+          }
         }
       }
       if (o.detail) notes.unshift(o.detail)
@@ -551,7 +642,10 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
         attacker.spent[key] = (attacker.spent[key] ?? 0) + 1
       }
       if (r.cast.concentration) {
-        if (attacker.concentrating) extra.push(t('note.dropsConc'))
+        if (attacker.concentrating) {
+          endConcentrationEffects(s, attacker, madeHere)
+          extra.push(t('note.dropsConc'))
+        }
         attacker.concentrating = true
         extra.push(t('note.concentrating'))
       }

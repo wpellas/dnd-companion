@@ -14,22 +14,22 @@ characters is a setting (`allowPlayerAppRolls`, default **off**); respect it eve
 `canAppRoll(kind, settings)` from `lib/settings.ts`). "Automatic" features must stay rules assistance (advantage hints, auto-fail
 saves, bonuses), never rolling for a player.
 
-Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): level-up helper, battle map with tokens, players logging in as their characters.
+Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): a battle map with tokens, loot generation after a fight.
 
 ## Commands
 
 Package manager is **pnpm** (not npm).
 
-- `pnpm dev` - dev server (listens on the LAN; includes the live-view relay)
+- `pnpm dev` - Vite dev server (listens on the LAN; proxies `/api` to the backend)
 - `pnpm build` - `tsc -b` + production build (use this to type-check; also type-checks `server/`)
 - `pnpm lint` - oxlint
-- `pnpm live` - build then `vite preview --port 4173` (also includes the relay)
+- `pnpm build` also puts the app in `backend/public`, which the Herd site serves (see Backend). `pnpm api` - optional `artisan serve` on port 8000 instead of Herd (set `API_URL` for `pnpm dev`)
 
 ## Stack
 
 Vite + React 19 + TypeScript (strict, `verbatimModuleSyntax`, `erasableSyntaxOnly` - use `import type`, no enums or constructor
-parameter properties). Dexie (IndexedDB) for storage. Plain CSS in `src/index.css`. No router, no state library. The only server
-code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view, uses `ws`). `qrcode` renders the Settings QR.
+parameter properties). Dexie (IndexedDB) for storage. Plain CSS in `src/index.css`. No router, no state library. There is no Node server: the only server
+code is the Laravel backend in `backend/`. `qrcode` renders the Settings QR.
 
 ## Architecture
 
@@ -98,15 +98,35 @@ code is `server/hubPlugin.ts` (a Vite plugin: WebSocket relay for the live view,
   CR -> XP table (defaults for custom monsters). `src/data/classFeatures.ts` - catalog of limited-use SRD class features.
 - `src/lib/settings.ts`, `backup.ts` (whole-app JSON export/import, journal included; the SRD library is not included; restore keeps `api:*` and `lastBackup`).
 
-### Live view (`server/hubPlugin.ts`, `lib/hub.ts`, `lib/publicState.ts`)
-The DM's browser (`LiveHost`, rendered in `App`) pushes `toPublic(combat)` and shrunken portraits over a WebSocket (`/hub?role=host`) to the
-Vite relay, which keeps the latest of each in memory and forwards to viewers (`/hub?role=viewer`, used by `PlayerView` via `useRemoteView`).
+### Live view (`lib/hub.ts`, `lib/publicState.ts`, `backend/app/Http/Controllers/LiveController.php`)
+The DM's browser (`LiveHost`, rendered in `App`) uploads parts to the server with `POST /campaigns/{id}/live` (`combat` = `toPublic(combat)`, `portraits` = shrunken data URLs, `sheet`, `lang`,
+and a `ping` heartbeat every 20 s that drives "DM offline"); a part is re-sent only when its JSON changed, and a failed upload is retried on the next change or heartbeat. Viewers poll
+`GET .../live?combat=3&lang=1` (every 1.5 s) with the versions they already have and get back only the parts that changed (`useRemoteView(source)`). Two sources: a signed-in member
+(`{ campaignId }`, `PlayerHome`) and the TV's secret link (`{ token }`, route `#table/<token>`, `GET /table/{token}/live`, no login; `campaigns.view_token`, replaced by "Make a new link").
 **`toPublic()` is the privacy boundary:** monsters carry only a status (Healthy / Bloodied / Defeated) - never HP, AC, saves, actions, the DM
-log, prompts or undo history. Add fields there deliberately. The relay ignores any URL but `/hub` so Vite's own HMR socket keeps working.
-`PlayerView` prefers relay data and falls back to the local database (the DM's second window).
+log, prompts or undo history. Add fields there deliberately: the server stores the parts untouched and never strips anything.
+`PlayerView` without a source (the DM's own `#player` window) reads the local database instead.
 **Spotlight** (`lib/spotlight.ts`, kv `spotlight`): the DM can show one character's `PublicSheet` (`toPublicSheet` in `publicState.ts` - also part of the privacy
-boundary: a player's own numbers only, inventory optional) as a third relay message type; `PlayerView` renders `CharacterSheetView` instead of the feed while it is set.
+boundary: a player's own numbers only, inventory optional) as the `sheet` part; `PlayerView` renders `CharacterSheetView` instead of the feed while it is set.
 It never touches combat state. `SpotlightBar` (in `App`) keeps a reminder on every DM tab.
+
+### Effects, phone rolls, level-up, 2024 details
+- **Effects with durations** (`types.ts` `Effect`, `Combatant.effects`; engine in `combat.ts`: `addEffect` / `endEffect` / `tickEffects` / `settleEffectSave` / `setConcentrating` /
+  `endConcentrationEffects`; presets in `lib/effects.ts`; UI `components/EffectsEditor.tsx` in each combat row). A timer counts rounds down at the start or end of a chosen creature's turn (a minute = 10 rounds of the
+  *caster's* turns); the optional repeat save queues an `effectSave` prompt at the affected creature's turn; ending an effect removes the condition it gave (unless another effect still gives it). `advanceTurn` ticks the end of the
+  turn that finishes, `beginTurn` the start of the next. An effect added during the turn that would end it skips that turn's end. A concentration effect (`sourceId` + `concentration`) ends when the caster loses concentration,
+  goes down, or starts another concentration spell (not the one that very cast made: `madeHere`). `applyResolution` creates the effect by itself when a spell named in `PRESETS` applies its condition (the DC is the action's save DC). Public:
+  `PublicCombatant.effects` (names; rounds left only for PCs).
+- **Players typing their d20** (`lib/rolls.ts`, `components/RollSender.tsx` / `RollsTray.tsx`, backend `RollController` + `player_rolls`): a player sends `initiative` (a total) / `attack` / `save` (the d20) for a character they own; the DM's
+  sync pull carries them (`rolls`); `useSentRoll(characterId, kind)` fills the matching field (attack panel, save rows, concentration and effect-save prompts, initiative input) and consumes the roll. **Optional by design: nothing ever waits for it**
+  (rolls older than 2 hours are dropped; the DM can always type the number). The app never rolls for a player here.
+- **Spectator vs interactive** (`pages/PlayerHome.tsx`): a player's phone is a pure spectator screen by default (only the "It's your turn!" / "You're up next" banner from `PlayerView`, which needs no action). The "Interactive" switch (localStorage
+  `dnd-companion:interactive`) adds My characters, the roll sender and a buzz on their turn. **Never make anything for players required.**
+- **Level-up helper** (`lib/levelup.ts` pure + `components/LevelUpPanel.tsx`): from the SRD class level row (`features` names; an "Ability Score Improvement" / "Epic Boon" feature turns on the improvement step): hit points (average = die/2+1, or the
+  player's roll) + Constitution modifier (at least 1), plus a retroactive amount for every earlier level when an improvement raises the Constitution modifier; initiative and Passive Perception follow Dexterity and Wisdom; slots, spell limits and class
+  feature uses via `mergeClassTable` / `refreshResources`. A feat or boon is only noted (a journal entry for the DM), its rules are not applied.
+- **2024 details:** Heroic Inspiration (`Character.heroicInspiration`, copied to `Combatant.inspired` by `useFightSync`, shown to the table); Weapon Mastery (`Item.weapon.masteryKnown` makes `weaponActions` set `Action.mastery`; `lib/mastery.ts` +
+  `AttackResolver` show the property's effect on a hit, Graze also on a miss); cover (+2 / +5 AC) on the attack panel.
 
 ### UI
 - Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `JournalPage`, `SettingsPage`, `PlayerView`.
@@ -125,10 +145,51 @@ It never touches combat state. `SpotlightBar` (in `App`) keeps a reminder on eve
 - Editing an SRD monster saves a custom copy; the SRD library is never modified.
 - Resolution helpers return log text AND player-safe "events" (`announce`): public lines mention damage numbers only for PC targets.
 
+## Backend (`backend/`, Laravel 13, PHP 8.3, MySQL) and sync
+
+Accounts + a server database, to be hosted on a PHP web hotel (Inleed: no Node, no WebSockets, so the live view **polls**). Phases: (1) accounts, campaigns,
+invites **done**; (2) data on the server **done** (below); (3) live view by polling, player page and table-screen link **done**;
+(4) players own and edit their characters **done**; (5) administration **done**.
+- **Decisions:** the combat engine stays in the DM's browser; the DM client uploads the already-stripped `toPublic()` snapshot and players only read that (privacy
+  boundary stays client-side). A character belongs to one campaign and one player account; players edit their own, the DM any in the campaign. Registration is **invite-only**.
+  Any account can be DM of its own campaign (`campaign_user.role` = `dm` | `player`); `users.is_admin` marks the administrator.
+- **API:** `routes/web.php` under `/api` (session cookie + CSRF, no Sanctum; `src/lib/api.ts` sends `X-XSRF-TOKEN` from the cookie), controllers in `app/Http/Controllers`,
+  models `User` / `Campaign` / `Invite` / `Document`. Strangers get 404 for campaigns they are not in. Reset-password links open `APP_URL/#reset?token=..&email=..`.
+- **The data is a mirror, not API calls.** The app still reads and writes Dexie everywhere. `src/db.ts`: `db` is a Proxy to the open campaign's local database
+  (`dnd-companion-u<user>-c<campaign>`); `srdDb` is the old `dnd-companion` database, now only the SRD library cache (`api:*`) plus the user's pre-account data (see `lib/legacy.ts`).
+  `src/lib/sync.ts` (one `Engine` per open campaign) marks records dirty with Dexie hooks, pushes them as JSON in chunks, polls `GET /sync?since=<rev>` every 2.5 s and applies
+  what changed (skipping records with unsent local changes). Last write wins per record. Record equality (`sent` map) makes echoes harmless, so keep `toServer` / `fromServer`
+  stable: a portrait Blob travels inside the character as `imageData` (360 px JPEG data URL) and the Blob built from it remembers that string. Local-only kv keys (`sync:*`, `api:*`,
+  `lastBackup`) never sync. The combat record is synced **without its undo stack** (`history`: 25 snapshots, 5x the rest of a fight): undo stays on the device that made the changes, and a fight applied from the server starts with an empty stack. Offline edits wait in the dirty set, kept (with the cursor) in `kv['sync:state']`. After a restore/import call `resyncAll()` (pushes differences, then prunes
+  what is gone on the server).
+- **Ids:** records are created in the browser, so `prime()` moves each user's auto-increment counters to `userId * 1e9` (no collisions between people); imported records keep their old small ids.
+- **Server:** `documents` (campaign, collection, key, owner, `data` = the JSON string stored untouched, tombstone flag, `rev`) and `campaigns.rev` (a counter every accepted push raises).
+  `SyncController`: DM reads/writes everything; a player only their own `characters` (and `pull` tells a player which keys are theirs, `owned`, so a character the DM hands to someone else disappears
+  from their device). Never decode `data` in PHP (`{}` would become `[]`).
+- **Owners:** `documents.owner_id` is the account that owns a character (the pusher when it is created; only the DM can change it, to a member, by sending `owner_id`). Locally it is `Character.ownerId`,
+  set from the server on every pull and **not part of the record JSON**; the sync signature (`sigOf` in `sync.ts`) is JSON + owner, so handing a character over counts as a change. The DM's character form
+  has a "Player account" select (and fills `playerName` from the account); `PlayerHome` -> "My characters" is `PartyPage` in player mode (`campaign.role !== 'dm'` hides rests, awards, the reward banner, showcase).
+- **Session / UI:** `lib/session.ts` (login, campaign choice, opens the local db and starts sync), `Root.tsx` decides auth page / campaign list / loading / app / player home;
+  `#player` skips sign-in and opens the campaign this browser used last (`dnd-companion:who`). Server validation messages are English; the UI around them is translated.
+- **Local setup:** Herd (PHP 8.3, MySQL), database `private_dnd_companion` (`utf8mb4_unicode_ci`), `backend/.env` (not committed; mail goes to Herd's mail service on port 2525).
+  `cd backend && composer install && php artisan migrate --seed` (the seeder creates the admin from `ADMIN_EMAIL` / `ADMIN_PASSWORD`). Link `backend/` as a Herd site (`APP_URL` in `.env` must match its address).
+  **`pnpm build` writes the frontend into `backend/public`** (`vite.config.ts` `outDir`; the script first clears `public/assets`, and the build files are gitignored), and `routes/web.php` serves `index.html`
+  at `/`: so Herd (and later Inleed) serves app and API from one place, no other process. `pnpm dev` also works: Vite proxies `/api` to `API_URL`, or by default to `APP_URL` from `backend/.env` (the Herd site; use
+  `API_URL=http://127.0.0.1:8000` with `pnpm api` for artisan serve). Tests: `php artisan test` (in-memory SQLite, does not touch MySQL). Use `config('app.admin_email')`, never `env()`, outside `config/` (cached in production).
+- **Changing e-mail or password** (Settings, `SignInDetails`): both need the current password. A new e-mail is *pending*: `PATCH /me/email` stores it in `email_changes` (one per user, secret stored as sha256, 60 minutes) and mails a link to the NEW address
+  (`#confirm-email?token=..`, `ConfirmEmailPage`); `POST /confirm-email` (public, the secret is the only credential, so it works in another browser) applies it, re-checks that the address is still free and mails the OLD address a notice
+  (`EmailChanged`). The mails are English only (Laravel's), like the reset mail.
+- **Administration** (`pages/AdminPage.tsx`, route `#admin`, only for `users.is_admin`; linked from the campaign list and the Settings account card; `AdminController`, every route behind the `admin` middleware): site invites
+  (make / list / revoke), accounts (send a reset link, lock = `users.disabled_at`, make or remove admin, delete), campaigns (delete) and the **admin log** (`admin_logs`: who, what, to whom; every change is written by `AdminController::log`, newest first, 50 per page). A locked account is signed out on its next request (`EnsureActive`, on every
+  authenticated route) and cannot log in (`Auth::attempt` requires `disabled_at` null; the error is the same as a wrong password). The admin cannot lock, demote or delete themselves, and an account that is the
+  only DM of a campaign cannot be deleted. The first administrator comes from the seeder.
+- **Not done yet:** a player-only view of character sheets on the live table, an audit log, paging (the admin lists are not paged).
+  On Inleed the web root is `/web` while Laravel's is `public/`: point the host at `public/` (or rename it) when deploying.
+
 ## Languages (i18n)
 
-English and Swedish. The DM picks the language in Settings (`settings.language`, kv) and **everyone sees it**: `LiveHost` pushes a `lang` message
-over the relay and `useRemoteView` / `PlayerView` apply it (a phone has no saved settings; the DM's own second window reads the saved one).
+English and Swedish. The DM picks the language in Settings (`settings.language`, kv) and **everyone sees it**: `LiveHost` uploads a `lang` part
+and `useRemoteView` / `PlayerView` apply it (a phone has no saved settings; the DM's own second window reads the saved one).
 - `src/lib/i18n.ts` - `t(key, params)` (reads the current language at call time, so it also works in the combat engine), `tn(base, count)`
   (`.one` / `.other` keys), `possessive(name)` ("Merlin's" / "Merlins", no extra s after s/x/z), and `tCondition` / `tAbility` / `tClass` /
   `tDamage` / `tMonsterType` / `tSize` for rules vocabulary (the stored values stay English; these give the words shown).
@@ -165,15 +226,15 @@ is CSS variables at the top of `src/index.css`: dragon red, parchment, gold, lea
 
 No test framework is installed; checks were done with throwaway scripts: pure logic via `pnpm dlx tsx file.mts` (importing from `src/lib/*.ts` with
 `file:///` URLs; avoid importing `db`-touching modules where possible), and the UI by driving headless Edge over the DevTools protocol against
-`pnpm preview` (seed IndexedDB, click through, assert on the DOM / database / relay messages). If a test framework is added, port those checks
+`pnpm preview` (seed IndexedDB, click through, assert on the DOM / database / server tables). If a test framework is added, port those checks
 (monster parser on all 341 monsters incl. Multiattack and spell lists, class-table merge, rests and slot recovery, damage / resistance / condition rules,
-volleys, delay and group initiative, Exhaustion, undo, relay privacy). Headless Edge launched for these tests outlives `proc.kill()`: kill leftover
+volleys, delay and group initiative, Exhaustion, undo, live-view privacy). Headless Edge launched for these tests outlives `proc.kill()`: kill leftover
 `msedge.exe` processes whose command line has your throwaway profile before the next run, or the debugging port will refuse.
 
 ## TODO / ideas
 
-- Longer-term (agreed): level-up helper, battle map with tokens, players logging in as their own characters. (Session notes, equipment,
-  inventory, gold and XP are built: Journal tab, 🎒 Items on the party card.)
-- Riders that need a second save as a flow; monster spells the API can't describe (Shield...).
+- Longer-term (agreed, waiting): battle map with tokens, loot generation. (Session notes, equipment, inventory, gold and XP, players with their own accounts, effects with durations and the level-up helper are built.)
+- Effects: more presets (`PRESETS` in `lib/effects.ts`), and an effect that ends when the target takes damage; monster spells the API can't describe (Shield...).
+- The throwaway browser test scripts live outside the repo (see Testing): port them into an `e2e/` folder.
 - Subclass-granted spells, ritual casting, non-SRD content import, Speed tracking (Exhaustion's speed penalty is only a reminder).
 - More per-attack multi-hit spells can be added to `VOLLEYS` in `spells.ts` (hexblade, Spiritual Weapon etc. aren't).

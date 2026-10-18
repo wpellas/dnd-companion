@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db'
+import { db, srdDb } from '../db'
 import { srdToTemplate } from './monsters'
 import { LIBRARY_SYNC_KEY, readCachedMonsters } from './srdApi'
 import type { MonsterTemplate } from '../types'
@@ -21,7 +21,7 @@ export async function loadSrdMonsters(): Promise<MonsterTemplate[]> {
  * finished; before that the list may be partial (or empty on the very first launch).
  */
 export function useSrdMonsters(): { monsters: MonsterTemplate[]; ready: boolean } {
-  const synced = useLiveQuery(async () => (await db.kv.get(LIBRARY_SYNC_KEY)) ?? null, [])
+  const synced = useLiveQuery(async () => (await srdDb.kv.get(LIBRARY_SYNC_KEY)) ?? null, [])
   const [monsters, setMonsters] = useState<MonsterTemplate[]>(cache?.list ?? [])
   useEffect(() => {
     let off = false

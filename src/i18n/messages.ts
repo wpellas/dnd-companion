@@ -1,13 +1,18 @@
+import { account } from './account'
+import { admin } from './admin'
 import { bestiary } from './bestiary'
 import { combatui } from './combatui'
 import { editors } from './editors'
+import { effects } from './effects'
 import { journal } from './journal'
+import { levelup } from './levelup'
 import { loot } from './loot'
 import { log } from './log'
 import { party } from './party'
 import { player } from './player'
 import { resolve } from './resolve'
 import { rest } from './rest'
+import { rolls } from './rolls'
 import { rules } from './rules'
 import { shell } from './shell'
 import { turn } from './turn'
@@ -18,17 +23,22 @@ import { vocab } from './vocab'
 /** Every message of the app in every language, keyed by name. Each module holds one area of the UI. */
 export const MESSAGES = {
   ...vocab,
+  ...account,
+  ...admin,
   ...shell,
   ...bestiary,
   ...combatui,
   ...editors,
+  ...effects,
   ...journal,
+  ...levelup,
   ...loot,
   ...log,
   ...party,
   ...player,
   ...resolve,
   ...rest,
+  ...rolls,
   ...rules,
   ...spells,
   ...turn,

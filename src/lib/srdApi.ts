@@ -1,4 +1,4 @@
-import { db } from '../db'
+import { srdDb as db } from '../db'
 import { CLASSES, CONDITIONS } from '../types'
 
 /**
@@ -19,6 +19,8 @@ export interface SrdClassLevel {
   level: number
   /** Per-class columns of the class features table, e.g. { second_wind_uses: 2 } or { rage_count: 3 } */
   class_specific?: Record<string, unknown>
+  /** The class features gained at this level (names are English, like the rest of the SRD text) */
+  features?: { index: string; name: string }[]
   spellcasting?: {
     cantrips_known?: number
     prepared_spells?: number

@@ -10,6 +10,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# the frontend is built into Laravel's web root
+/backend/public/assets
+/backend/public/index.html
+/backend/public/favicon.png
 *.local
 
 # Editor directories and files

@@ -1,40 +1,27 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import QRCode from 'qrcode'
-import { db } from '../db'
-import { Rich } from '../components/Rich'
+import { db, srdDb } from '../db'
+import { AccountSection } from '../components/AccountSection'
 import { CheckField, Section } from '../components/Section'
+import { TableLink } from '../components/TableLink'
 import { BACKUP_KEY, download, exportBackup, importBackup } from '../lib/backup'
-import { useHubStatus } from '../lib/hub'
 import { getLang, LANGUAGES, setLang, t, tn, type Lang } from '../lib/i18n'
 import { updateSettings, useSettings } from '../lib/settings'
 import { LIBRARY_SYNC_KEY } from '../lib/srdApi'
+import { resyncAll } from '../lib/sync'
 
 const DAY = 86400000
 
 export function SettingsPage() {
   const settings = useSettings()
-  const hub = useHubStatus()
   // days since the last backup: null = never, undefined = still loading
   const days = useLiveQuery(async () => {
     const at = (await db.kv.get(BACKUP_KEY))?.value as number | undefined
     return at === undefined ? null : Math.floor((Date.now() - at) / DAY)
   }, [])
-  const library = useLiveQuery(async () => (await db.kv.get(LIBRARY_SYNC_KEY))?.value as { spells?: number; monsters?: number } | undefined, [])
+  const library = useLiveQuery(async () => (await srdDb.kv.get(LIBRARY_SYNC_KEY))?.value as { spells?: number; monsters?: number } | undefined, [])
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const file = useRef<HTMLInputElement>(null)
-  const [qr, setQr] = useState<string>()
-  const [urlIndex, setUrlIndex] = useState(0)
-  const url = hub.urls[Math.min(urlIndex, hub.urls.length - 1)]
-
-  useEffect(() => {
-    let off = false
-    if (!url) return
-    QRCode.toDataURL(url, { margin: 1, width: 240, color: { dark: '#2a1a0d', light: '#f4e9c6' } }).then((d) => !off && setQr(d))
-    return () => {
-      off = true
-    }
-  }, [url])
 
   const backup = async () => {
     const { blob, filename, counts } = await exportBackup()
@@ -46,6 +33,7 @@ export function SettingsPage() {
     if (!confirm(t('settings.restoreConfirm'))) return
     try {
       const c = await importBackup(f)
+      await resyncAll() // the server follows the restored data, including what the backup no longer contains
       setMsg({ ok: true, text: t('settings.restored', { ...c }) })
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
@@ -66,6 +54,8 @@ export function SettingsPage() {
       </div>
 
       <div className="form settings">
+        <AccountSection />
+
         <Section title={t('settings.language')}>
           <label className="inline-field">
             {t('settings.languageLabel')}
@@ -109,44 +99,7 @@ export function SettingsPage() {
           {msg && <p className={msg.ok ? 'adv-text' : 'warn'}>{msg.text}</p>}
         </Section>
 
-        <Section title={t('settings.live')}>
-          {hub.state === 'off' && hub.urls.length === 0 ? (
-            <p className="muted note-line">
-              <Rich text={t('settings.liveOff')} parts={{ dev: <code>pnpm dev</code>, live: <code>pnpm live</code> }} />
-            </p>
-          ) : (
-            <>
-              <p className="muted note-line">{t('settings.liveNote')}</p>
-              <div className="live-box">
-                <div>
-                  <div className={`live-state ${hub.state}`}>
-                    {hub.state === 'live' ? t('settings.liveOn') : hub.state === 'connecting' ? t('settings.liveConnecting') : t('settings.liveNot')} ·{' '}
-                    {tn('settings.viewers', hub.viewers)}
-                  </div>
-                  {hub.urls.length > 1 && (
-                    <label className="inline-field">
-                      {t('settings.network')}
-                      <select value={urlIndex} onChange={(e) => setUrlIndex(Number(e.target.value))}>
-                        {hub.urls.map((u, i) => (
-                          <option key={u} value={i}>
-                            {u}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  {url && (
-                    <p>
-                      <Rich text={t('settings.openUrl')} parts={{ url: <strong className="live-url">{url}</strong> }} />
-                    </p>
-                  )}
-                  <p className="muted note-line">{t('settings.firewall')}</p>
-                </div>
-                {qr && <img className="qr" src={qr} alt={t('settings.qrAlt', { url: url ?? '' })} />}
-              </div>
-            </>
-          )}
-        </Section>
+        <TableLink />
 
         <Section title={t('settings.library')}>
           <p className="muted note-line">

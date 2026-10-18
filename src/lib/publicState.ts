@@ -26,6 +26,10 @@ export interface PublicCombatant {
   /** Exhaustion level 1-6, if any */
   exhaustion?: number
   concentrating: boolean
+  /** Player characters with Heroic Inspiration */
+  inspired?: boolean
+  /** Spells and effects running on this creature; only player characters show how many rounds are left */
+  effects?: { name: string; rounds?: number }[]
 }
 
 export interface PublicCombat {
@@ -54,8 +58,9 @@ export function toPublic(s: CombatState | undefined): PublicCombat | undefined {
         conditions: c.conditions ?? [],
         exhaustion: c.exhaustion || undefined,
         concentrating: c.concentrating,
+        effects: c.effects?.length ? c.effects.map((e) => ({ name: e.name, rounds: c.kind === 'pc' ? e.rounds : undefined })) : undefined,
       }
-      return c.kind === 'pc' ? { ...base, hp: c.hp, maxHp: c.maxHp, tempHp: c.tempHp, deathSaves: c.hp === 0 ? c.deathSaves : undefined } : base
+      return c.kind === 'pc' ? { ...base, hp: c.hp, maxHp: c.maxHp, tempHp: c.tempHp, deathSaves: c.hp === 0 ? c.deathSaves : undefined, inspired: c.inspired || undefined } : base
     }),
   }
 }

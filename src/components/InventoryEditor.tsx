@@ -254,6 +254,7 @@ function ItemRow({
               <span>{t('inv.mastery')}</span>
               <input value={w?.mastery ?? ''} onChange={(e) => setWeapon({ mastery: e.target.value || undefined })} />
             </label>
+            <CheckField label={t('inv.masteryKnown')} title={t('inv.masteryKnownTitle')} checked={!!w?.masteryKnown} onChange={(on) => setWeapon({ masteryKnown: on })} />
           </div>
         )}
 

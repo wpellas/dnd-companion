@@ -31,8 +31,6 @@ export const shell = {
   'nav.encounters': ['📜 Encounters', '📜 Möten'],
   'nav.journal': ['📖 Journal', '📖 Dagbok'],
   'nav.settings': ['⚙ Settings', '⚙ Inställningar'],
-  'nav.watching': ['📡 {n} watching', '📡 {n} tittar'],
-  'nav.watchingTitle': ['Live view: click for the address and QR code', 'Livevy: klicka för adressen och QR-koden'],
   'footer.dataFrom': ['Class, spell and monster data from the ', 'Klass-, besvärjelse- och monsterdata från '],
   'footer.api': ['5e SRD API', '5e SRD API'],
   'footer.legal': [
@@ -96,26 +94,7 @@ export const shell = {
   'settings.badJson': ["That file isn't valid JSON.", 'Filen är inte giltig JSON.'],
   'settings.notBackup': ["That doesn't look like a D&D Companion backup file.", 'Det där ser inte ut som en säkerhetskopia från D&D Companion.'],
   'settings.newerBackup': ['This backup was made by a newer version of the app.', 'Säkerhetskopian är gjord av en nyare version av appen.'],
-  'settings.live': ['Live view on phones & TV', 'Livevy på mobiler och TV'],
-  'settings.liveOff': [
-    "The live relay isn't available here. Start the app with {dev} (or {live} for a faster, built copy) on the computer you run the game from and open it in your browser.",
-    'Live-reläet finns inte här. Starta appen med {dev} (eller {live} för en snabbare, byggd kopia) på datorn du spelar från och öppna den i webbläsaren.',
-  ],
-  'settings.liveNote': [
-    'Anyone on the same Wi-Fi who opens the address below sees the player view live: the turn order, the party\'s HP, the monsters\' status (never their exact HP or AC), conditions, and short announcements like "Goblin 1 hits Xaroz".',
-    'Alla på samma Wi-Fi som öppnar adressen nedan ser spelarvyn live: turordningen, sällskapets HP, monstrens status (aldrig exakt HP eller AC), tillstånd och korta meddelanden som "Goblin 1 träffar Xaroz".',
-  ],
-  'settings.liveOn': ['● Live', '● Live'],
-  'settings.liveConnecting': ['… Connecting', '… Ansluter'],
-  'settings.liveNot': ['○ Not connected', '○ Inte ansluten'],
-  'settings.viewers.one': ['{count} viewer connected', '{count} tittare ansluten'],
-  'settings.viewers.other': ['{count} viewers connected', '{count} tittare anslutna'],
-  'settings.network': ['Network', 'Nätverk'],
-  'settings.openUrl': ['Open {url} on a phone, tablet or TV connected to the same Wi-Fi.', 'Öppna {url} på en mobil, surfplatta eller TV på samma Wi-Fi.'],
-  'settings.firewall': [
-    "If a device can't connect, allow Node.js through the Windows firewall for private networks. There is no password: only use this on a network you trust.",
-    'Om en enhet inte kan ansluta, tillåt Node.js genom Windows brandvägg för privata nätverk. Det finns inget lösenord: använd bara detta på ett nätverk du litar på.',
-  ],
+  'settings.live': ['Table screen', 'Bordsskärm'],
   'settings.qrAlt': ['QR code for {url}', 'QR-kod för {url}'],
   'settings.library': ['Reference library', 'Referensbibliotek'],
   'settings.libraryStored': [

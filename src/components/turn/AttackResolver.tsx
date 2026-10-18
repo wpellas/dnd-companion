@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { attackAdvice, exhaustionPenalty } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
 import { t } from '../../lib/i18n'
+import { masteryOnMiss, masteryText } from '../../lib/mastery'
 import { adjustForTarget } from '../../lib/resolve'
+import { useSentRoll } from '../../lib/rolls'
 import { attackOutcome, attackRollText, rollD20, type RollMode } from '../../lib/rules'
 import type { TargetOutcome } from '../../lib/combat'
 import type { Action, Combatant } from '../../types'
@@ -29,12 +31,24 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
   const [d20, setD20] = useState('')
   const [pickedMode, setPickedMode] = useState<RollMode | null>(null)
   const [d20Note, setD20Note] = useState('')
+  const [cover, setCover] = useState(0) // +2 half, +5 three-quarters
+  const ac = target.ac + cover
+  // a player may have typed their d20 on their phone: it fills the field when it is empty, and is offered when it is not
+  const sent = useSentRoll(attacker.characterId, 'attack')
+  useEffect(() => {
+    if (sent.roll && d20 === '') {
+      setD20(String(sent.roll.value)) // eslint-disable-line react-hooks/set-state-in-effect
+      setD20Note(t('roll.fromPhone'))
+      sent.take()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sent.roll?.id])
   const mode = pickedMode ?? advice.mode // the DM can override the suggestion
 
   const penalty = exhaustionPenalty(attacker)
   const bonus = (action.attackBonus ?? 0) - penalty
   const roll = d20 === '' ? undefined : Number(d20)
-  const base = roll === undefined ? null : attackOutcome(roll, bonus, target.ac)
+  const base = roll === undefined ? null : attackOutcome(roll, bonus, ac)
   // a hit that the rules turn into a crit (Paralyzed / Unconscious target within 5 ft)
   const outcome = base === 'hit' && advice.critOnHit ? 'crit' : base
   const hit = outcome === 'hit' || outcome === 'crit'
@@ -46,7 +60,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
 
   const apply = () => {
     if (!outcome) return
-    const detail = `${attackRollText({ roll, bonus, ac: target.ac, mode, exhaustion: penalty })}${advice.critOnHit && base === 'hit' ? t('res.critDetail', { why: advice.critOnHit }) : ''}`
+    const detail = `${attackRollText({ roll, bonus, ac, mode, exhaustion: penalty })}${cover ? t('res.coverNote', { n: `+${cover}` }) : ''}${advice.critOnHit && base === 'hit' ? t('res.critDetail', { why: advice.critOnHit }) : ''}`
     onApply(
       [
         {
@@ -89,8 +103,20 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
             autoFocus
           />
         </label>
+        {sent.roll && d20 !== String(sent.roll.value) && (
+          <button
+            title={t('roll.useTitle')}
+            onClick={() => {
+              setD20(String(sent.roll!.value))
+              setD20Note(t('roll.fromPhone'))
+              sent.take()
+            }}
+          >
+            📱 {sent.roll.value}
+          </button>
+        )}
         <span className="bonus-note">
-          {t('res.toHitVs', { bonus: formatMod(bonus), ac: target.ac })}
+          {t('res.toHitVs', { bonus: formatMod(bonus), ac })}
           {penalty > 0 && t('res.exhaustion', { n: penalty })}
         </span>
         {canRoll ? (
@@ -115,6 +141,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
           <span className="roll-hint">
             {mode === 'adv' ? t('res.hintAdv') : mode === 'dis' ? t('res.hintDis') : t('res.hintTable')}
             {t('res.hintEnter')}
+            {d20Note && <em className="roll-note"> · {d20Note}</em>}
           </span>
         )}
       </div>
@@ -124,8 +151,22 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
           <input type="checkbox" checked={within5} onChange={(e) => setWithin5(e.target.checked)} />
           <span>{t('res.within5')}</span>
         </label>
+        <label className="inline-field small">
+          {t('res.cover')}
+          <select value={cover} onChange={(e) => setCover(Number(e.target.value))}>
+            <option value={0}>{t('res.cover.none')}</option>
+            <option value={2}>{t('res.cover.half')}</option>
+            <option value={5}>{t('res.cover.three')}</option>
+          </select>
+        </label>
         {outcome && <div className={`outcome ${outcome}`}>{outcome === 'crit' ? t('res.crit') : outcome === 'hit' ? t('res.hit') : t('res.miss')}</div>}
       </div>
+
+      {action.mastery && masteryText(action.mastery) && (hit || (outcome === 'miss' && masteryOnMiss(action.mastery))) && (
+        <div className="mastery-note">
+          <strong>{t('res.mastery', { name: action.mastery })}</strong> {masteryText(action.mastery)}
+        </div>
+      )}
 
       {hit && hasDamage && (
         <>

@@ -5,7 +5,7 @@ import heroLogo from '../assets/images/logo-360.png'
 import navLogo from '../assets/images/logo-128.png'
 import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
-import { useRemoteView } from '../lib/hub'
+import { useRemoteView, type LiveSource } from '../lib/hub'
 import { possessive, setLang, t, tCondition } from '../lib/i18n'
 import { useStoredLanguage } from '../lib/settings'
 import { toPublic, toPublicSheet, type PublicCombat } from '../lib/publicState'
@@ -27,17 +27,17 @@ function useNow(interval = 1000) {
 
 /**
  * Read-only table display. Monsters show a status instead of exact HP / AC so the DM doesn't leak numbers (the data it
- * receives never contains them). It shows whatever the DM's app is broadcasting over the local network when that is
- * available (phones, a TV), and falls back to the local database (the DM's own second window).
+ * receives never contains them). With a `source` (a signed-in player, or the TV's secret link) it shows what the DM's app
+ * uploads to the server; without one it reads the local database (the DM's own second window).
  */
-export function PlayerView() {
-  const remote = useRemoteView()
+export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; mine?: ReadonlySet<number>; vibrate?: boolean }) {
+  const remote = useRemoteView(source)
   const localState = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const now = useNow()
   const spotlight = useSpotlight()
 
-  // the DM's language: from the relay, or (the DM's own second window, no relay) from the saved setting. A phone has neither saved.
+  // the DM's language: from the live view, or (the DM's own second window, no live view) from the saved setting. A phone has neither saved.
   const stored = useStoredLanguage()
   const language = remote.lang ?? stored
   useEffect(() => {
@@ -65,7 +65,24 @@ export function PlayerView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnKey])
 
-  // the DM is showing one character's sheet instead of the feed: from the relay, or (the DM's own second window) from the local database
+  // a signed-in player is told when their character is up (or next): quietly, on screen; the buzz is only for those who switched interaction on
+  const isMine = (c?: { characterId?: number }) => c?.characterId !== undefined && !!mine?.has(c.characterId)
+  const yourTurn = isMine(active)
+  const upNext = (() => {
+    if (!combat?.started || yourTurn) return undefined
+    const n = combat.combatants.length
+    for (let i = 1; i < n; i++) {
+      const c = combat.combatants[(combat.turnIndex + i) % n]
+      if (c.kind === 'lair' || (c.kind === 'monster' && c.status === 'Defeated')) continue
+      return isMine(c) ? c : undefined
+    }
+    return undefined
+  })()
+  useEffect(() => {
+    if (vibrate && yourTurn) navigator.vibrate?.([250, 120, 250])
+  }, [turnKey, vibrate, yourTurn])
+
+  // the DM is showing one character's sheet instead of the feed: from the live view, or (the DM's own second window) from the local database
   const localChar = spotlight ? characters?.find((c) => c.id === spotlight.characterId) : undefined
   const localSheet =
     spotlight && localChar
@@ -80,6 +97,14 @@ export function PlayerView() {
     const frame = requestAnimationFrame(() => document.querySelector('.player-row.active')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
     return () => cancelAnimationFrame(frame)
   }, [turnKey, showingSheet])
+  if (remote.gone) {
+    return (
+      <div className="player empty">
+        <img src={heroLogo} alt={t('player.logoAlt')} />
+        <span>{t('player.linkGone')}</span>
+      </div>
+    )
+  }
   if (sheet) return <CharacterSheetView sheet={sheet} src={portraitFor(sheet.id)} image={imageFor(sheet.id)} />
 
   if (!combat || combat.combatants.length === 0) {
@@ -101,6 +126,17 @@ export function PlayerView() {
         {combat.started ? t('player.round', { n: combat.round }) : t('player.rolling')}
         {remote.connected && !remote.hostOnline && <span className="player-note">{t('player.dmOffline')}</span>}
       </header>
+
+      {yourTurn && (
+        <div className="your-turn" role="status">
+          {t('player.yourTurn')}
+        </div>
+      )}
+      {upNext && (
+        <div className="up-next" role="status">
+          {t('player.upNext')}
+        </div>
+      )}
 
       {banner && (
         <div className="turn-banner" key={banner.id} role="status">
@@ -142,9 +178,16 @@ export function PlayerView() {
                     </>
                   )}
                   {c.kind === 'monster' && <div className={`status ${c.status.toLowerCase()}`}>{t(`status.${c.status}`)}</div>}
-                  {(c.conditions.length > 0 || c.concentrating) && (
+                  {(c.conditions.length > 0 || c.concentrating || c.inspired || !!c.effects?.length) && (
                     <div className="badges">
+                      {c.inspired && <span className="badge">★ {t('insp.button')}</span>}
                       {c.concentrating && <span className="badge">{t('player.concentrating')}</span>}
+                      {c.effects?.map((e) => (
+                        <span className="badge" key={e.name}>
+                          ✦ {e.name}
+                          {e.rounds !== undefined && ` · ${e.rounds}`}
+                        </span>
+                      ))}
                       {c.conditions.map((cond) => (
                         <span className="badge" key={cond}>
                           {cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond)}

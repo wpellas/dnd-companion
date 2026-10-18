@@ -20,13 +20,23 @@ a dragon bites them? This app does that remembering for you, so you can get on w
 
 ## 🚀 Quick start
 
+The app has accounts: a PHP/Laravel backend (in `backend/`, MySQL) keeps every campaign and also serves the app itself, so there is nothing to
+keep running. With [Laravel Herd](https://herd.laravel.com) (or any PHP host whose web root is `backend/public`):
+
 ```
 pnpm install
-pnpm dev        # then open the URL Vite prints
+cd backend && composer install && cp .env.example .env && php artisan key:generate   # then fill in DB_* and APP_URL (your Herd address)
+php artisan migrate --seed    # creates the tables and the administrator (ADMIN_EMAIL / ADMIN_PASSWORD in .env)
+cd .. && pnpm build           # puts the app into backend/public; now open your Herd site
 ```
 
-Other scripts: `pnpm build` (type-check + production build), `pnpm lint`, and `pnpm live` (build, then serve the built app
-on your network, a bit snappier than `pnpm dev` for game night).
+Link the `backend` folder as the Herd site. While changing the frontend, `pnpm dev` gives hot reload and talks to the same backend.
+
+Sign-in is **invite-only**: the administrator makes the first invite, and every DM can invite their own players from Settings. Anyone can run a
+campaign of their own and be its DM; players join with a code. Everything is stored on the server and also kept in the browser, so a bad
+connection only delays saving, it does not lose anything.
+
+Other scripts: `pnpm build` (type-check + production build into the backend) and `pnpm lint`.
 
 ## 🧙 What's in the box
 
@@ -34,6 +44,15 @@ on your network, a bit snappier than `pnpm dev` for game night).
 Characters with a class dropdown, level, AC/HP, ability scores, saving-throw proficiencies, damage resistances, a portrait,
 actions, spells and limited-use class features. Attack bonuses, damage and spell DCs can be worked out from the character's stats
 ("From my stats") and follow level-ups.
+
+- **Level-up helper:** the ⬆ button on a character walks through the next level: what the class table gives (features, new spell slots and
+  limits), hit points (the average, or the number the player rolled, plus Constitution), and the Ability Score Improvement where there is
+  one (+2, +1/+1, or note a feat). A raised Constitution adds the extra hit points for every earlier level too. Players can level up their
+  own characters, and it writes a note in your journal.
+
+**Players have their own characters.** Every character belongs to one account. A player logs in on their phone, opens **My characters** and
+creates and edits their own sheet (stats, actions, spells, items); they only ever see their own. You can edit every character, and hand one to a
+player (or take it back) with the **Player account** field in the character form. Rests, XP awards and the showcase stay with the DM.
 
 - **Spellcasting:** slots, cantrip and prepared-spell limits come from the official class tables. Pick spells from the class's SRD
   list (searchable, with the spell text). Slots are clickable pips.
@@ -83,6 +102,10 @@ breathes fire.
 - **Concentration:** damaging a concentrating creature raises a "CON save DC N" prompt, and failing ends the spell.
 - **Undo** the last change (a cast also hands the spell slot back) and a combat log, for when the table disagrees about what just happened.
 - **Lair actions** marker on initiative 20.
+- **Effects with durations:** "Bless: 8 rounds left", "Hold Person: repeat the save at the end of each of its turns". Add an effect to anyone (spell presets, or by hand), and the app counts the rounds down, asks you for the repeat
+  save when it is due, ends the effect (and its condition) when time runs out or the save succeeds, and ends spells the caster was concentrating on if they lose concentration or go down. Casting Hold Person from the turn panel sets it all up by itself.
+  The table sees the spell names, and players see their own rounds left.
+- **2024 details:** Heroic Inspiration (a star on the party card, in the fight and on the table), Weapon Mastery (tick "I have Mastery with this weapon" and the property's effect shows when the attack lands: Topple, Push, Graze...), and cover on attacks.
 
 ### The Journal 📖
 A private campaign log for you: free-form notes (NPCs, clues, loot), session recaps, and an automatic summary of every fight you end
@@ -94,17 +117,30 @@ Save a fight's monsters, build encounters from the bestiary, load them into comb
 Moderate / High / Beyond High) are calculated for your party from the 2024 XP budgets, so you know whether you're being kind or cruel.
 
 ### The Player View 📺
-A read-only screen for a TV or phones, in a second window or on any device on your Wi-Fi: turn order, the party's HP, monsters as
+A read-only screen for the table's TV and the players' phones: turn order, the party's HP, monsters as
 Healthy / Bloodied / Defeated (never their HP or AC, no peeking), conditions, a "Merlin's turn!" banner and short announcements
-like "Goblin Warrior 1 hits Xaroz".
+like "Goblin Warrior 1 hits Xaroz". Players log in on their phones and see it; a player can also look at their own characters.
+The TV opens a secret link from Settings and needs no login.
+
+**Players never have to do anything.** A phone starts as a pure spectator screen, and a big banner says **It's your turn!** when your character is up (and "You're up next" before that). Players who want more switch on **Interactive**: they can then
+manage their characters, get a buzz on their turn, and type the number they rolled (initiative, an attack's d20, a save's d20) for the DM's screen. It lands ready in the right box of your attack panel, save table, concentration prompt or initiative
+row, and you can ignore it or type your own: nothing waits for it. The dice stay physical; the app never rolls for a player.
 
 **Show a character to the players:** the 📺 button on a party card puts that character's sheet on the TV and phones instead of the
 feed (stats, saves, attacks, spells and slots, features, and optionally inventory and gold), so you and the player can check you agree
 on their numbers. It is only a switch: the fight keeps running underneath, the sheet follows HP changes live, and "Back to the feed"
 restores the view exactly as it was. A bar on every DM tab reminds you it is on.
 
+### Administration 🛡️
+The administrator account (made by `php artisan db:seed` from `ADMIN_EMAIL` / `ADMIN_PASSWORD`) gets an **Administration** page, linked from the campaign
+list and from Settings: make and revoke site invites, see every account (send a password-reset link, lock or unlock, make or remove an
+administrator, delete) and every campaign (delete). A locked account is signed out at once. You cannot lock or delete yourself, and a campaign's
+only DM cannot be deleted before the campaign is. Everything an administrator does is written to a **log** on the same page.
+
 ### Settings ⚙️
-The **language** (English or Svenska), the player-dice policy, backup and restore, and the live-view address with a QR code.
+Your account and campaign (who is at the table, invite codes, changing your e-mail or password, switching campaign, logging out; a new e-mail
+address only takes effect when you open the link sent to it, and the old address gets a notice), the
+**language** (English or Svenska), the player-dice policy, backup and restore, and the table-screen link with a QR code.
 
 **Language:** pick it from the dropdown on the Settings tab and the whole app switches, including the TV and the players' phones
 (they follow the DM's choice) and the lines that call out whose turn it is ("Merlins tur", "Runda 3"). Only the app's own words are
@@ -112,13 +148,14 @@ translated: spell, monster and item names, class features and rules text from th
 
 ## 📱 Live view on phones and TVs
 
-Run the game from the computer with `pnpm dev` or `pnpm live`. Open the **Settings** tab: it shows an address like
-`http://192.168.1.23:4173/#player` and a QR code. Open that on any phone, tablet or TV on the same Wi-Fi and they see the player
-view live.
+Keep the app open in the DM's browser while you play. It uploads the player-safe state to the server (monsters are reduced to a status
+before anything leaves your browser, so the server never holds their HP or AC), and the other screens ask for updates every second or two.
 
-The DM's browser pushes only the player-safe state through a tiny relay built into the dev/preview server (nothing is stored on
-disk). If a device can't connect, allow Node.js through the Windows firewall for private networks. There is no password, so only use
-it on a network you trust.
+- **Players:** log in on their phone with their own account and open the campaign.
+- **The TV:** open the **table screen** link from Settings (it comes with a QR code). It needs no login, so anyone who has the link can
+  watch; "Make a new link" cancels the old one at once.
+- Phones and the TV have to be able to reach the server's address (your Herd site only answers on your own computer unless you set that
+  up, a web host is reachable from anywhere).
 
 ## 💾 Data and offline use
 
@@ -152,14 +189,18 @@ it on a network you trust.
 - Equipment doesn't track per-item charges, ammunition use or encumbrance penalties, and monster loot isn't generated.
 - Gold and XP are split evenly; an uneven split means awarding it twice.
 - Speed isn't tracked, so Exhaustion's speed penalty is only a reminder.
-- Derived action numbers are fixed when a character joins a fight; edit-and-re-add to pick up mid-fight changes.
+- Two people editing the very same record at the same moment: the last save wins (the DM's fight state is only ever written by the DM).
 
 ## 🔮 On the horizon
 
-A level-up helper, a battle map with tokens, and players logging in as their own characters.
+A battle map with tokens, and treasure generation after a fight.
 
 ## 📖 Changelog
 
+- **Table-speed update 2:** effects with durations and repeat saves, a level-up helper (hit points, features, ability score improvement), Heroic Inspiration, Weapon Mastery and cover, a spectator-first player screen with an "It's your turn!" banner, optional phone rolls for the DM, an admin log, and a lighter fight sync.
+- **Player characters:** players create and edit their own characters from their phones; the DM assigns characters to accounts.
+- **Administration:** an admin page for site invites, accounts (lock, reset link, admin rights, delete) and campaigns.
+- **Accounts and server storage:** sign-in, campaigns with a DM and players, invite codes, everything saved to a MySQL database and synced between devices.
 - First version: party, bestiary, combat tracker, player view.
 - Actions, targeted attacks / saves / healing, combat log; actions derived from character stats.
 - RPG makeover (parchment / leather / gold theme from the logo).

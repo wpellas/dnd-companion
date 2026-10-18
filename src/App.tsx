@@ -3,10 +3,11 @@ import logo from './assets/images/logo-128.png'
 import { SpellLibraryStatus } from './components/SpellLibraryStatus'
 import { SpotlightBar } from './components/SpotlightBar'
 import { useHash } from './hooks'
-import { LiveHost, useHubStatus } from './lib/hub'
+import { LiveHost } from './lib/hub'
 import { setLang, t } from './lib/i18n'
 import { useStoredLanguage } from './lib/settings'
 import { useFightSync } from './lib/store'
+import { useSyncStatus } from './lib/sync'
 import { BestiaryPage } from './pages/BestiaryPage'
 import { CombatPage } from './pages/CombatPage'
 import { EncountersPage } from './pages/EncountersPage'
@@ -24,13 +25,12 @@ let lastTab: Tab = 'combat'
 
 export default function App() {
   const hash = useHash()
-  const [tab, setTabState] = useState<Tab>(lastTab)
-  const setTab = (next: Tab) => {
-    lastTab = next
-    setTabState(next)
-  }
-  const hub = useHubStatus()
-  // the DM's saved language (the live view follows the DM through the relay instead; see PlayerView)
+  const [tab, setTab] = useState<Tab>(lastTab)
+  useEffect(() => {
+    lastTab = tab
+  }, [tab])
+  const sync = useSyncStatus()
+  // the DM's saved language (viewers get it with the live view instead; see PlayerView)
   const stored = useStoredLanguage()
   useEffect(() => {
     if (stored && hash !== '#player') setLang(stored)
@@ -46,10 +46,10 @@ export default function App() {
       <nav>
         <img className="nav-logo" src={logo} alt={t('app.logoAlt')} />
         <span className="brand">{t('app.brand')}</span>
-        {hub.state === 'live' && (
-          <button className="live-badge" onClick={() => setTab('settings')} title={t('nav.watchingTitle')}>
-            {t('nav.watching', { n: hub.viewers })}
-          </button>
+        {sync.state === 'offline' && (
+          <span className="sync-warn" title={t('acct.syncOffline', { n: sync.pending })}>
+            ⚠
+          </span>
         )}
         <div className="tabs">
           {TABS.map((id) => (

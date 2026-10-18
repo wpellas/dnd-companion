@@ -160,6 +160,8 @@ export interface Action {
   volley?: { count: number; autoHit?: boolean }
   /** Multiattack: the attacks it makes, in order; each lists the actions of the creature it may be (usually just one) */
   multiattack?: { choices: string[] }[]
+  /** 2024 Weapon Mastery property the wielder has unlocked with this weapon: its effect is shown when the attack lands */
+  mastery?: string
 }
 
 export const COIN_TYPES = ['pp', 'gp', 'ep', 'sp', 'cp'] as const
@@ -200,6 +202,8 @@ export interface Item {
     range?: string
     /** 2024 weapon mastery property, kept as a reminder */
     mastery?: string
+    /** The wielder has unlocked that mastery with this weapon (Weapon Mastery is chosen per weapon): only then is it offered in combat */
+    masteryKnown?: boolean
     /** Is the character proficient with it? (adds the proficiency bonus to hit) */
     proficient: boolean
   }
@@ -211,6 +215,10 @@ export interface Character {
   id?: number
   name: string
   playerName: string
+  /** The account that owns this character: whoever made it, or whoever the DM handed it to. The server decides; players edit only their own. */
+  ownerId?: number
+  /** 2024 Heroic Inspiration: the player may reroll one die and must use the new roll */
+  heroicInspiration?: boolean
   classIndex?: ClassIndex
   /** Free text, e.g. "Battle Master" */
   subclass: string
@@ -319,6 +327,29 @@ export interface Counter {
   used: number
 }
 
+/**
+ * Something that lasts for a while on a creature: a spell, a condition with a timer, a rider that ends on a successful save.
+ * The timer counts down at `at` of `whose` turn (usually the caster's, since a minute is ten rounds of the caster's turns) and the effect
+ * ends when it reaches 0; the condition it gave goes with it. `save`: the affected creature repeats it at its own turn; success ends the effect.
+ */
+export interface Effect {
+  id: string
+  name: string
+  /** Applied to the creature while the effect lasts */
+  condition?: Condition
+  /** Rounds left; no timer when empty (it ends by a save, by concentration, or by hand) */
+  rounds?: number
+  at: 'start' | 'end'
+  /** The combatant whose turn counts the rounds down */
+  whose: string
+  /** Added during `whose`'s own turn at 'end': that turn's end does not count */
+  skip?: boolean
+  save?: { ability: Ability; dc: number; at: 'start' | 'end' }
+  /** The caster; with `concentration`, the effect ends when they lose concentration or go down */
+  sourceId?: string
+  concentration?: boolean
+}
+
 export interface Combatant {
   id: string
   kind: 'pc' | 'monster' | 'lair'
@@ -342,6 +373,10 @@ export interface Combatant {
   spells?: MonsterSpell[]
   /** Exhaustion level 0-6: -2 per level on every d20 test */
   exhaustion?: number
+  /** Spells and conditions with a timer or a repeat save */
+  effects?: Effect[]
+  /** PCs: has Heroic Inspiration (a copy of the character's, kept in step by useFightSync) */
+  inspired?: boolean
   /** Surprised creatures roll Initiative with Disadvantage; only matters before combat starts */
   surprised?: boolean
   /** Tie-break among equal initiatives (lower acts first); set when a turn is delayed. Defaults to minus the initiative bonus */
@@ -370,6 +405,7 @@ export interface Combatant {
 export type Prompt =
   | { id: string; kind: 'concentration'; combatantId: string; dc: number }
   | { id: string; kind: 'recharge'; combatantId: string; actionId: string; min: number }
+  | { id: string; kind: 'effectSave'; combatantId: string; effectId: string }
 
 /** A line for the player view: safe to show the table (no monster HP / AC / roll details). */
 export interface PublicEvent {

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { autoFailsSave, saveHasDisadvantage } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
 import { t, tAbility, tCondition, tn } from '../../lib/i18n'
 import { adjustForTarget, saveBonus } from '../../lib/resolve'
 import { rollD20 } from '../../lib/rules'
+import { consumeRoll, rollFor, useIncomingRolls } from '../../lib/rolls'
 import type { TargetOutcome } from '../../lib/combat'
 import type { Action, Combatant } from '../../types'
 import { DamageEntry } from './DamageEntry'
@@ -35,6 +36,18 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
   const [useLr, setUseLr] = useState<Record<string, boolean>>({})
   const [cond, setCond] = useState<Record<string, boolean>>({})
   const entry = useDamageEntry(action, { crit: false, advantage: false })
+  // players' saves typed on their phones fill their rows (only empty ones), once
+  const incoming = useIncomingRolls()
+  useEffect(() => {
+    for (const target of targets) {
+      const r = rollFor(incoming, target.characterId, 'save')
+      if (r && !d20[target.id]) {
+        setD20((m) => ({ ...m, [target.id]: String(r.value) })) // eslint-disable-line react-hooks/set-state-in-effect
+        consumeRoll(r.id)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming])
   const hasDamage = entry.parts.length > 0
 
   const rows = targets.map((t) => {

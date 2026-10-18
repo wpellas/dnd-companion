@@ -35,6 +35,12 @@ export const party = {
   // form
   'form.new': ['New character', 'Ny karaktär'],
   'form.edit': ['Edit character', 'Redigera karaktär'],
+  'form.owner': ['Player account', 'Spelarkonto'],
+  'form.ownerHint': ['The account that owns this character: players edit their own characters, you can edit all of them', 'Kontot som äger rollpersonen: spelare redigerar sina egna rollpersoner, du kan redigera alla'],
+  'form.ownerDm': [' (DM)', ' (spelledare)'],
+  'insp.button': ['Inspiration', 'Inspiration'],
+  'insp.title': ['Heroic Inspiration (2024): the player can reroll one die and must use the new roll', 'Heroic Inspiration (2024): spelaren kan slå om en tärning och måste använda det nya slaget'],
+  'lbl.inspiration': ['{name}: Heroic Inspiration', '{name}: Heroic Inspiration'],
   'form.player': ['Player', 'Spelare'],
   'form.class': ['Class', 'Klass'],
   'form.pickClass': ['{name} (pick a class)', '{name} (välj en klass)'],

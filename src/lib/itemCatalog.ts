@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db'
+import { srdDb as db } from '../db'
 import { equipmentGroup, itemFromEquipment, itemFromMagicItem, type CatalogGroup } from './inventory'
 import { getEquipment, getMagicItem, LIBRARY_SYNC_KEY, readCachedEquipment, readCachedMagicItems } from './srdApi'
 import type { Item } from '../types'

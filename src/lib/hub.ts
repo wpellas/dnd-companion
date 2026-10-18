@@ -1,45 +1,23 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
+import { api } from './api'
 import { toPublic, toPublicSheet, type PublicCombat, type PublicSheet } from './publicState'
 import { setLang, useLang, type Lang } from './i18n'
+import { useSession } from './session'
 import { useSpotlight } from './spotlight'
 
 /**
- * Live view over the local network. The DM's browser (the "host") pushes the player-safe state to the relay in
- * server/hubPlugin.ts, which forwards it to every viewer (phones, tablets, a TV) that opened `/#player`.
- * Everything here quietly does nothing when the app isn't served by that relay (a static host, a file).
+ * The live view. The DM's browser (`LiveHost`) uploads the player-safe parts of the fight to the server; players (signed in) and the table's
+ * TV (secret link) poll them with `useRemoteView`. `publicState.ts` strips monster HP / AC / the DM log before anything is uploaded, so the
+ * server never holds them.
  */
-
-const wsUrl = (role: 'host' | 'viewer') => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/hub?role=${role}`
-
-/* ---------------------------------------------------------------- host status (shared with the Settings page) */
-
-export interface HubStatus {
-  state: 'off' | 'connecting' | 'live'
-  viewers: number
-  urls: string[]
-}
-let status: HubStatus = { state: 'off', viewers: 0, urls: [] }
-const listeners = new Set<() => void>()
-const setStatus = (s: HubStatus) => {
-  status = s
-  listeners.forEach((l) => l())
-}
-export const useHubStatus = () =>
-  useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb)
-      return () => listeners.delete(cb)
-    },
-    () => status,
-  )
 
 /* ---------------------------------------------------------------- portraits */
 
 const portraitCache = new Map<string, string>()
 
-/** Shrink a portrait to a small JPEG data URL so it is cheap to send over Wi-Fi. */
+/** Shrink a portrait to a small JPEG data URL so it is cheap to send. */
 async function smallPortrait(blob: Blob, key: string): Promise<string | undefined> {
   const hit = portraitCache.get(key)
   if (hit) return hit
@@ -61,155 +39,150 @@ async function smallPortrait(blob: Blob, key: string): Promise<string | undefine
 
 /* ---------------------------------------------------------------- host */
 
-/** Renders nothing; keeps the relay supplied with the current fight and portraits while the DM app is open. */
+type Part = 'combat' | 'portraits' | 'sheet' | 'lang' | 'ping'
+const PUSH_MS = 300
+const HEARTBEAT_MS = 20000
+
+/** Renders nothing; keeps the server supplied with the current fight, portraits, shown sheet and language while the DM app is open. */
 export function LiveHost() {
+  const { campaign } = useSession()
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const spotlight = useSpotlight()
-  const ws = useRef<WebSocket | null>(null)
-  const latest = useRef<{ combat?: string; portraits?: string; spotlight?: string; lang?: string }>({})
   const lang = useLang()
+  const campaignId = campaign?.id
+  const wanted = useRef(new Map<Part, string>()) // what the table should see
+  const sent = useRef(new Map<Part, string>()) // what the server has
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const push = (type: 'combat' | 'portraits' | 'spotlight' | 'lang', data: unknown) => {
-    const payload = JSON.stringify({ type, data })
-    latest.current[type] = payload
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(payload)
+  /** Upload the parts that differ. A failed upload is simply tried again on the next change or heartbeat. */
+  const flush = async () => {
+    if (campaignId === undefined) return
+    const parts: Record<string, string> = {}
+    for (const [part, json] of wanted.current) if (sent.current.get(part) !== json) parts[part] = json
+    if (!Object.keys(parts).length) return
+    try {
+      await api.post(`/campaigns/${campaignId}/live`, { parts })
+      for (const [part, json] of Object.entries(parts)) sent.current.set(part as Part, json)
+    } catch {
+      /* offline */
+    }
+  }
+  const want = (part: Part, data: unknown) => {
+    wanted.current.set(part, JSON.stringify(data ?? null))
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => void flush(), PUSH_MS)
   }
 
   useEffect(() => {
-    push('combat', toPublic(combat) ?? null)
+    want('combat', toPublic(combat))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combat])
+  }, [combat, campaignId])
 
   // everyone sees the DM's language
   useEffect(() => {
-    push('lang', lang)
+    want('lang', lang)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang])
+  }, [lang, campaignId])
 
   // the character sheet the DM is showing (null = back to the feed); follows HP changes and edits live
   useEffect(() => {
     if (spotlight === undefined || !characters) return
     const c = spotlight ? characters.find((x) => x.id === spotlight.characterId) : undefined
     const fighter = combat?.started ? combat.combatants.find((x) => x.characterId === c?.id) : undefined
-    push('spotlight', c && spotlight ? toPublicSheet(c, fighter, { inventory: spotlight.inventory }) : null)
+    want('sheet', c && spotlight ? toPublicSheet(c, fighter, { inventory: spotlight.inventory }) : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spotlight, characters, combat])
+  }, [spotlight, characters, combat, campaignId])
 
   useEffect(() => {
     if (!characters) return
     let off = false
-    Promise.all(
-      characters.map(async (c) => [c.id!, c.image ? await smallPortrait(c.image, `${c.id}:${c.image.size}`) : undefined] as const),
-    ).then((pairs) => {
-      if (!off) push('portraits', Object.fromEntries(pairs.filter(([, url]) => url)))
+    Promise.all(characters.map(async (c) => [c.id!, c.image ? await smallPortrait(c.image, `${c.id}:${c.image.size}`) : undefined] as const)).then((pairs) => {
+      if (!off) want('portraits', Object.fromEntries(pairs.filter(([, url]) => url)))
     })
     return () => {
       off = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [characters])
+  }, [characters, campaignId])
 
+  // "the DM's app is open" for the viewers, and the retry for uploads that failed
   useEffect(() => {
-    let closed = false
-    let retry: ReturnType<typeof setTimeout> | undefined
-    let delay = 1000
-    const connect = () => {
-      if (closed) return
-      setStatus({ ...status, state: 'connecting' })
-      let socket: WebSocket
-      try {
-        socket = new WebSocket(wsUrl('host'))
-      } catch {
-        return setStatus({ state: 'off', viewers: 0, urls: [] })
-      }
-      ws.current = socket
-      socket.onopen = () => {
-        delay = 1000
-        setStatus({ ...status, state: 'live' })
-        for (const payload of Object.values(latest.current)) if (payload) socket.send(payload)
-      }
-      socket.onmessage = (e) => {
-        const msg = JSON.parse(String(e.data)) as { type: string; urls?: string[]; viewers?: number }
-        if (msg.type === 'info') setStatus({ state: 'live', viewers: msg.viewers ?? 0, urls: msg.urls ?? [] })
-      }
-      socket.onclose = () => {
-        ws.current = null
-        setStatus({ state: 'off', viewers: 0, urls: status.urls })
-        if (closed) return
-        retry = setTimeout(connect, delay)
-        delay = Math.min(delay * 2, 15000) // a static host has no relay: back off instead of hammering it
-      }
-    }
-    connect()
-    return () => {
-      closed = true
-      clearTimeout(retry)
-      ws.current?.close()
-    }
-  }, [])
+    const beat = setInterval(() => {
+      wanted.current.set('ping', String(Date.now()))
+      void flush()
+    }, HEARTBEAT_MS)
+    wanted.current.set('ping', String(Date.now()))
+    return () => clearInterval(beat)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId])
 
   return null
 }
 
 /* ---------------------------------------------------------------- viewer */
 
+/** Where a viewer reads from: a signed-in member of the campaign, or the table screen's secret link. */
+export type LiveSource = { campaignId: number } | { token: string }
+
 export interface RemoteView {
   combat?: PublicCombat | null
-  /** The DM's interface language, once the relay has told us */
+  /** The DM's interface language, once it has arrived */
   lang?: Lang
   /** The character sheet the DM is showing; null = none, undefined = nothing received yet */
   sheet?: PublicSheet | null
   portraits: Record<number, string>
-  /** Connected to the relay */
+  /** The last poll worked */
   connected: boolean
-  /** The DM's app is currently feeding the relay */
+  /** The DM's app is open right now */
   hostOnline: boolean
+  /** The secret link has been replaced */
+  gone: boolean
 }
 
-/** For the player view: the state pushed by the DM's browser over the relay (if there is one). */
-export function useRemoteView(): RemoteView {
-  const [view, setView] = useState<RemoteView>({ portraits: {}, connected: false, hostOnline: false })
+const POLL_MS = 1500
+const POLL_HIDDEN_MS = 8000
+
+/** For the player view: the state uploaded by the DM's browser, polled every second or two. Without a source it does nothing (the DM's own second window reads its database). */
+export function useRemoteView(source?: LiveSource): RemoteView {
+  const [view, setView] = useState<RemoteView>({ portraits: {}, connected: false, hostOnline: false, gone: false })
+  const key = !source ? '' : 'token' in source ? `t:${source.token}` : `c:${source.campaignId}`
   useEffect(() => {
-    let closed = false
-    let retry: ReturnType<typeof setTimeout> | undefined
-    let delay = 1000
-    let socket: WebSocket | undefined
-    const connect = () => {
-      if (closed) return
+    if (!source) return
+    let off = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const versions: Record<string, number> = {}
+    const base = 'token' in source ? `/table/${encodeURIComponent(source.token)}/live` : `/campaigns/${source.campaignId}/live`
+
+    const poll = async () => {
       try {
-        socket = new WebSocket(wsUrl('viewer'))
-      } catch {
-        return
+        const query = Object.entries(versions).map(([part, version]) => `${part}=${version}`).join('&')
+        const res = await api.get<{ parts: Record<string, { version: number; data: string | null }>; host_online: boolean }>(query ? `${base}?${query}` : base)
+        if (off) return
+        const patch: Partial<RemoteView> = {}
+        for (const [part, { version, data }] of Object.entries(res.parts)) {
+          versions[part] = version
+          const value = data === null ? null : JSON.parse(data)
+          if (part === 'combat') patch.combat = value as PublicCombat | null
+          else if (part === 'sheet') patch.sheet = value as PublicSheet | null
+          else if (part === 'portraits') patch.portraits = (value as Record<number, string> | null) ?? {}
+          else if (part === 'lang' && value) {
+            setLang(value as Lang)
+            patch.lang = value as Lang
+          }
+        }
+        setView((v) => ({ ...v, ...patch, connected: true, hostOnline: res.host_online, gone: false }))
+      } catch (e) {
+        if (!off) setView((v) => ({ ...v, connected: false, hostOnline: false, gone: (e as { status?: number }).status === 404 }))
       }
-      socket.onopen = () => {
-        delay = 1000
-        setView((v) => ({ ...v, connected: true }))
-      }
-      socket.onmessage = (e) => {
-        const msg = JSON.parse(String(e.data)) as { type: string; data?: unknown; connected?: boolean }
-        if (msg.type === 'combat') setView((v) => ({ ...v, combat: (msg.data as PublicCombat | null) ?? null }))
-        else if (msg.type === 'lang') {
-          const next = msg.data as Lang
-          setLang(next)
-          setView((v) => ({ ...v, lang: next }))
-        } else if (msg.type === 'spotlight') setView((v) => ({ ...v, sheet: (msg.data as PublicSheet | null) ?? null }))
-        else if (msg.type === 'portraits') setView((v) => ({ ...v, portraits: (msg.data as Record<number, string>) ?? {} }))
-        else if (msg.type === 'host') setView((v) => ({ ...v, hostOnline: !!msg.connected }))
-      }
-      socket.onclose = () => {
-        setView((v) => ({ ...v, connected: false, hostOnline: false }))
-        if (closed) return
-        retry = setTimeout(connect, delay)
-        delay = Math.min(delay * 2, 15000)
-      }
+      if (!off) timer = setTimeout(poll, document.hidden ? POLL_HIDDEN_MS : POLL_MS)
     }
-    connect()
+    void poll()
     return () => {
-      closed = true
-      clearTimeout(retry)
-      socket?.close()
+      off = true
+      clearTimeout(timer)
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
   return view
 }

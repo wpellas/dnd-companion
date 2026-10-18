@@ -74,6 +74,7 @@ export async function syncPartyToFight() {
         resistances: ch.resistances ?? [],
         immunities: ch.immunities ?? [],
         vulnerabilities: ch.vulnerabilities ?? [],
+        inspired: ch.heroicInspiration || undefined,
       }
       if (JSON.stringify(pick(c, next)) === JSON.stringify(next)) continue
       Object.assign(c, next)

@@ -1,0 +1,38 @@
+import type { Msg } from './types'
+
+/** The guided level-up. */
+export const levelup = {
+  'lvl.button': ['⬆ Level up', '⬆ Höj nivå'],
+  'lvl.buttonTitle': ['Guided level-up: hit points, new features and ability score improvements', 'Guidad nivåhöjning: livspoäng, nya förmågor och förmågepoäng'],
+  'lvl.title': ['Level up: {name}', 'Nivåhöjning: {name}'],
+  'lvl.from': ['Level {from} → {to}', 'Nivå {from} → {to}'],
+  'lvl.pbRises': ['Proficiency Bonus rises to {n}.', 'Färdighetsbonusen höjs till {n}.'],
+  'lvl.notReady': ['The XP total says level {n}: you can still go ahead (the DM decides).', 'XP-summan säger nivå {n}: du kan ändå gå vidare (spelledaren avgör).'],
+  'lvl.loading': ['Reading the class table…', 'Läser in klasstabellen…'],
+  'lvl.failed': ['Could not read the class table (are you offline?).', 'Kunde inte läsa klasstabellen (är du offline?).'],
+  'lvl.features': ['New at this level', 'Nytt på den här nivån'],
+  'lvl.noFeatures': ['No new class features are listed for this level.', 'Inga nya klassförmågor listas för den här nivån.'],
+  'lvl.hp': ['Hit points', 'Livspoäng'],
+  'lvl.hpAverage': ['Take the average ({n})', 'Ta genomsnittet ({n})'],
+  'lvl.hpRoll': ['Use my roll (d{die})', 'Använd mitt slag (d{die})'],
+  'lvl.hpRollHint': ['What the d{die} showed', 'Vad d{die} visade'],
+  'lvl.hpResult': ['Hit points +{n}, to {max}.', 'Livspoäng +{n}, till {max}.'],
+  'lvl.conRetro': ['That includes +{n} because the Constitution modifier went up: it counts for every level so far.', 'Det inkluderar +{n} eftersom Constitution-modifikatorn ökade: den räknas för varje nivå hittills.'],
+  'lvl.asi': ['Ability Score Improvement', 'Förmågepoäng'],
+  'lvl.asiTwo': ['+2 to one ability', '+2 på en förmåga'],
+  'lvl.asiSplit': ['+1 to two abilities', '+1 på två förmågor'],
+  'lvl.asiFeat': ['A feat or boon instead', 'En talang eller boon i stället'],
+  'lvl.asiMax': ['No ability goes above 20.', 'Ingen förmåga går över 20.'],
+  'lvl.featName': ['Feat or boon (its rules are not applied: note them on the character)', 'Talang eller boon (reglerna tillämpas inte: anteckna dem på rollpersonen)'],
+  'lvl.ability': ['Ability', 'Förmåga'],
+  'lvl.apply': ['Level up', 'Höj nivå'],
+  'lvl.after': [
+    'Check Armor Class and your actions afterwards: they only follow your stats where "From my stats" or "Armor Class from equipment" is on.',
+    'Kontrollera Armor Class och dina handlingar efteråt: de följer bara dina värden där "Från mina värden" eller "Armor Class från utrustning" är på.',
+  ],
+  'lvl.journalTitle': ['{name} reaches level {n}', '{name} når nivå {n}'],
+  'lvl.jHp': ['Hit points +{n}.', 'Livspoäng +{n}.'],
+  'lvl.jAsi': ['Abilities: {text}.', 'Förmågor: {text}.'],
+  'lvl.jFeat': ['Feat or boon: {name}.', 'Talang eller boon: {name}.'],
+  'lvl.jNew': ['New features: {names}.', 'Nya förmågor: {names}.'],
+} as const satisfies Record<string, Msg>

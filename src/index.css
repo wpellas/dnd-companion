@@ -30,6 +30,8 @@
 }
 
 * { box-sizing: border-box; }
+/* without a nav above it (sign-in screens) the page's top margin would collapse through the body and leave a bare strip above the wood */
+#root { display: flow-root; }
 body {
   margin: 0;
   min-height: 100vh;
@@ -797,3 +799,57 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .card-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-top: 4px; }
 .card-actions button { width: 100%; height: 40px; padding: 0 8px; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .card-actions button { font-size: 0.85rem; }
+
+/* ---------- Sign-in, campaigns, account ---------- */
+.auth-page { max-width: 460px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.auth-page > img { width: 200px; max-width: 60%; }
+.auth-page .card { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.auth-page h2 { margin: 0; }
+.auth-links { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+button.link { background: none; border: none; box-shadow: none; padding: 2px 0; color: var(--red-dark); text-decoration: underline; text-shadow: none; font-family: inherit; text-transform: none; letter-spacing: 0; cursor: pointer; }
+.campaign-row { display: flex; align-items: center; gap: 10px; }
+.campaign-row strong { flex: 1; }
+.campaign-form { display: flex; align-items: flex-end; gap: 10px; }
+.campaign-form .field { flex: 1; }
+.import-box { border-left: 4px solid var(--gold-dark); padding: 6px 12px; margin-top: 10px; background: rgba(184, 138, 29, 0.12); }
+.sync-warn { color: #ffd166; font-size: 1.2rem; margin: 0 6px; cursor: help; }
+.account-details { margin: 8px 0 0; font-size: inherit; } /* shares the fold-out look of the item list, without its indent */
+.account-details form { margin-top: 10px; }
+.player-bar { position: fixed; top: 8px; right: 8px; z-index: 60; display: flex; gap: 6px; align-items: center; }
+.player-bar button, .player-bar select { font-size: 0.75rem; padding: 4px 10px; opacity: 0.85; }
+.player-bar.inline { position: static; justify-content: flex-end; flex-wrap: wrap; padding: 8px 10px 0; }
+
+/* ---------- Administration ---------- */
+.admin-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.admin-table th { text-align: left; font-family: var(--font-display); font-size: 0.8rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.admin-table th, .admin-table td { padding: 6px 8px; border-bottom: 1px solid var(--edge); vertical-align: middle; }
+.admin-table tr.off td { opacity: 0.55; }
+.admin-table td .chip { margin-left: 6px; }
+.admin-table .actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.admin-table .actions button { font-size: 0.75rem; padding: 4px 10px; }
+.admin-table .nowrap { white-space: nowrap; }
+
+/* ---------- "It's your turn" (a player's own character is up, or next) ---------- */
+.your-turn, .up-next { position: sticky; top: 0; z-index: 40; text-align: center; font-family: var(--font-display); letter-spacing: 0.04em; }
+.your-turn { padding: 14px 12px; font-size: 1.7rem; color: var(--ink); background: linear-gradient(#f1d36f, #e0a82e); border-bottom: 3px solid var(--gold-dark); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); animation: your-turn-pulse 1.6s ease-in-out infinite; }
+.up-next { padding: 6px 12px; font-size: 1rem; color: var(--parchment); background: rgba(60, 36, 18, 0.92); border-bottom: 2px solid var(--gold-dark); }
+@keyframes your-turn-pulse { 50% { filter: brightness(1.12); } }
+@media (prefers-reduced-motion: reduce) { .your-turn { animation: none; } }
+.mastery-note { margin: 6px 0; padding: 6px 10px; border-left: 4px solid var(--gold-dark); background: rgba(184, 138, 29, 0.14); font-size: 0.92rem; }
+
+/* ---------- Effects with durations ---------- */
+.effect-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.effect-chips .chip { font-size: 0.75rem; }
+.effects-editor ul { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.effects-editor li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.effects-editor li button { margin-left: auto; padding: 1px 8px; }
+.effect-form { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+details.effects .popover { min-width: 330px; }
+
+/* ---------- Numbers players typed on their phones ---------- */
+.rolls-tray { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; padding: 6px 10px; background: rgba(184, 138, 29, 0.14); border-left: 4px solid var(--gold-dark); }
+.rolls-tray .chip-x { margin-left: 6px; padding: 0 6px; font-size: 0.7rem; }
+button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
+.roll-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; display: flex; justify-content: center; padding: 8px; pointer-events: none; }
+.roll-dock > * { pointer-events: auto; }
+.roll-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; }

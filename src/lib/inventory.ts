@@ -137,7 +137,7 @@ export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action
         damage: w.damage,
         damageType: w.damageType,
         range: w.range ?? (w.ranged ? 'range' : 'reach 5 ft.'),
-        desc: w.mastery ? t('inv.masteryDesc', { m: w.mastery }) : undefined,
+        mastery: w.masteryKnown ? w.mastery : undefined,
       }
       return w.versatile ? [base, { ...base, id: `item:${i.id}:2h`, name: `${i.name} (two-handed)`, damage: w.versatile }] : [base]
     })

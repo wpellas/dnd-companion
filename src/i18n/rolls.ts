@@ -1,0 +1,25 @@
+import type { Msg } from './types'
+
+/** Players typing the number they rolled, and the DM's side of it. */
+export const rolls = {
+  'roll.fromPhone': ["from the player's phone", 'från spelarens mobil'],
+  'roll.useTitle': ['The player sent this number from their phone: click to use it', 'Spelaren skickade det här numret från sin mobil: klicka för att använda det'],
+  'roll.trayTitle': ['Sent from phones', 'Skickat från mobiler'],
+  'roll.dismiss': ['Dismiss', 'Avfärda'],
+  'roll.kind.initiative': ['Initiative', 'Initiativ'],
+  'roll.kind.attack': ['Attack', 'Attack'],
+  'roll.kind.save': ['Save', 'Räddning'],
+  'lbl.initFromPhone': ["{name}'s initiative (from the player's phone)", '{name}s initiativ (från spelarens mobil)'],
+
+  'roll.send': ['Send my roll', 'Skicka mitt slag'],
+  'roll.close': ['Close', 'Stäng'],
+  'roll.character': ['Character', 'Rollperson'],
+  'roll.number': ['Number', 'Tal'],
+  'roll.hint.initiative': ['Your initiative total: the d20 plus your bonus', 'Din initiativsumma: d20 plus din bonus'],
+  'roll.hint.attack': ['Just the number on the d20: the DM adds your bonus', 'Bara talet på d20: spelledaren lägger till din bonus'],
+  'roll.hint.save': ['Just the number on the d20: the DM adds your bonus', 'Bara talet på d20: spelledaren lägger till din bonus'],
+  'roll.sendGo': ['Send', 'Skicka'],
+  'roll.sent': ['Sent {value} ({kind}). You can send again to replace it.', 'Skickade {value} ({kind}). Du kan skicka igen för att ersätta det.'],
+  'roll.failed': ['Could not send it (are you offline?). Tell the DM the number instead.', 'Kunde inte skicka (är du offline?). Säg talet till spelledaren i stället.'],
+  'roll.optional': ['Sending is optional: the DM can always just ask you.', 'Att skicka är frivilligt: spelledaren kan alltid fråga dig.'],
+} as const satisfies Record<string, Msg>

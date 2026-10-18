@@ -1,0 +1,62 @@
+import type { Msg } from './types'
+
+/** The administrator's page. */
+export const admin = {
+  'admin.link': ['Administration', 'Administration'],
+  'admin.title': ['Administration', 'Administration'],
+  'admin.back': ['← Back to the app', '← Tillbaka till appen'],
+
+  'admin.invites': ['Site invites', 'Webbplatsinbjudningar'],
+  'admin.invitesNote': [
+    'A site invite lets someone create an account without joining a campaign. DMs invite their own players from Settings.',
+    'En webbplatsinbjudan låter någon skapa ett konto utan att gå med i en kampanj. Spelledare bjuder in sina egna spelare från Inställningar.',
+  ],
+  'admin.uses': ['People', 'Personer'],
+  'admin.days': ['Valid for (days)', 'Giltig i (dagar)'],
+  'admin.makeInvite': ['Make an invite', 'Skapa en inbjudan'],
+  'admin.inviteMade': ['Invite code {code}', 'Inbjudningskod {code}'],
+  'admin.noInvites': ['No site invites.', 'Inga webbplatsinbjudningar.'],
+  'admin.used': ['{used} of {max} used', '{used} av {max} använda'],
+  'admin.expires': ['valid until {date}', 'giltig till {date}'],
+  'admin.revoke': ['Revoke', 'Återkalla'],
+
+  'admin.users': ['Accounts', 'Konton'],
+  'admin.name': ['Name', 'Namn'],
+  'admin.email': ['E-mail', 'E-post'],
+  'admin.campaignCount': ['Campaigns', 'Kampanjer'],
+  'admin.badgeAdmin': ['Admin', 'Admin'],
+  'admin.badgeDisabled': ['Locked', 'Låst'],
+  'admin.makeAdmin': ['Make admin', 'Gör till admin'],
+  'admin.removeAdmin': ['Remove admin', 'Ta bort admin'],
+  'admin.disable': ['Lock', 'Lås'],
+  'admin.enable': ['Unlock', 'Lås upp'],
+  'admin.disableConfirm': ['Lock {name} out? They are signed out at once.', 'Låsa ute {name}? Personen loggas ut direkt.'],
+  'admin.resetLink': ['Send reset link', 'Skicka återställningslänk'],
+  'admin.resetSent': ['Reset link sent to {email}.', 'Återställningslänk skickad till {email}.'],
+  'admin.delete': ['Delete', 'Radera'],
+  'admin.deleteUserConfirm': [
+    'Delete the account of {name}? Their characters stay in the campaigns. This cannot be undone.',
+    'Radera kontot för {name}? Rollpersonerna finns kvar i kampanjerna. Det går inte att ångra.',
+  ],
+
+  'admin.log': ['Log', 'Logg'],
+  'admin.logEmpty': ['Nothing has been done here yet.', 'Inget har gjorts här än.'],
+  'admin.logOlder': ['Show older', 'Visa äldre'],
+  'admin.act.inviteCreate': ['made an invite', 'skapade en inbjudan'],
+  'admin.act.inviteRevoke': ['revoked an invite', 'återkallade en inbjudan'],
+  'admin.act.userLock': ['locked an account', 'låste ett konto'],
+  'admin.act.userUnlock': ['unlocked an account', 'låste upp ett konto'],
+  'admin.act.adminGrant': ['made an admin', 'gjorde någon till admin'],
+  'admin.act.adminRevoke': ['removed admin rights', 'tog bort adminrättigheter'],
+  'admin.act.resetLink': ['sent a reset link', 'skickade en återställningslänk'],
+  'admin.act.userDelete': ['deleted an account', 'raderade ett konto'],
+  'admin.act.campaignDelete': ['deleted a campaign', 'raderade en kampanj'],
+  'admin.campaigns': ['Campaigns', 'Kampanjer'],
+  'admin.dms': ['DM', 'Spelledare'],
+  'admin.members': ['Members', 'Medlemmar'],
+  'admin.noCampaigns': ['No campaigns.', 'Inga kampanjer.'],
+  'admin.deleteCampaignConfirm': [
+    'Delete the campaign "{name}" with all its characters, journal and data, for everyone? This cannot be undone.',
+    'Radera kampanjen "{name}" med alla rollpersoner, journal och data, för alla? Det går inte att ångra.',
+  ],
+} as const satisfies Record<string, Msg>

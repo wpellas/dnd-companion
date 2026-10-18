@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../db'
+import { srdDb as db } from '../db'
 import { t } from '../lib/i18n'
 import { ensureLibrary, LIBRARY_SYNC_KEY } from '../lib/srdApi'
 

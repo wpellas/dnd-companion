@@ -15,11 +15,11 @@ import { setIncomingRolls, type IncomingRoll } from './rolls'
  * - Last write wins per record. The server never looks inside the data (see SyncController).
  */
 
-export const COLLECTIONS = ['characters', 'monsters', 'combat', 'encounters', 'journal', 'kv', 'avatars'] as const
+export const COLLECTIONS = ['characters', 'monsters', 'combat', 'encounters', 'journal', 'kv', 'avatars', 'maps'] as const
 export type Collection = (typeof COLLECTIONS)[number]
 
 /** Collections whose primary key is a number (auto-increment); the others use strings. */
-const NUMERIC = new Set<Collection>(['characters', 'monsters', 'encounters', 'journal'])
+const NUMERIC = new Set<Collection>(['characters', 'monsters', 'encounters', 'journal', 'maps'])
 /** Bookkeeping that belongs to this browser only: the SRD library cache, the last-backup reminder and this engine's own state. */
 const isLocalOnly = (collection: Collection, key: string) => collection === 'kv' && (key.startsWith('sync:') || key.startsWith('api:') || key === 'lastBackup')
 
@@ -58,6 +58,7 @@ export const useSyncStatus = () =>
 /* ---------------------------------------------------------------- portraits travel inside the character record as a small data URL */
 
 const portraits = new WeakMap<Blob, string>()
+import { blobToDataUrl } from './image'
 
 async function shrink(blob: Blob): Promise<string | undefined> {
   try {
@@ -89,13 +90,13 @@ async function toServer(collection: Collection, row: object): Promise<string> {
     void history
     return JSON.stringify(rest)
   }
-  if (collection !== 'characters' && collection !== 'avatars') return JSON.stringify(row)
+  if (collection !== 'characters' && collection !== 'avatars' && collection !== 'maps') return JSON.stringify(row)
   const { image, ownerId, ...rest } = row as { image?: Blob; ownerId?: number }
   void ownerId // the owner is the server's column, not part of the record
   if (!image) return JSON.stringify(rest)
   let imageData = portraits.get(image)
   if (!imageData) {
-    imageData = await shrink(image)
+    imageData = collection === 'maps' ? await blobToDataUrl(image) : await shrink(image) // a map was already shrunk when it was added: keep its size
     if (imageData) portraits.set(image, imageData)
   }
   return JSON.stringify(imageData ? { ...rest, imageData } : rest)
@@ -103,7 +104,7 @@ async function toServer(collection: Collection, row: object): Promise<string> {
 
 function fromServer(collection: Collection, json: string): object {
   const row = JSON.parse(json)
-  if ((collection === 'characters' || collection === 'avatars') && typeof row.imageData === 'string') {
+  if ((collection === 'characters' || collection === 'avatars' || collection === 'maps') && typeof row.imageData === 'string') {
     const image = dataUrlToBlob(row.imageData)
     portraits.set(image, row.imageData)
     delete row.imageData

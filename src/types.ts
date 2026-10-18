@@ -512,6 +512,13 @@ export interface Encounter {
 }
 
 /** A DM-only entry in the campaign journal: a note, a session recap, or an automatic combat summary. */
+/** A battle map or other handout picture the DM can show to the players (see lib/maps.ts). Fog of war will hang off this record later. */
+export interface MapRecord {
+  id?: number
+  name: string
+  image: Blob
+}
+
 /** A picture for a kind of creature (see lib/avatars.ts) */
 export interface Avatar {
   key: string

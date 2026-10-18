@@ -17,6 +17,7 @@ export const getSpotlight = async () => (await db.kv.get(KEY))?.value as Spotlig
 export const useSpotlight = () => useLiveQuery(async () => ((await db.kv.get(KEY))?.value as Spotlight | undefined) ?? null, [])
 
 export const showToPlayers = async (characterId: number) => {
+  await db.kv.delete('mapShown') // one thing at a time
   const prev = await getSpotlight()
   await db.kv.put({ key: KEY, value: { characterId, inventory: prev?.inventory ?? true } satisfies Spotlight })
 }

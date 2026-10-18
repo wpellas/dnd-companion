@@ -116,6 +116,10 @@ breathes fire.
 - **Hazards:** falling (per 10 feet), burning or your own trap (dice, type, optional save) against any creatures you tick; the table hears who got hurt.
 - **Movement without a map:** count the feet each creature walks (Haste, Slow, Exhaustion and conditions like Grappled change its Speed), with Dash, Disengage, standing up from Prone and a reminder about opportunity attacks.
 
+### Maps 🗺️
+Upload battle maps and handouts in the Maps tab and **show one to the players**, the way you show a character sheet: their phones and the table screen switch to the picture until you go back to the feed. One thing is shown at a time, a reminder bar stays on
+every tab while it is up, and pictures are shrunk to a size that is sharp on a phone yet light to send. Fog of war (the map starts hidden and you reveal it piece by piece) is the next step.
+
 ### The Journal 📖
 A private campaign log for you: free-form notes (NPCs, clues, loot), session recaps, and an automatic summary of every fight you end
 (who fought, who fell, XP, the full combat log). Search it, filter it, pin the important bits. Players never see it, and it travels
@@ -205,7 +209,7 @@ before anything leaves your browser, so the server never holds their HP or AC), 
 
 ## 🔮 On the horizon
 
-A battle map with tokens, and treasure generation after a fight.
+Fog of war and tokens on the maps, and treasure generation after a fight.
 
 ## 📖 Changelog
 

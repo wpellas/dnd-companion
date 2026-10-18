@@ -7,6 +7,7 @@ import { toPublic, toPublicSheet, type PublicCombat, type PublicSheet } from './
 import { setLang, useLang, type Lang } from './i18n'
 import { useSession } from './session'
 import { useSpotlight } from './spotlight'
+import { publicMap, useMapShown, type PublicMap } from './maps'
 
 /**
  * The live view. The DM's browser (`LiveHost`) uploads the player-safe parts of the fight to the server; players (signed in) and the table's
@@ -40,7 +41,7 @@ async function smallPortrait(blob: Blob, key: string): Promise<string | undefine
 
 /* ---------------------------------------------------------------- host */
 
-type Part = 'combat' | 'portraits' | 'sheet' | 'lang' | 'ping'
+type Part = 'combat' | 'portraits' | 'sheet' | 'map' | 'lang' | 'ping'
 const PUSH_MS = 300
 const HEARTBEAT_MS = 20000
 
@@ -50,6 +51,8 @@ export function LiveHost() {
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const spotlight = useSpotlight()
+  const mapShown = useMapShown()
+  const maps = useLiveQuery(() => db.maps.toArray(), [])
   const lang = useLang()
   const avatars = useAvatars()
   // which enemy in this fight has which picture (a stable string, so the effect below does not re-run on every HP change)
@@ -98,6 +101,19 @@ export function LiveHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spotlight, characters, combat, campaignId])
 
+  // the map the DM is showing (null = none); sent as a finished picture, so what is hidden on it can never reach the table
+  useEffect(() => {
+    if (mapShown === undefined || !maps) return
+    const m = mapShown ? maps.find((x) => x.id === mapShown.mapId) : undefined
+    let off = false
+    if (!m) want('map', null)
+    else void publicMap(m).then((p) => !off && want('map', p))
+    return () => {
+      off = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapShown, maps, campaignId])
+
   useEffect(() => {
     if (!characters) return
     let off = false
@@ -140,6 +156,8 @@ export interface RemoteView {
   lang?: Lang
   /** The character sheet the DM is showing; null = none, undefined = nothing received yet */
   sheet?: PublicSheet | null
+  /** The map the DM is showing; null = none, undefined = nothing received yet */
+  map?: PublicMap | null
   /** Data URLs by character id, or by combatant id for enemies */
   portraits: Record<string, string>
   /** The last poll worked */
@@ -175,6 +193,7 @@ export function useRemoteView(source?: LiveSource): RemoteView {
           const value = data === null ? null : JSON.parse(data)
           if (part === 'combat') patch.combat = value as PublicCombat | null
           else if (part === 'sheet') patch.sheet = value as PublicSheet | null
+          else if (part === 'map') patch.map = value as PublicMap | null
           else if (part === 'portraits') patch.portraits = (value as Record<string, string> | null) ?? {}
           else if (part === 'lang' && value) {
             setLang(value as Lang)

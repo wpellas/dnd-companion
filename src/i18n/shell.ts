@@ -29,6 +29,7 @@ export const shell = {
   'nav.party': ['🛡 Party', '🛡 Sällskap'],
   'nav.bestiary': ['🐉 Bestiary', '🐉 Bestiarium'],
   'nav.encounters': ['📜 Encounters', '📜 Möten'],
+  'nav.maps': ['🗺 Maps', '🗺 Kartor'],
   'nav.journal': ['📖 Journal', '📖 Dagbok'],
   'nav.settings': ['⚙ Settings', '⚙ Inställningar'],
   'footer.dataFrom': ['Class, spell and monster data from the ', 'Klass-, besvärjelse- och monsterdata från '],

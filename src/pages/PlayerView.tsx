@@ -5,6 +5,7 @@ import heroLogo from '../assets/images/logo-360.png'
 import navLogo from '../assets/images/logo-128.png'
 import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
+import { useMapShown, type PublicMap } from '../lib/maps'
 import { explainCondition, explainEffect, GLOSSARY } from '../lib/explain'
 import { pictureFor } from '../lib/avatars'
 import { useRemoteView, type LiveSource } from '../lib/hub'
@@ -98,6 +99,13 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
       ? toPublicSheet(localChar, localState?.started ? localState.combatants.find((c) => c.characterId === localChar.id) : undefined, { inventory: spotlight.inventory })
       : null
   const sheet = remote.sheet !== undefined ? remote.sheet : localSheet
+  // a map being shown: from the live view, or (the DM's own second window) from the local database
+  const localMapShown = useMapShown()
+  const localMap = useLiveQuery(async (): Promise<PublicMap | null> => {
+    const m = localMapShown ? await db.maps.get(localMapShown.mapId) : undefined
+    return m ? { name: m.name, imageData: URL.createObjectURL(m.image) } : null
+  }, [localMapShown?.mapId])
+  const map = remote.map !== undefined ? remote.map : localMap
   const showingSheet = !!sheet
 
   // tap a badge for what it means, and a "?" for the terms; both are optional help, nothing here asks anything of a spectator
@@ -120,6 +128,14 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
       <div className="player empty">
         <img src={heroLogo} alt={t('player.logoAlt')} />
         <span>{t('player.linkGone')}</span>
+      </div>
+    )
+  }
+  if (map) {
+    return (
+      <div className="player map-view">
+        <img src={map.imageData} alt={map.name} />
+        <div className="map-name">{map.name}</div>
       </div>
     )
   }

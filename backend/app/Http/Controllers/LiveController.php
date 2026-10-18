@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
  */
 class LiveController extends Controller
 {
-    public const PARTS = ['combat', 'portraits', 'sheet', 'lang', 'ping'];
+    public const PARTS = ['combat', 'portraits', 'sheet', 'map', 'lang', 'ping'];
 
     /** A DM's browser sends one or more parts; a null value clears that part (e.g. no sheet is being shown). */
     public function push(Request $request, Campaign $campaign): JsonResponse

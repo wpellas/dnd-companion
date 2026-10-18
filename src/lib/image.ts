@@ -1,3 +1,12 @@
+/** A Blob as a data URL (for sending a picture inside JSON). */
+export const blobToDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result))
+    r.onerror = () => reject(r.error)
+    r.readAsDataURL(blob)
+  })
+
 /** A picture shrunk to fit in `max` pixels (a JPEG), so avatars stay a few kilobytes on disk, in the sync and on a phone. Never enlarges. */
 export async function shrinkImage(file: Blob, max = 256): Promise<Blob> {
   const bmp = await createImageBitmap(file)

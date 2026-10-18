@@ -55,6 +55,15 @@ class LiveTest extends TestCase
         $this->actingAs($this->player)->getJson("/api/campaigns/{$this->campaign->id}/live?sheet=1")->assertJsonPath('parts.sheet.data', null)->assertJsonPath('parts.sheet.version', 2);
     }
 
+    public function test_a_shown_map_is_a_live_part_and_a_big_one_fits(): void
+    {
+        $map = json_encode(['name' => 'Cave', 'imageData' => 'data:image/jpeg;base64,'.str_repeat('A', 900000)]);
+        $this->push($this->dm, ['map' => $map])->assertOk();
+        $this->assertSame($map, $this->actingAs($this->player)->getJson("/api/campaigns/{$this->campaign->id}/live")->json('parts.map.data'));
+        $this->push($this->dm, ['map' => null]);
+        $this->actingAs($this->player)->getJson("/api/campaigns/{$this->campaign->id}/live?map=1")->assertJsonPath('parts.map.data', null);
+    }
+
     public function test_only_the_dm_pushes_and_only_known_parts(): void
     {
         $this->push($this->player, ['combat' => '{}'])->assertForbidden();

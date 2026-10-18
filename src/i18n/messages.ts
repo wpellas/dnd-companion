@@ -6,6 +6,7 @@ import { combatui } from './combatui'
 import { editors } from './editors'
 import { effects } from './effects'
 import { hazard } from './hazard'
+import { maps } from './maps'
 import { glossary } from './glossary'
 import { movement } from './movement'
 import { journal } from './journal'
@@ -36,6 +37,7 @@ export const MESSAGES = {
   ...editors,
   ...effects,
   ...hazard,
+  ...maps,
   ...glossary,
   ...movement,
   ...journal,

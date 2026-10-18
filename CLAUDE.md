@@ -14,7 +14,7 @@ characters is a setting (`allowPlayerAppRolls`, default **off**); respect it eve
 `canAppRoll(kind, settings)` from `lib/settings.ts`). "Automatic" features must stay rules assistance (advantage hints, auto-fail
 saves, bonuses), never rolling for a player.
 
-Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): a battle map with tokens, loot generation after a fight.
+Scope is combat-relevant stats, not full character sheets. Longer-term (not built yet): fog of war and tokens on the maps (maps can be uploaded and shown already), loot generation after a fight.
 
 ## Commands
 
@@ -132,7 +132,7 @@ It never touches combat state. `SpotlightBar` (in `App`) keeps a reminder on eve
   (gallery), the monster form (new / edit / SRD copy; pictures wait in the form until saved, because a new monster has no id yet; an SRD copy starts with the original's) only in the Bestiary: combat rows just show them; shrunk to 256 px JPEG (`lib/image.ts`). `LiveHost` adds each enemy's chosen picture to the `portraits` part keyed by **combatant id** (characters by character id); players never pull the `avatars` records (only the live view carries them).
 
 ### UI
-- Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `JournalPage`, `SettingsPage`, `PlayerView`.
+- Pages: `CombatPage`, `PartyPage`, `BestiaryPage`, `EncountersPage`, `MapsPage`, `JournalPage`, `SettingsPage`, `PlayerView`.
 - `TurnPanel` (+ `components/turn/AttackResolver`, `SaveResolver`, `DamageEntry`, `useDamageEntry`) - action -> target(s) -> d20s -> damage ->
   `resolveAction`. Mounted with `key={round-turnIndex-activeId}` (the id matters because a delay changes who is up without changing the index) so local state resets each turn; inner resolvers are re-keyed per action/target.
 - Others: `Combobox` (searchable grouped dropdown with keyboard support: use it instead of `<select>` for long lists), `Section` / `CheckField`
@@ -234,6 +234,14 @@ No test framework is installed; checks were done with throwaway scripts: pure lo
 volleys, delay and group initiative, Exhaustion, undo, live-view privacy). Headless Edge launched for these tests outlives `proc.kill()`: kill leftover
 `msedge.exe` processes whose command line has your throwaway profile before the next run, or the debugging port will refuse.
 
+## Maps (built: upload + showcase; fog of war is planned)
+
+`lib/maps.ts`, `pages/MapsPage.tsx` (tab "Maps"), table `maps` (Dexie v7; `MapRecord` {id, name, image Blob}), synced as the collection `maps` (the image travels inside the record as `imageData`, a data URL kept at the 1800 px it was shrunk to; players never pull it).
+"Show to players" is the character showcase for pictures: kv `mapShown` {mapId}; showing a map clears the character `spotlight` and the other way round (one thing at a time); deleting the shown map stops it; `SpotlightBar` reminds on every DM tab.
+`LiveHost` uploads the live part `map` ({name, imageData}, null = none; `LiveController::PARTS`), `useRemoteView` reads it, `PlayerView` renders `.map-view` instead of the feed (the DM's own #player window reads the local table).
+**Fog of war (next):** add a mask to `MapRecord` (what the players may see) and make `publicMap()` in `lib/maps.ts` compose the picture in the DM's browser with the hidden parts blacked out. It must be composed before upload: the server and any player can read what is sent, so a client-side overlay would leak the whole map.
+Test note: `php artisan serve` drops POST bodies over a few hundred KB when run from a sandboxed shell (PHP "Unable to create temporary file"); run the e2e server as `php -S 127.0.0.1:8000 -t backend/public backend/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` with cwd `backend/public` and TMP/TEMP set to a writable folder. Kill leftover servers on 8000 / 5199 before a run.
+
 ## Player help (built): what the words mean
 
 `lib/explain.ts` + `i18n/glossary.ts`: on the player screen every badge (condition, effect, concentration, Inspiration, Wild Shape form) is a button that opens a plain-language note under the row (conditions reuse the DM's `remind.*` texts, effects use `modsLine` of their preset; a line defining Advantage / Disadvantage
@@ -266,7 +274,7 @@ Working notes for whoever continues (the user's machine is Windows; Herd serves 
 
 ## TODO / ideas
 
-- Longer-term (agreed, waiting): battle map with tokens, loot generation. (Session notes, equipment, inventory, gold and XP, players with their own accounts, effects with durations and the level-up helper are built.)
+- Longer-term (agreed, waiting): fog of war on maps (see Maps), tokens, loot generation. (Session notes, equipment, inventory, gold and XP, players with their own accounts, effects with durations and the level-up helper are built.)
 - Effects: more presets (`PRESETS` in `lib/effects.ts`), mods on by-hand effects, and an effect that ends when the target takes damage; monster spells the API can't describe (Shield...).
 - The throwaway browser test scripts live outside the repo (see Testing): port them into an `e2e/` folder.
 - Subclass-granted spells, ritual casting, non-SRD content import.

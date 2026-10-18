@@ -115,6 +115,15 @@ class SyncTest extends TestCase
         $this->push($this->player, [$this->doc('avatars', 'goblin', '{}')])->assertJsonCount(1, 'rejected');
     }
 
+    public function test_maps_sync_for_the_dm_but_are_never_sent_to_players(): void
+    {
+        $big = '{"id":1,"name":"Cave","imageData":"data:image/jpeg;base64,'.str_repeat('A', 900000).'"}'; // a map is a big record
+        $this->push($this->dm, [$this->doc('maps', '1', $big)])->assertOk()->assertJsonPath('rejected', []);
+        $this->assertSame($big, $this->pull($this->dm)->json('docs.0.data'));
+        $this->assertSame([], $this->pull($this->player)->json('docs'));
+        $this->push($this->player, [$this->doc('maps', '1', '{}')])->assertJsonCount(1, 'rejected');
+    }
+
     public function test_strangers_are_turned_away_and_an_empty_push_does_not_move_the_revision(): void
     {
         $this->pull(User::factory()->create())->assertNotFound();

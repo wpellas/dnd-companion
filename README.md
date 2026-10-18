@@ -122,8 +122,13 @@ breathes fire.
 - **Ammunition and charges:** a bow or crossbow spends one piece of its ammunition (Arrows, Bolts...) with every attack and can't fire when it runs out; wands and staffs keep their charges, read from the SRD text, and a long rest refills those that regain everything at dawn.
 - **Spells at the table:** search a spell and see who has it prepared and whether they have a slot left (Counterspell? Shield?), plus every caster's list. On the Party and Combat pages.
 
+- **Quick NPCs:** a button on the Journal page rolls a name, species, trade, look, manner, want and voice; edit or re-roll any line, save it as a journal note, or add it to the fight under a stat block (a Commoner, a Guard...) with its own name.
+
+### Time and light ⏳
+On the Party page: the day and the clock, with buttons for +10 minutes, +1 hour, +8 hours and "to dawn", and your light sources (torch, candle, lamp, lanterns, the Light spell) burning down as time passes. If your table doesn't track the time of day, switch the clock off in Settings (or in the panel): the light sources always stay, and you let time pass on them with "Let 10 minutes / 1 hour pass".
+
 ### Checks ✅
-On the Party page, a **Checks** panel for group checks and "who notices?": set the DC, see everyone's Passive Perception against it, and type in what the players rolled (or let them send it from their phone). It tells you whether a group check succeeds (at least half).
+On the Party page, a **Checks** panel for group checks and "who notices?": set the DC, see everyone's Passive Perception, Investigation and Insight against it, and type in what the players rolled (or let them send it from their phone). It tells you whether a group check succeeds (at least half).
 
 ### Maps 🗺️
 Upload battle maps and handouts in the Maps tab and **show one to the players**, the way you show a character sheet: their phones and the table screen switch to the picture until you go back to the feed. One thing is shown at a time, a reminder bar stays on
@@ -222,6 +227,7 @@ Fog of war and tokens on the maps, and treasure generation after a fight.
 
 ## 📖 Changelog
 
+- **Table-speed update 6:** quick NPCs, light sources and an optional clock, passive Investigation and Insight on the check sheet, class resources, ammunition and item charges, a spell finder.
 - **Table-speed update 5:** class resources, ammunition and item charges in the fight, a spell finder for the DM, Grapple and Shove, opportunity attacks and a checks panel.
 - **Table-speed update 4:** maps you can show to the players, colour-coded conditions, plain-language help for players, Grapple and Shove, opportunity attacks and a checks panel.
 - **Table-speed update 3:** effects that change AC / resistances / attack advantage, allies and summons, Wild Shape, death saves typed on the phone, rolled monster hit points, hazards and movement tracking.

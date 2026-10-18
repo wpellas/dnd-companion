@@ -57,6 +57,8 @@ export const party = {
   'form.derivedLevel': ['Derived from level', 'Räknas ut från nivån'],
   'form.hitDie': ['Hit die', 'Vilotärning'],
   'form.fromClass': ['From the class', 'Från klassen'],
+  'form.passiveInv': ['Passive Investigation', 'Passiv Investigation'],
+  'form.passiveInsight': ['Passive Insight', 'Passiv Insight'],
   'form.ac': ['Armor class', 'Rustningsklass'],
   'form.acFromGearTitle': ['Worked out from the equipped armor (Equipment & gold section)', 'Räknas ut från den utrustade rustningen (avsnittet Utrustning och guld)'],
   'form.maxHp': ['Max HP', 'Max HP'],

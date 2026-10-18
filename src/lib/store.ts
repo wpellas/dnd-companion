@@ -1,7 +1,8 @@
+import { advance, burn } from './time'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { db } from '../db'
-import type { Character } from '../types'
+import type { Character, Light } from '../types'
 import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
 import { withGearAc } from './inventory'
 import { buildSaves } from './resolve'
@@ -12,10 +13,25 @@ import { longRest, shortRest, type ShortRestInput } from './rest'
 export interface Campaign {
   /** In-world day; a long rest advances it. */
   day: number
+  /** Minutes since midnight (the clock of the day; Settings.trackTime turns the clock and light off) */
+  minutes?: number
+  /** Light sources burning down with the clock */
+  lights?: Light[]
   shortRestsSinceLong: number
 }
 
 const DEFAULT_CAMPAIGN: Campaign = { day: 1, shortRestsSinceLong: 0 }
+
+/** Move the clock on (the day changes at midnight) and let every lit light burn down. Pure: see lib/time.ts. */
+/** Let the lit lights burn without moving the clock (for tables that do not track time). */
+export async function burnLights(minutes: number) {
+  await setCampaign(burn(await getCampaign(), minutes))
+}
+
+export async function advanceTime(minutes: number) {
+  const camp = await getCampaign()
+  await setCampaign(advance(camp, minutes))
+}
 
 export async function getCampaign(): Promise<Campaign> {
   return ((await db.kv.get('campaign'))?.value as Campaign | undefined) ?? DEFAULT_CAMPAIGN

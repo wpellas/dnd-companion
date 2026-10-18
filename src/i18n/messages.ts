@@ -6,6 +6,8 @@ import { combatui } from './combatui'
 import { editors } from './editors'
 import { effects } from './effects'
 import { hazard } from './hazard'
+import { time } from './time'
+import { npc } from './npc'
 import { ammo } from './ammo'
 import { spellfind } from './spellfind'
 import { checks } from './checks'
@@ -41,6 +43,8 @@ export const MESSAGES = {
   ...editors,
   ...effects,
   ...hazard,
+  ...time,
+  ...npc,
   ...ammo,
   ...spellfind,
   ...checks,

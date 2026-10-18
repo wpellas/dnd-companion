@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { NumberField } from '../components/NumberField'
+import { QuickNpc } from '../components/QuickNpc'
 import { locale, t } from '../lib/i18n'
 import { addEntry, deleteEntry, kindLabel, splitCombatLog, updateEntry } from '../lib/journal'
 import { getCampaign } from '../lib/store'
@@ -18,6 +19,7 @@ export function JournalPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<JournalEntry | null>(null)
+  const [npcOpen, setNpcOpen] = useState(false)
 
   const q = query.trim().toLowerCase()
   const shown = (entries ?? [])
@@ -38,12 +40,14 @@ export function JournalPage() {
     <div className="page">
       <div className="toolbar">
         <h2>{t('journal.title')}</h2>
+        <button onClick={() => setNpcOpen(true)}>{t('npc.button')}</button>
         <button onClick={() => setEditing(blank('session'))}>{t('journal.newSession')}</button>
         <button className="primary" onClick={() => setEditing(blank('note'))}>
           {t('journal.newNote')}
         </button>
       </div>
 
+      {npcOpen && <QuickNpc onClose={() => setNpcOpen(false)} />}
       {editing && <EntryForm key={editing.id ?? 'new'} initial={editing} onClose={() => setEditing(null)} />}
 
       <div className="filter-bar">

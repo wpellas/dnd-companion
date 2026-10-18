@@ -258,6 +258,14 @@ Test note: `php artisan serve` drops POST bodies over a few hundred KB when run 
   (`SrdEquipment.quantity`, Arrows = 20). `TurnPanel.submit` calls `store.spendAmmo` after a PC's attack (hit or miss); the action chip shows ➶N and is disabled at 0. Undo does not hand the arrow back (the DM edits the quantity). Retrieving arrows after a fight is by hand.
 - **`components/SpellFinder.tsx`** (Party page and Combat page, DM): pick a spell the party has prepared and see who can cast it now (a prepared spell needs a free slot of its level or higher; cantrips are always ready), plus every caster's spell list with slots left.
 
+## Light and time, quick NPCs, the check sheet (built)
+
+- **Time and light** (`lib/time.ts` pure, `components/TimePanel.tsx` on the Party page, DM only): `Campaign` (kv `campaign`, defined in `lib/store.ts`) gained `minutes` (since midnight, default 08:00) and `lights` (`Light`: name, minutes left, lit, SRD radius text). `store.advanceTime(minutes)` moves the clock (past midnight the day counter goes up) and burns every lit light down.
+  Presets from the 2024 equipment text (Torch and Candle 1 h, Lamp and the lanterns 6 h on a flask of oil: the 6 hours is from memory, the API text is cut off). **`Settings.trackTime`** (default on; Settings page and a switch in the panel) hides only the clock (day / time / the advance buttons) for tables that don't track time; the light sources are always there and then burn down with "Let 10 min / 1 hour pass" (`store.burnLights`, `time.burn`); the rest-day counter keeps working.
+  The long rest does not move the clock by itself. Nothing here is sent to the players.
+- **Quick NPCs** (`lib/npc.ts`, `i18n/npc.ts`, `components/QuickNpc.tsx`, button on the Journal page): name, species, trade, look, manner, want and voice from small tables (message keys, English + Swedish; names and species stay English), each line editable and re-rollable, saved as a journal note or added to the fight under a chosen stat block with the NPC's name (`addMonsters`).
+- **Check sheet:** `Character.passiveInvestigation` / `passiveInsight` (character form) join Passive Perception in `ChecksPanel`; unset ones show a dash.
+
 ## Player help (built): what the words mean
 
 `lib/explain.ts` + `i18n/glossary.ts`: on the player screen every badge (condition, effect, concentration, Inspiration, Wild Shape form) is a button that opens a plain-language note under the row (conditions reuse the DM's `remind.*` texts, effects use `modsLine` of their preset; a line defining Advantage / Disadvantage

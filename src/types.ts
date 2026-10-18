@@ -241,6 +241,9 @@ export interface Character {
   speed: number
   initiativeBonus: number
   passivePerception: number
+  /** Passive Investigation and Insight (10 + bonus), for the DM's check sheet */
+  passiveInvestigation?: number
+  passiveInsight?: number
   abilities: AbilityScores
   /** Saving throws the character is proficient in (the class grants two) */
   saveProficiencies: Ability[]
@@ -547,4 +550,16 @@ export interface JournalEntry {
   createdAt: number
   updatedAt: number
   pinned?: boolean
+}
+
+/** A torch, lantern or spell that burns while the campaign clock runs. */
+export interface Light {
+  id: string
+  name: string
+  /** Minutes of light left */
+  left: number
+  lit: boolean
+  /** "20 ft", "60-ft cone": what the SRD says (shown as a reminder) */
+  bright: string
+  dim: string
 }

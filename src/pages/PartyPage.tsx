@@ -9,6 +9,7 @@ import { RewardBanner } from '../components/RewardBanner'
 import { NumberField } from '../components/NumberField'
 import { Portrait } from '../components/Portrait'
 import { ChecksPanel } from '../components/ChecksPanel'
+import { TimePanel } from '../components/TimePanel'
 import { SpellFinder } from '../components/SpellFinder'
 import { CharacterResources } from '../components/CharacterResources'
 import { DamageTypeList } from '../components/DamageTypeList'
@@ -104,6 +105,7 @@ export function PartyPage() {
 
       {isDm && <RewardBanner />}
       {isDm && !!characters?.length && <SpellFinder characters={characters.map(normalizeCharacter)} />}
+      {isDm && <TimePanel />}
       {isDm && !!characters?.length && <ChecksPanel characters={characters.map(normalizeCharacter)} />}
       {awarding && characters && <AwardPanel characters={characters.map(normalizeCharacter)} onClose={() => setAwarding(false)} />}
 
@@ -361,6 +363,8 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
           <NumberField label={t('form.speed')} value={c.speed} onChange={(n) => set('speed', n)} />
           <NumberField label={t('form.initBonus')} value={c.initiativeBonus} onChange={(n) => set('initiativeBonus', n)} />
           <NumberField label={t('form.passive')} value={c.passivePerception} onChange={(n) => set('passivePerception', n)} />
+          <NumberField label={t('form.passiveInv')} value={c.passiveInvestigation ?? 10} onChange={(n) => set('passiveInvestigation', n)} />
+          <NumberField label={t('form.passiveInsight')} value={c.passiveInsight ?? 10} onChange={(n) => set('passiveInsight', n)} />
           <NumberField label={t('form.exhaustion')} value={c.exhaustion ?? 0} min={0} onChange={(n) => set('exhaustion', Math.min(6, Math.max(0, Math.floor(n))))} />
         </div>
       </Section>

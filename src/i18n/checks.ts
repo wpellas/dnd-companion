@@ -6,6 +6,8 @@ export const checks = {
   'checks.clear': ['Clear totals', 'Rensa summor'],
   'checks.who': ['Character', 'Rollperson'],
   'checks.passive': ['Passive Perception', 'Passiv Perception'],
+  'checks.investigation': ['Passive Investigation', 'Passiv Investigation'],
+  'checks.insight': ['Passive Insight', 'Passiv Insight'],
   'checks.total': ['Total rolled', 'Slagen summa'],
   'checks.result': ['Result', 'Resultat'],
   'checks.pass': ['Success', 'Lyckas'],
@@ -13,5 +15,5 @@ export const checks = {
   'checks.group': ['Group check: {ok} of {n} succeed.', 'Gruppslag: {ok} av {n} lyckas.'],
   'checks.groupPass': ['The group succeeds (at least half).', 'Gruppen lyckas (minst hälften).'],
   'checks.groupFail': ['The group fails.', 'Gruppen misslyckas.'],
-  'checks.note': ['Type what each player rolled (the d20 plus their bonus), or they can send it from their phone. Passive Perception is 10 + their Perception bonus.', 'Skriv vad varje spelare slog (d20 plus bonus), eller så kan de skicka det från mobilen. Passiv Perception är 10 + deras Perception-bonus.'],
+  'checks.note': ['Type what each player rolled (the d20 plus their bonus), or they can send it from their phone. Passive scores are 10 + the skill bonus (set them in the character form).', 'Skriv vad varje spelare slog (d20 plus bonus), eller så kan de skicka det från mobilen. Passiva värden är 10 + färdighetsbonusen (ställ in dem i rollpersonens formulär).'],
 } as const satisfies Record<string, Msg>

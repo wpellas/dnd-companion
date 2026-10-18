@@ -81,6 +81,10 @@ export function SettingsPage() {
           <CheckField label={t('settings.hpRollLabel')} title={t('settings.hpRollTitle')} checked={settings.rollMonsterHp} onChange={(v) => updateSettings({ rollMonsterHp: v })} />
         </Section>
 
+        <Section title={t('time.title')}>
+          <CheckField label={t('time.track')} title={t('time.trackTitle')} checked={settings.trackTime} onChange={(v) => updateSettings({ trackTime: v })} />
+        </Section>
+
         <Section title={t('settings.backup')}>
           <p className="muted note-line">{t('settings.backupNote')}</p>
           <div className="row gap wrap">

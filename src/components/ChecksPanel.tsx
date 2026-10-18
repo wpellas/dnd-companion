@@ -30,6 +30,8 @@ export function ChecksPanel({ characters }: { characters: Character[] }) {
           <tr>
             <th>{t('checks.who')}</th>
             <th>{t('checks.passive')}</th>
+            <th>{t('checks.investigation')}</th>
+            <th>{t('checks.insight')}</th>
             <th>{t('checks.total')}</th>
             <th>{t('checks.result')}</th>
           </tr>
@@ -66,10 +68,12 @@ function CheckRow({ c, need, value, onChange }: { c: Character; need?: number; v
       <td>
         <strong>{c.name}</strong>
       </td>
-      <td>
-        {c.passivePerception}
-        {need !== undefined && <span className={c.passivePerception >= need ? 'adv-text' : 'muted'}> {c.passivePerception >= need ? '✓' : '✗'}</span>}
-      </td>
+      {[c.passivePerception, c.passiveInvestigation, c.passiveInsight].map((p, i) => (
+        <td key={i}>
+          {p ?? '-'}
+          {need !== undefined && p !== undefined && <span className={p >= need ? 'adv-text' : 'muted'}> {p >= need ? '✓' : '✗'}</span>}
+        </td>
+      ))}
       <td>
         <input className="narrow" type="number" value={value} aria-label={t('checks.total')} onChange={(e) => onChange(e.target.value)} />
         {sent.roll && value !== '' && Number(value) !== sent.roll.value && (

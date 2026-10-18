@@ -13,11 +13,13 @@ export interface Settings {
   groupInitiative: boolean
   /** New monsters get rolled hit points (the dice from the stat block) instead of the average. The DM's dice, so the app may roll them. */
   rollMonsterHp: boolean
+  /** The campaign keeps a clock and light sources (Party page). A table that does not track time turns this off. */
+  trackTime: boolean
   /** Interface language for the DM and, through the live view, everyone else */
   language: Lang
 }
 
-export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false, rollMonsterHp: false, language: 'en' }
+export const DEFAULT_SETTINGS: Settings = { allowPlayerAppRolls: false, groupInitiative: false, rollMonsterHp: false, trackTime: true, language: 'en' }
 
 const KEY = 'settings'
 

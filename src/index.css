@@ -898,3 +898,10 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .ammo button { padding: 0 8px; }
 .spell-lists { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 8px; }
 .spell-list { padding: 6px 10px; background: rgba(255, 255, 255, 0.35); border-left: 4px solid var(--gold-dark); border-radius: 4px; }
+
+/* ---------- Time and light, quick NPCs ---------- */
+.light-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.light-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.light-list li.out { opacity: 0.55; }
+.npc-card { display: flex; flex-direction: column; gap: 8px; }
+.npc-card .npc-field { display: flex; gap: 6px; align-items: flex-end; }

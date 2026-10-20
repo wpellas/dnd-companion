@@ -474,6 +474,14 @@ export interface PublicEvent {
   id: string
   text: string
   at: number
+  /** What the table display animates for this line. `amount` only for party targets, like the text. */
+  fx?: PublicFx
+}
+
+export interface PublicFx {
+  kind: 'hit' | 'crit' | 'miss' | 'saved' | 'damage' | 'heal'
+  targetId: string
+  amount?: number
 }
 
 /** What a combat state looks like inside an undo snapshot. */

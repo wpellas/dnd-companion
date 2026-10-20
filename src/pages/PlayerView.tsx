@@ -13,11 +13,13 @@ import { useRemoteView, type LiveSource } from '../lib/hub'
 import { possessive, setLang, t, tCondition } from '../lib/i18n'
 import { useStoredLanguage } from '../lib/settings'
 import { toPublic, toPublicSheet, type PublicCombat } from '../lib/publicState'
+import type { PublicEvent } from '../types'
 import { useSpotlight } from '../lib/spotlight'
 
 /** How long a new announcement stays on screen. */
 const EVENT_MS = 22000
 const BANNER_MS = 2600
+const FX_MS = 2600
 
 /** Re-render every second so announcements fade away on their own. */
 function useNow(interval = 1000) {
@@ -75,6 +77,35 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnKey])
+
+  // hits, misses, damage and healing: each new announcement that carries an effect plays once, one after another (not for what was already there on load)
+  const seenEvents = useRef<Set<string> | undefined>(undefined)
+  const [fxQueue, setFxQueue] = useState<PublicEvent[]>([])
+  const [fx, setFx] = useState<PublicEvent>()
+  const events = combat?.events
+  useEffect(() => {
+    if (!events) return
+    if (!seenEvents.current) {
+      seenEvents.current = new Set(events.map((e) => e.id))
+      return
+    }
+    const fresh = events.filter((e) => !seenEvents.current!.has(e.id))
+    fresh.forEach((e) => seenEvents.current!.add(e.id))
+    const playable = fresh.filter((e) => e.fx && Date.now() - e.at < 10000)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (playable.length) setFxQueue((q) => [...q, ...playable].slice(-6))
+  }, [events])
+  useEffect(() => {
+    if (fx || fxQueue.length === 0) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFx(fxQueue[0])
+    setFxQueue(fxQueue.slice(1))
+  }, [fx, fxQueue])
+  useEffect(() => {
+    if (!fx) return
+    const timer = setTimeout(() => setFx(undefined), FX_MS)
+    return () => clearTimeout(timer)
+  }, [fx])
 
   // a signed-in player is told when their character is up (or next): quietly, on screen; the buzz is only for those who switched interaction on
   const isMine = (c?: { characterId?: number }) => c?.characterId !== undefined && !!mine?.has(c.characterId)
@@ -193,13 +224,22 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
         </div>
       )}
 
+      {fx?.fx && !banner && (
+        <div className={`fx-banner ${fx.fx.kind}`} key={fx.id} role="presentation" aria-hidden="true">
+          <span>
+            {fx.fx.amount !== undefined && fx.fx.kind !== 'miss' ? `${fx.fx.kind === 'heal' ? '+' : '−'}${fx.fx.amount}` : t(`fx.${fx.fx.kind}`)}
+          </span>
+          <small>{combat.combatants.find((c) => c.id === fx.fx!.targetId)?.name}</small>
+        </div>
+      )}
+
       <div className="player-list">
         {combat.combatants.map((c, i) => {
           const isActive = combat.started && i === combat.turnIndex
           const down = c.kind !== 'lair' && c.hp === 0 || (c.kind === 'monster' && c.status === 'Defeated')
           const pct = c.maxHp ? Math.round(((c.hp ?? 0) / c.maxHp) * 100) : 0
           return (
-            <div key={c.id} className={`player-row ${c.kind} ${c.ally ? 'ally' : ''} ${isActive ? 'active' : ''} ${down ? 'down' : ''}`}>
+            <div key={c.id} className={`player-row ${c.kind} ${c.ally ? 'ally' : ''} ${isActive ? 'active' : ''} ${down ? 'down' : ''} ${fx?.fx?.targetId === c.id ? `fx-${fx.fx.kind}` : ''}`} data-fx={fx?.fx?.targetId === c.id ? fx.id : undefined}>
               {/* The portrait sits outside the info bar, overlapping its left edge like a medallion. */}
               {c.kind === 'lair' ? (
                 <div className="portrait placeholder" style={{ width: 140, height: 140, fontSize: 64 }}>☗</div>
@@ -214,10 +254,10 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
                     <>
                       <div className="bar big">
                         <div className="fill" style={{ width: `${pct}%` }} data-low={pct <= 50} />
-                      </div>
-                      <div className="hp-text">
-                        {c.hp} / {c.maxHp} HP
-                        {(c.tempHp ?? 0) > 0 && <em> +{c.tempHp}</em>}
+                        <div className="hp-text">
+                          {c.hp} / {c.maxHp} HP
+                          {(c.tempHp ?? 0) > 0 && <em> +{c.tempHp}</em>}
+                        </div>
                       </div>
                       {c.deathSaves && (
                         <div className="death-saves">

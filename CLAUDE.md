@@ -146,7 +146,7 @@ It never touches combat state. `SpotlightBar` (in `App`) keeps a reminder on eve
   running fight. Spell slots and class-feature uses live on the `Character` (they persist across fights and rests).
 - Defeated monsters are skipped in turn order; PCs at 0 HP are not (death saves). Rests are only allowed outside a fight.
 - Editing an SRD monster saves a custom copy; the SRD library is never modified.
-- Resolution helpers return log text AND player-safe "events" (`announce`): public lines mention damage numbers only for PC targets.
+- Resolution helpers return log text AND player-safe "events" (`announce`): public lines say how much each hit / heal was for (also against monsters), never a monster's HP.
 
 ## Backend (`backend/`, Laravel 13, PHP 8.3, MySQL) and sync
 

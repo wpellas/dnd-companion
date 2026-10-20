@@ -54,7 +54,6 @@ export const log = {
   'ann.casts': ['{a} casts {action}', '{a} kastar {action}'],
   'log.heals': ['{a} heals {t} for {n} ({action})', '{a} läker {t} för {n} ({action})'],
   'ann.healsPc': ['{a} heals {t} for {n}', '{a} läker {t} för {n}'],
-  'ann.heals': ['{a} heals {t}', '{a} läker {t}'],
   'log.misses': ['{a} misses {t} ({action})', '{a} missar {t} ({action})'],
   'ann.misses': ['{a} misses {t}', '{a} missar {t}'],
   'log.savedDmg': ['{t} saves against {who} {action}, takes {dmg}', '{t} klarar räddningen mot {who} {action} och tar {dmg}'],

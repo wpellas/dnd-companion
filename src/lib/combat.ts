@@ -10,6 +10,7 @@ import {
   type Condition,
   type Counter,
   type Effect,
+  type PublicFx,
   type MonsterTemplate,
   type TurnUsed,
 } from '../types'
@@ -21,7 +22,6 @@ import { possessive, t, tCondition, tDamage } from './i18n'
 import { abilityMod, rollDice, rollInitiative } from './dice'
 import { crValue } from './monsters'
 import { newId } from './id'
-import { isParty } from './sides'
 import { addCombatSummary } from './journal'
 import { rememberFight } from './rewards'
 import { effectFromPreset, presetFor } from './effects'
@@ -245,9 +245,9 @@ export function logEvent(s: CombatState, text: string) {
 }
 
 /** A line the player view may show: no monster HP, AC or roll details. */
-export function announce(s: CombatState, text: string) {
+export function announce(s: CombatState, text: string, fx?: PublicFx) {
   s.events ??= []
-  s.events.push({ id: newId(), text, at: Date.now() })
+  s.events.push({ id: newId(), text, at: Date.now(), ...(fx && { fx }) })
   if (s.events.length > 12) s.events.splice(0, s.events.length - 12)
 }
 
@@ -616,7 +616,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
     const attacker = r.source ? { ...lairCombatant(), name: r.source } : s.combatants.find((c) => c.id === r.attackerId)
     if (!attacker) return
     const lines: string[] = []
-    const publicLines: string[] = []
+    const publicLines: { text: string; fx?: PublicFx }[] = []
     const madeHere = new Set<string>() // effects this very cast created: dropping the old concentration spell must not end them
 
     for (const o of r.targets) {
@@ -628,6 +628,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
       const dmgText = fmtParts(o.parts)
       let line: string
       let pub: string
+      let fx: PublicFx | undefined
       let report: DamageReport | undefined
 
       if (o.result === 'cast') {
@@ -636,15 +637,19 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
       } else if (o.result === 'heal') {
         notes.push(...healTarget(target, total))
         line = t('log.heals', { a: attacker.name, t: target.name, n: total, action: action.name })
-        pub = isParty(target) ? t('ann.healsPc', { a: attacker.name, t: target.name, n: total }) : t('ann.heals', { a: attacker.name, t: target.name })
+        pub = t('ann.healsPc', { a: attacker.name, t: target.name, n: total })
+        fx = { kind: 'heal', targetId: target.id, amount: total }
       } else if (o.result === 'miss') {
         line = t('log.misses', { a: attacker.name, t: target.name, action: action.name })
         pub = t('ann.misses', { a: attacker.name, t: target.name })
+        fx = { kind: 'miss', targetId: target.id }
       } else {
         report = dealDamage(s, target, o.parts, o.result === 'crit')
         notes.push(...report.notes)
         const who = possessive(attacker.name)
-        const showDamage = isParty(target) && total > 0
+        const showDamage = total > 0 // the table hears every amount, enemies' too (never their HP)
+        const kind = o.result === 'crit' ? 'crit' : o.result === 'saved' ? 'saved' : o.result === 'hit' ? 'hit' : 'damage'
+        fx = { kind, targetId: target.id, ...(showDamage && { amount: total }) }
         if (r.source) {
           const saved = o.result === 'saved'
           line = t(saved ? 'log.hazardSaved' : 'log.hazard', { t: target.name, action: action.name, dmg: dmgText || '0' })
@@ -675,7 +680,7 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
           if (!target.conditions.includes(cond)) {
             target.conditions.push(cond)
             notes.push(t('note.now', { cond: tCondition(cond) }))
-            publicLines.push(...[conditionNote(target, cond)].filter(Boolean))
+            publicLines.push(...[conditionNote(target, cond)].filter(Boolean).map((text) => ({ text })))
           }
           // a known spell (Hold Person...) also gets its timer and repeat save
           const preset = presetFor(action.name)
@@ -689,8 +694,8 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
       }
       if (o.detail) notes.unshift(o.detail)
       lines.push(notes.length ? `${line} - ${notes.join('; ')}` : line)
-      publicLines.push(pub)
-      if (report?.publicNote) publicLines.push(report.publicNote)
+      publicLines.push({ text: pub, fx })
+      if (report?.publicNote) publicLines.push({ text: report.publicNote })
     }
 
     const extra: string[] = []
@@ -715,13 +720,13 @@ export function applyResolution(s: CombatState, r: ActionResolution): MutationMe
     const action = r.action
     if (lines.length === 0) {
       lines.push(t('log.uses', { a: attacker.name, action: action.name }))
-      publicLines.push(t('log.uses', { a: attacker.name, action: action.name }))
+      publicLines.push({ text: t('log.uses', { a: attacker.name, action: action.name }) })
     }
     const suffix = extra.length ? ` [${extra.join('; ')}]` : ''
     if (lines.length === 1) logEvent(s, lines[0] + suffix)
     else logEvent(s, t('log.usesMulti', { a: attacker.name, action: action.name, suffix, lines: lines.join(' | ') }))
     // players hear about every target, but not rolls
-    for (const p of publicLines) announce(s, p)
+    for (const p of publicLines) announce(s, p.text, p.fx)
 
     // economy trackers, legendary uses, limited-use actions
     attacker.turn ??= freshTurn()

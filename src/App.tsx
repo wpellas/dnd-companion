@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import logo from './assets/images/logo-128.png'
+import { MusicBar } from './components/MusicBar'
 import { SpellLibraryStatus } from './components/SpellLibraryStatus'
 import { SpotlightBar } from './components/SpotlightBar'
 import { useHash } from './hooks'
@@ -14,13 +15,14 @@ import { EncountersPage } from './pages/EncountersPage'
 import { ItemsPage } from './pages/ItemsPage'
 import { JournalPage } from './pages/JournalPage'
 import { MapsPage } from './pages/MapsPage'
+import { MusicPage } from './pages/MusicPage'
 import { PartyPage } from './pages/PartyPage'
 import { PlayerView } from './pages/PlayerView'
 import { SettingsPage } from './pages/SettingsPage'
 
-type Tab = 'combat' | 'party' | 'bestiary' | 'items' | 'encounters' | 'maps' | 'journal' | 'settings'
+type Tab = 'combat' | 'party' | 'bestiary' | 'items' | 'encounters' | 'maps' | 'images' | 'music' | 'journal' | 'settings'
 
-const TABS: Tab[] = ['combat', 'party', 'bestiary', 'items', 'encounters', 'maps', 'journal', 'settings']
+const TABS: Tab[] = ['combat', 'party', 'bestiary', 'items', 'encounters', 'maps', 'images', 'music', 'journal', 'settings']
 
 /** Remembered outside the component: changing the language re-creates the UI, and you should stay on the Settings tab. */
 let lastTab: Tab = 'combat'
@@ -62,12 +64,15 @@ export default function App() {
         </div>
       </nav>
       <SpotlightBar />
+      <MusicBar />
       {tab === 'combat' && <CombatPage goTo={(to) => setTab(to)} />}
       {tab === 'party' && <PartyPage />}
       {tab === 'bestiary' && <BestiaryPage />}
       {tab === 'items' && <ItemsPage />}
       {tab === 'encounters' && <EncountersPage goTo={(to) => setTab(to)} />}
       {tab === 'maps' && <MapsPage />}
+      {tab === 'images' && <MapsPage kind="image" />}
+      {tab === 'music' && <MusicPage />}
       {tab === 'journal' && <JournalPage />}
       {tab === 'settings' && <SettingsPage />}
       <footer className="attribution">

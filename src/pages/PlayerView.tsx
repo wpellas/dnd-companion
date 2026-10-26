@@ -167,7 +167,6 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
     return (
       <div className="player map-view">
         <img src={map.imageData} alt={map.name} />
-        <div className="map-name">{map.name}</div>
       </div>
     )
   }

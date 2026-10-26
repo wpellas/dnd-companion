@@ -1,18 +1,18 @@
 import { useBlobUrl } from '../hooks'
 import { t } from '../lib/i18n'
-import { addMap, deleteMap, renameMap, showMap, stopShowingMap, useMapShown, useMaps } from '../lib/maps'
+import { addMap, deleteMap, renameMap, showMap, stopShowingMap, useMapShown, useMaps, type PictureKind } from '../lib/maps'
 import type { MapRecord } from '../types'
 
-/** The DM's maps and handouts: upload, rename, delete, and show one to the players (or stop). */
-export function MapsPage() {
-  const maps = useMaps()
+/** The DM's maps (kind 'map') or story pictures (kind 'image'): upload, rename, delete, and show one to the players (or stop). */
+export function MapsPage({ kind = 'map' }: { kind?: PictureKind }) {
+  const maps = useMaps(kind)
   const shown = useMapShown()
   return (
     <div className="page">
       <div className="toolbar">
-        <h2>{t('maps.title')}</h2>
+        <h2>{t(`${kind}s.title`)}</h2>
         <label className="file-button primary">
-          {t('maps.upload')}
+          {t(`${kind}s.upload`)}
           <input
             type="file"
             accept="image/*"
@@ -20,14 +20,14 @@ export function MapsPage() {
             onChange={async (e) => {
               const files = [...(e.target.files ?? [])]
               e.target.value = ''
-              for (const f of files) await addMap(f).catch(() => alert(t('maps.failed')))
+              for (const f of files) await addMap(f, kind).catch(() => alert(t('maps.failed')))
             }}
           />
         </label>
       </div>
-      <p className="muted">{t('maps.intro')}</p>
-      <p className="muted small">{t('maps.fogSoon')}</p>
-      {maps.length === 0 && <p className="muted">{t('maps.empty')}</p>}
+      <p className="muted">{t(`${kind}s.intro`)}</p>
+      {kind === 'map' && <p className="muted small">{t('maps.fogSoon')}</p>}
+      {maps.length === 0 && <p className="muted">{t(`${kind}s.empty`)}</p>}
       <div className="map-grid">
         {maps.map((m) => (
           <MapCard key={m.id} map={m} showing={shown?.mapId === m.id} />

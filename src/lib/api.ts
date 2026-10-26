@@ -16,12 +16,14 @@ const xsrf = () => decodeURIComponent(document.cookie.match(/(?:^|; )XSRF-TOKEN=
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
+  // a FormData body (a file upload) sets its own Content-Type with the multipart boundary
+  const form = body instanceof FormData
   try {
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), 'X-XSRF-TOKEN': xsrf() },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { Accept: 'application/json', ...(body === undefined || form ? {} : { 'Content-Type': 'application/json' }), 'X-XSRF-TOKEN': xsrf() },
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'offline')

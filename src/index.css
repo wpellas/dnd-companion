@@ -764,6 +764,16 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 /* ---------- Character spotlight: the DM shows one sheet on the players' screens ---------- */
 .spotlight-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; max-width: 1200px; margin: 12px auto 0; padding: 10px 16px; background: linear-gradient(#e7bd45, #c9972b); border: 2px solid var(--gold-dark); border-radius: 8px; color: var(--ink); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); }
 .spotlight-bar > span:first-child { flex: 1; min-width: 220px; }
+.music-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: 1200px; margin: 12px auto 0; padding: 8px 14px; background: linear-gradient(#5a381b, #3d2410); border: 2px solid var(--gold-dark); border-radius: 8px; color: var(--parchment); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); }
+.music-bar .music-now { flex: 1; min-width: 200px; }
+.music-bar .warn { color: #ffb09a; font-style: normal; }
+.music-bar input[type='range'] { width: 110px; }
+.music-folder { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 16px 0 28px; padding: 16px 20px; }
+.music-library { display: flex; flex-direction: column; gap: 12px; margin: 16px 0 28px; padding: 16px 20px; }
+.music-library .music-folder { margin: 0; padding: 0; }
+.music-tracks { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
+.music-scenes { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
+.music-scenes .card { padding: 16px 20px; gap: 12px; }
 .sheet-view { color: var(--ink); }
 .sheet-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 32px; padding: 20px 28px; background: var(--parchment); border: 3px solid var(--leather); border-radius: 12px; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6); }
 .sheet-id { flex: 1; min-width: 260px; }
@@ -889,9 +899,9 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .map-card { display: flex; flex-direction: column; gap: 8px; }
 .map-card img { width: 100%; height: 160px; object-fit: cover; border: 2px solid var(--leather); border-radius: 4px; }
 .map-card.showing { box-shadow: 0 0 0 3px var(--gold); }
-.map-view { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
-.map-view img { max-width: 100%; max-height: calc(100vh - 56px); object-fit: contain; border: 3px solid var(--leather); border-radius: 4px; background: #000; }
-.map-view .map-name { font-family: var(--font-display); color: var(--parchment); }
+/* the picture takes the whole display: no caption, almost no margin (.player.map-view beats every `.player` padding, also in the media queries) */
+.player.map-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 6px; }
+.map-view img { max-width: 100%; max-height: calc(100vh - 12px); object-fit: contain; border: 3px solid var(--leather); border-radius: 4px; background: #000; }
 
 /* ---------- Resources, ammunition, spell finder ---------- */
 .ammo { display: inline-flex; align-items: center; gap: 6px; }
@@ -925,6 +935,9 @@ nav .tabs button:not(.selected) {
 }
 nav .tabs button:not(.selected):hover:not(:disabled) { background: rgba(255, 220, 150, 0.12); border-color: var(--gold-dark); filter: none; }
 nav .tabs button.selected { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 0 #6d500e, 0 0 14px rgba(217, 169, 46, 0.45); }
+/* ten tabs: compact buttons, and the row may shrink and wrap instead of running off the screen */
+nav .tabs { flex: 0 1 auto; min-width: 0; gap: 2px 4px; }
+nav .tabs button { font-size: 0.82rem; padding: 6px 9px; letter-spacing: 0.02em; }
 
 /* page: calmer inner glow so content, not the frame, carries the eye */
 .page { box-shadow: inset 0 0 0 2px var(--gold-dark), inset 0 0 50px rgba(110, 70, 20, 0.3), 0 14px 40px rgba(0, 0, 0, 0.65); }

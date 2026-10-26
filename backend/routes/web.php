@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\LiveController;
+use App\Http\Controllers\MusicController;
 use App\Http\Controllers\RollController;
 use App\Http\Controllers\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,13 @@ Route::prefix('api')->group(function () {
             Route::patch('me/password', [AuthController::class, 'changePassword']);
             Route::patch('me/email', [AuthController::class, 'changeEmail']);
         });
+
+        // the shared music library (site-wide, not per campaign)
+        Route::get('music', [MusicController::class, 'index']);
+        Route::post('music', [MusicController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('music/{track}/stream', [MusicController::class, 'stream']);
+        Route::patch('music/{track}', [MusicController::class, 'update']);
+        Route::delete('music/{track}', [MusicController::class, 'destroy']);
 
         Route::get('campaigns', [CampaignController::class, 'index']);
         Route::post('campaigns', [CampaignController::class, 'store']);

@@ -52,6 +52,7 @@ import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/s
 import { pictureFor, useAvatars } from '../lib/avatars'
 import { useSentRoll } from '../lib/rolls'
 import { updateCharacter } from '../lib/store'
+import { endCombatMusic, playScene, saveMusicSettings, startCombatMusic, useMusicSettings } from '../lib/music'
 import { saveBonus } from '../lib/resolve'
 import { effectiveAc, exhaustionLevel } from '../lib/conditionRules'
 import { isEnemy } from '../lib/sides'
@@ -61,6 +62,7 @@ import { CONDITIONS, type Character, type Combatant, type Condition, type Prompt
 export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
   useSingleOpenMenu()
   const settings = useSettings()
+  const music = useMusicSettings()
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const { monsters: srd } = useSrdMonsters()
@@ -100,7 +102,10 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
         <button onClick={addParty}>{t('combat.addParty')}</button>
         <button onClick={() => mutateCombat((s) => rollAllMonsterInitiative(s, settings.groupInitiative), t('lbl.rolledInit'))}>{t('combat.rollMonsters')}</button>
         {!started ? (
-          <button className="primary" disabled={!allSet} onClick={() => mutateCombat(startCombat, t('lbl.started'))}>
+          <button className="primary" disabled={!allSet} onClick={() => {
+              void startCombatMusic() // first: the click is what lets the browser play sound and reopen the music folder
+              void mutateCombat(startCombat, t('lbl.started'))
+            }}>
             {t('combat.start')}
           </button>
         ) : (
@@ -108,7 +113,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
             <button className="primary" onClick={() => mutateCombat(advanceTurn, t('lbl.nextTurn'))}>
               {t('combat.next')}
             </button>
-            <button className="danger" onClick={() => confirm(t('combat.endConfirm')) && endCombat()}>
+            <button className="danger" onClick={() => confirm(t('combat.endConfirm')) && void endCombat().then(endCombatMusic)}>
               {t('combat.end')}
             </button>
           </>
@@ -127,6 +132,26 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
           {t('combat.saveEncounter')}
         </button>
         {goTo && <button onClick={() => goTo('encounters')}>{t('combat.savedEncounters')}</button>}
+        {music.scenes.length > 0 && (
+          <label className="row gap" title={t('music.combatTitle')}>
+            <span className="muted">{t('music.combat')}</span>
+            <select
+              value={music.combatSceneId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value || undefined
+                void saveMusicSettings({ ...music, combatSceneId: id })
+                if (started && id) void playScene(id, music.scenes) // mid-fight: switch right now
+              }}
+            >
+              <option value="">{t('music.combatNone')}</option>
+              {music.scenes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="check small" title={t('combat.groupTitle')}>
           <input type="checkbox" checked={settings.groupInitiative} onChange={(e) => updateSettings({ groupInitiative: e.target.checked })} />
           <span>{t('combat.group')}</span>

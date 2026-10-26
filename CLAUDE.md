@@ -296,6 +296,25 @@ Working notes for whoever continues (the user's machine is Windows; Herd serves 
   Moving them into `e2e/` in the repo is on the list. Queries with double quotes inside the `mysql -e "..."` string break on Windows: use `JSON_EXTRACT` and single quotes.
 - Browser-test tricks that worked: type into a Combobox with the `setVal` helper (focus() does not fire in an unfocused window), put a real file in a hidden input with `DataTransfer`, `React` inputs need the native value setter + an `input` event.
 
+## Passing items, the DM's item list (built)
+
+- **Transfer** (`inventory.ts` `moveItems`, pure; `store.ts` `transferItem`, one Dexie transaction over both characters, both go through `withGearAc`): the **⇄** button on an item row (`InventoryEditor` -> `TransferPanel`) hands `qty` of an item to another character. The whole stack moves as it is; part of it splits the row, so both
+  characters end up with some; if the receiver already holds the same item (`stackKey`: every field except id, qty, equipped, attuned) the counts add up. The copy arrives unequipped and unattuned. Only offered where `InventoryEditor` gets `transferable` (the party card, not the character form: its draft would overwrite the transfer on save).
+  A player's device only holds their own characters, so they can only pass between characters they own. A weapon's `ammoId` is not followed when its ammunition moves.
+- **My items** (tab `items`, `pages/ItemsPage.tsx`, kv key `customItems` = `Item[]` templates, `useCustomItems` / `saveCustomItems` in `itemCatalog.ts`; no Dexie version, synced and backed up as part of `kv`): made with `ItemRow` (exported from `InventoryEditor`, `c` optional: without a character there is no
+  equip / attune / transfer). They are the first group ("My items") of the picker; `buildItem(entry, custom)` hands the character an independent copy with a new id, so editing or deleting the template changes nothing already carried.
+
+## Music (built; sound effects are planned)
+
+`lib/music.ts` (player + library client, no React except the hooks), `components/MusicBar.tsx` (on every DM tab in `App`, hidden while nothing is loaded), `pages/MusicPage.tsx` (tab "Music"), `i18n/music.ts`; backend `MusicController`, model `Track`, table `tracks`.
+- **The audio lives on the server, in ONE library shared by every account** (not per campaign): files on the private disk (`storage/app/private/music/<sha256>.<ext>`, so on the web hotel it is that host's disk; the same bytes uploaded twice are one row), rows in `tracks` (name, hash, path, mime, size, `user_id` nullOnDelete). Any signed-in account lists (`GET /music`),
+  uploads (`POST /music`, multipart, audio types only, 50 MB cap, `api.ts` sends a FormData body untouched) and streams (`GET /music/{id}/stream`, range requests, so seeking works); the uploader or an administrator renames and deletes (deleting someone else's track is written to `admin_logs`). **Watch the host's PHP limits**
+  (`upload_max_filesize` / `post_max_size`, 16 MB locally): a bigger file fails with a validation message the UI shows. There is no disk quota yet. Tests: `MusicTest`.
+- **Scenes** (`Scene` {id, name, tracks = track ids, shuffle}) + `combatSceneId` are the campaign record kv `music` (small, synced, so they follow the DM between devices). A track deleted from the library is skipped when playing and shown as missing. Scenes from the first (folder) version hold path strings: `sceneTracks()` ignores them.
+- **Player:** two `<audio>` elements crossfade (1.5 s) and stream from the API; module-level, so it survives tab and language changes (`Root` re-creates the tree). `seq` drops stale requests, a track that cannot load is skipped, a browser autoplay block (`NotAllowedError`) leaves the track loaded with a play button (`error: 'blocked'`). Volume in localStorage.
+- **Combat:** `CombatPage` calls `startCombatMusic()` first in the Start click (remembers what played before) and `endCombatMusic()` after `endCombat()` (brings it back, or fades out). The "Combat music" select on the Combat page changes the choice and, mid-fight, switches at once; the bar's scene select switches any time.
+- Plays on the DM's device only, never sent to the players. Not done: track order editing, sound effects (hit / miss / heal / victory sounds with replaceable files are the plan), per-track volume, a library quota, categories / tags.
+
 ## TODO / ideas
 
 - Longer-term (agreed, waiting): fog of war on maps (see Maps), tokens, loot generation. (Session notes, equipment, inventory, gold and XP, players with their own accounts, effects with durations and the level-up helper are built.)

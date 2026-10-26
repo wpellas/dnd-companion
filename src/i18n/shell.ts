@@ -30,6 +30,8 @@ export const shell = {
   'nav.bestiary': ['🐉 Bestiary', '🐉 Bestiarium'],
   'nav.encounters': ['📜 Encounters', '📜 Möten'],
   'nav.maps': ['🗺 Maps', '🗺 Kartor'],
+  'nav.images': ['🖼 Images', '🖼 Bilder'],
+  'nav.music': ['🎵 Music', '🎵 Musik'],
   'nav.items': ['🎒 Items', '🎒 Föremål'],
   'nav.journal': ['📖 Journal', '📖 Dagbok'],
   'nav.settings': ['⚙ Settings', '⚙ Inställningar'],

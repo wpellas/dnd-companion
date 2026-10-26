@@ -13,14 +13,18 @@ export interface MapShown {
   mapId: number
 }
 
+export type PictureKind = 'map' | 'image'
+
 const KEY = 'mapShown'
 
-export const useMaps = () => useLiveQuery(() => db.maps.orderBy('name').toArray(), []) ?? []
+/** Maps, or with `kind` only the maps / only the story images (both live in the `maps` table; no kind = a map). */
+export const useMaps = (kind?: PictureKind) =>
+  useLiveQuery(async () => (await db.maps.orderBy('name').toArray()).filter((m) => !kind || (m.kind ?? 'map') === kind), [kind]) ?? []
 export const useMapShown = () => useLiveQuery(async () => ((await db.kv.get(KEY))?.value as MapShown | undefined) ?? null, [])
 
 /** 1800 px is sharp on a phone and a TV and keeps the file a few hundred kilobytes (it travels as JSON to the table). */
-export const addMap = async (file: File) =>
-  db.maps.add({ name: file.name.replace(/\.[^.]+$/, '') || 'Map', image: await shrinkImage(file, 1800) })
+export const addMap = async (file: File, kind: PictureKind = 'map') =>
+  db.maps.add({ name: file.name.replace(/\.[^.]+$/, '') || (kind === 'map' ? 'Map' : 'Image'), ...(kind === 'image' ? { kind } : {}), image: await shrinkImage(file, 1800) })
 export const renameMap = (id: number, name: string) => db.maps.update(id, { name })
 
 export async function showMap(mapId: number) {

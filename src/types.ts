@@ -539,6 +539,8 @@ export interface Encounter {
 export interface MapRecord {
   id?: number
   name: string
+  /** 'image' = a picture to show for storytelling (no fog of war ever); absent = a map */
+  kind?: 'map' | 'image'
   image: Blob
 }
 

@@ -13,6 +13,7 @@ import { spellfind } from './spellfind'
 import { checks } from './checks'
 import { unarmed } from './unarmed'
 import { maps } from './maps'
+import { music } from './music'
 import { glossary } from './glossary'
 import { movement } from './movement'
 import { journal } from './journal'
@@ -50,6 +51,7 @@ export const MESSAGES = {
   ...checks,
   ...unarmed,
   ...maps,
+  ...music,
   ...glossary,
   ...movement,
   ...journal,

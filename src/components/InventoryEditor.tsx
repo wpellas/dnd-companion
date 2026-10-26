@@ -14,7 +14,10 @@ import {
   weaponActions,
   xpForNextLevel,
 } from '../lib/inventory'
-import { buildItem, useItemCatalog, type CatalogEntry } from '../lib/itemCatalog'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../db'
+import { transferItem } from '../lib/store'
+import { buildItem, useCustomItems, useItemCatalog, type CatalogEntry } from '../lib/itemCatalog'
 import { COIN_TYPES, DAMAGE_TYPES, type ArmorDex, type Character, type Item } from '../types'
 import { Combobox } from './Combobox'
 import { NumberField } from './NumberField'
@@ -25,11 +28,13 @@ interface Props {
   c: Character
   /** Called with the fields that changed (items, coins, xp, acFromGear); the caller saves them and keeps Armor Class in step */
   onChange: (patch: Partial<Character>) => void
+  /** Offer "give to another character" (only for a saved character that is edited live, not in the form's draft) */
+  transferable?: boolean
 }
 
 const KINDS: Item['kind'][] = ['weapon', 'armor', 'shield', 'gear', 'magic', 'treasure']
 const DEX_KEY = { full: 'inv.dex.full', max2: 'inv.dex.max2', none: 'inv.dex.none' } as const
-const GROUP_KEY = { weapons: 'catalog.weapons', armor: 'catalog.armor', gear: 'catalog.gear', magic: 'catalog.magic' } as const
+const GROUP_KEY = { weapons: 'catalog.weapons', armor: 'catalog.armor', gear: 'catalog.gear', magic: 'catalog.magic', custom: 'catalog.custom' } as const
 const MAX_ATTUNED = 3
 
 /** The picker's small right-hand text: damage dice and type, armor class, cost or rarity. */
@@ -39,9 +44,11 @@ const entryHint = (e: CatalogEntry) => (e.group === 'weapons' && e.damageType ? 
  * Coins, experience and the item list of a character. Picking an item from the SRD list fills in its numbers; weapons that are
  * equipped become attacks in combat, and equipped armor and shields can set Armor Class.
  */
-export function InventoryEditor({ c, onChange }: Props) {
+export function InventoryEditor({ c, onChange, transferable }: Props) {
   const items = c.items ?? []
   const catalog = useItemCatalog()
+  const custom = useCustomItems()
+  const others = useLiveQuery(async () => (transferable ? (await db.characters.toArray()).filter((o) => o.id !== c.id) : []), [transferable, c.id]) ?? []
   const [adding, setAdding] = useState(false)
   const [filter, setFilter] = useState('')
   const ac = armorClass(c)
@@ -62,7 +69,7 @@ export function InventoryEditor({ c, onChange }: Props) {
     if (!entry) return
     setAdding(true)
     try {
-      const built = await buildItem(entry)
+      const built = await buildItem(entry, custom)
       // the same thing again is one more of it, not a second row
       const same = built.srd && items.find((i) => i.srd?.index === built.srd!.index && i.srd?.source === built.srd!.source)
       setItems(same ? items.map((i) => (i === same ? { ...i, qty: i.qty + 1 } : i)) : [...items, built])
@@ -110,7 +117,7 @@ export function InventoryEditor({ c, onChange }: Props) {
       {items.length > 8 && <input className="inv-filter" type="search" value={filter} placeholder={t('inv.filter')} onChange={(e) => setFilter(e.target.value)} />}
       <div className="inv-list">
         {items.filter((i) => i.name.toLowerCase().includes(filter.trim().toLowerCase())).map((item) => (
-          <ItemRow key={item.id} item={item} c={c} attunementFull={attuned >= MAX_ATTUNED} onChange={(p) => patchItem(item.id, p)} onEquip={(on) => setEquipped(item, on)} onRemove={() => setItems(items.filter((i) => i.id !== item.id))} />
+          <ItemRow key={item.id} item={item} c={c} attunementFull={attuned >= MAX_ATTUNED} others={others} onTransfer={(toId, n) => void transferItem(c.id!, toId, item.id, n)} onChange={(p) => patchItem(item.id, p)} onEquip={(on) => setEquipped(item, on)} onRemove={() => setItems(items.filter((i) => i.id !== item.id))} />
         ))}
       </div>
 
@@ -131,25 +138,57 @@ export function InventoryEditor({ c, onChange }: Props) {
   )
 }
 
-function ItemRow({
+/** Pick who gets it and how many; handing over fewer than all leaves the rest with the giver. */
+function TransferPanel({ item, others, onMove, onClose }: { item: Item; others: Character[]; onMove: (toId: number, qty: number) => void; onClose: () => void }) {
+  const [to, setTo] = useState(others[0].id!)
+  const [qty, setQty] = useState(item.qty)
+  return (
+    <div className="inv-sub row gap wrap">
+      <label className="field">
+        <span>{t('inv.transferTo')}</span>
+        <select value={to} onChange={(e) => setTo(Number(e.target.value))}>
+          {others.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <NumberField label={t('inv.transferQty', { n: item.qty })} value={qty} min={1} onChange={setQty} />
+      <button className="primary" onClick={() => onMove(to, Math.min(item.qty, Math.max(1, Math.floor(qty))))}>
+        {t('inv.transferGo')}
+      </button>
+      <button onClick={onClose}>{t('common.cancel')}</button>
+    </div>
+  )
+}
+
+/** One item. Without a character (the DM's item list) there is nothing to wield, attune or transfer, only the item's own numbers. */
+export function ItemRow({
   item,
   c,
-  attunementFull,
+  attunementFull = false,
+  others = [],
   onChange,
-  onEquip,
+  onEquip = () => {},
+  onTransfer,
   onRemove,
 }: {
   item: Item
-  c: Character
-  attunementFull: boolean
+  c?: Character
+  attunementFull?: boolean
+  /** The characters it could be handed to */
+  others?: Character[]
   onChange: (patch: Partial<Item>) => void
-  onEquip: (on: boolean) => void
+  onEquip?: (on: boolean) => void
+  onTransfer?: (toId: number, qty: number) => void
   onRemove: () => void
 }) {
+  const [moving, setMoving] = useState(false)
   const w = item.weapon
-  const equippable = item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'shield' || item.kind === 'magic'
+  const equippable = !!c && (item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'shield' || item.kind === 'magic')
   // what the equipped weapon would roll with this character's stats
-  const attacks = w ? weaponActions({ abilities: c.abilities, items: [{ ...item, equipped: true }] }).map((a) => deriveAction(a, c)) : []
+  const attacks = c && w ? weaponActions({ abilities: c.abilities, items: [{ ...item, equipped: true }] }).map((a) => deriveAction(a, c)) : []
   const setWeapon = (p: Partial<NonNullable<Item['weapon']>>) => onChange({ weapon: { damage: '1d6', damageType: 'slashing', proficient: true, ...w, ...p } })
 
   return (
@@ -162,7 +201,7 @@ function ItemRow({
         </label>
         <NumberField label={t('inv.qty')} value={item.qty} min={0} onChange={(n) => onChange({ qty: Math.max(0, Math.floor(n)) })} />
         {equippable && <CheckField label={item.kind === 'weapon' ? t('inv.wielded') : t('inv.equipped')} checked={!!item.equipped} onChange={onEquip} />}
-        {(item.requiresAttunement || item.kind === 'magic') && (
+        {c && (item.requiresAttunement || item.kind === 'magic') && (
           <CheckField
             label={t('inv.attuned')}
             title={attunementFull && !item.attuned ? t('inv.attunedFull') : t('inv.attunedTitle')}
@@ -170,10 +209,26 @@ function ItemRow({
             onChange={(on) => onChange({ attuned: on })}
           />
         )}
+        {onTransfer && others.length > 0 && item.qty >= 1 && (
+          <button title={t('inv.transfer')} aria-label={t('inv.transferItem', { name: item.name || t('common.unnamed') })} aria-expanded={moving} onClick={() => setMoving(!moving)}>
+            ⇄
+          </button>
+        )}
         <button className="danger" title={t('inv.remove')} aria-label={t('inv.removeItem', { name: item.name || t('common.unnamed') })} onClick={onRemove}>
           ✕
         </button>
       </div>
+      {moving && onTransfer && (
+        <TransferPanel
+          item={item}
+          others={others}
+          onMove={(toId, qty) => {
+            onTransfer(toId, qty)
+            setMoving(false)
+          }}
+          onClose={() => setMoving(false)}
+        />
+      )}
       {w && item.equipped && attacks[0] && (
         <div className="muted inv-sub">
           {attacks.map((a) => t('inv.attackLine', { name: a.name, hit: formatMod(a.attackBonus ?? 0), dmg: a.damage ?? '', type: tDamage(a.damageType ?? '') })).join(' · ')}
@@ -266,7 +321,7 @@ function ItemRow({
                 <span>{t('inv.ammoItem')}</span>
                 <select value={w.ammoId ?? ''} onChange={(e) => setWeapon({ ammoId: e.target.value || undefined })}>
                   <option value="">{t('inv.ammoAuto')}</option>
-                  {(c.items ?? []).filter((i) => i.kind !== 'weapon' && i.id !== item.id).map((i) => <option key={i.id} value={i.id}>{i.name || t('common.unnamed')}</option>)}
+                  {(c?.items ?? []).filter((i) => i.kind !== 'weapon' && i.id !== item.id).map((i) => <option key={i.id} value={i.id}>{i.name || t('common.unnamed')}</option>)}
                 </select>
               </label>
             )}

@@ -12,6 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // There is no login route (the app has its own sign-in page): a guest on /api gets a plain 401, not a crash while building a redirect.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/');
         $middleware->alias(['admin' => \App\Http\Middleware\EnsureAdmin::class, 'active' => \App\Http\Middleware\EnsureActive::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

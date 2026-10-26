@@ -161,8 +161,27 @@ export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action
 
 export const blankItem = (kind: Item['kind'] = 'gear'): Item => ({ id: newId(), name: '', kind, qty: 1 })
 
+/** Same thing, so two stacks can share a row: everything but the id, the count and whether it is worn must match. */
+const stackKey = (i: Item) => JSON.stringify({ ...i, id: undefined, qty: undefined, equipped: undefined, attuned: undefined })
+
+/**
+ * Move `qty` of an item from one list to another. The whole stack moves as it is; part of it splits the row (both sides end up with some),
+ * and if the receiver already has the same item it just gains the count. The moved copy arrives unequipped and unattuned. Null = nothing to move.
+ */
+export function moveItems(from: Item[], to: Item[], itemId: string, qty: number): { from: Item[]; to: Item[] } | null {
+  const item = from.find((i) => i.id === itemId)
+  const n = Math.min(Math.floor(qty), item?.qty ?? 0)
+  if (!item || !(n >= 1)) return null
+  const moved: Item = { ...item, id: newId(), qty: n, equipped: false, attuned: false }
+  const twin = to.find((i) => stackKey(i) === stackKey(moved))
+  return {
+    from: n === item.qty ? from.filter((i) => i !== item) : from.map((i) => (i === item ? { ...i, qty: i.qty - n } : i)),
+    to: twin ? to.map((i) => (i === twin ? { ...i, qty: i.qty + n } : i)) : [...to, moved],
+  }
+}
+
 /** Headings of the item picker (translated where they are shown). */
-export type CatalogGroup = 'weapons' | 'armor' | 'gear' | 'magic'
+export type CatalogGroup = 'weapons' | 'armor' | 'gear' | 'magic' | 'custom'
 
 /** Group and short hint for the picker, from an SRD equipment entry (the damage type is translated where it is shown). */
 export function equipmentGroup(e: SrdEquipment): { group: CatalogGroup; hint?: string; damageType?: string } {

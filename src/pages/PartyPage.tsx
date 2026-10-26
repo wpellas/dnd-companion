@@ -193,7 +193,7 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
 
       <CharacterResources c={c} />
 
-      {showItems && <InventoryEditor c={c} onChange={(patch) => updateCharacter(c.id!, patch)} />}
+      {showItems && <InventoryEditor c={c} transferable onChange={(patch) => updateCharacter(c.id!, patch)} />}
 
       <div className="card-actions">
         {isDm && (

@@ -13,7 +13,7 @@ export function TimePanel() {
   const { trackTime } = useSettings()
   const camp = useLiveQuery(getCampaign, [])
   const [preset, setPreset] = useState(LIGHT_PRESETS[0].name)
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   if (!camp) return null
   const minutes = clockOf(camp)
   const lights = camp.lights ?? []

@@ -11,6 +11,7 @@ export default defineConfig({
   server: { host: true, proxy: { '/api': api } },
   preview: { host: true, proxy: { '/api': api } },
   // The build lands in Laravel's web root: the web server (Herd, Inleed) then serves the app and the API from one place.
-  build: { outDir: 'backend/public', emptyOutDir: false },
+  // One bundle is fine here (local network, cached by the browser), so the 500 kB size warning is raised rather than splitting the code.
+  build: { outDir: 'backend/public', emptyOutDir: false, chunkSizeWarningLimit: 1500 },
   plugins: [react()],
 })

@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { db } from '../db'
 import type { Character, Light } from '../types'
 import { castingSnapshot, proficiencyBonus, resolveCharacterActions } from './character'
-import { withGearAc } from './inventory'
+import { moveItems, withGearAc } from './inventory'
 import { buildSaves } from './resolve'
 import { longRest, shortRest, type ShortRestInput } from './rest'
 
@@ -143,6 +143,17 @@ export async function applyLongRest(ids: number[]) {
     await setCampaign({ day: camp.day + 1, shortRestsSinceLong: 0 })
   })
   await syncPartyCombatants(ids)
+}
+
+/** Hand `qty` of an item from one character to another (see `moveItems`); both sides keep Armor Class in step with their gear. */
+export async function transferItem(fromId: number, toId: number, itemId: string, qty: number) {
+  await db.transaction('rw', db.characters, async () => {
+    const [a, b] = await Promise.all([db.characters.get(fromId), db.characters.get(toId)])
+    const moved = a && b && moveItems(a.items ?? [], b.items ?? [], itemId, qty)
+    if (!a || !b || !moved) return
+    await db.characters.put(withGearAc({ ...a, items: moved.from }))
+    await db.characters.put(withGearAc({ ...b, items: moved.to }))
+  })
 }
 
 /** Change a character's inventory, coins or XP; Armor Class follows the equipped gear when that is switched on. */

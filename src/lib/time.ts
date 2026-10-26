@@ -27,7 +27,7 @@ export const LIGHT_PRESETS: { name: string; minutes: number; bright: string; dim
 
 export const newLight = (p: { name: string; minutes: number; bright: string; dim: string }): Light => ({ id: newId(), name: p.name, left: p.minutes, lit: true, bright: p.bright, dim: p.dim })
 
-/** Lit lights burn down by `minutes` (never below 0). Works without the clock: tables that do not track time still need their torches to run out. */
+/** Lit lights burn down by `minutes` (never below 0). */
 export const burn = (c: Campaign, minutes: number): Campaign => ({
   ...c,
   lights: c.lights?.map((l) => (l.lit ? { ...l, left: Math.max(0, l.left - minutes), lit: l.left - minutes > 0 } : l)),

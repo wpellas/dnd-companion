@@ -41,6 +41,9 @@ export const emptyCoins = (): Coins => ({ pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 })
 
 const GP_VALUE: Record<CoinType, number> = { pp: 10, gp: 1, ep: 0.5, sp: 0.1, cp: 0.01 }
 
+/** What the carried items are worth in gold pieces (each item's `value` times how many): a second counter, apart from the coins. */
+export const itemsGp = (c: Pick<Character, 'items'>) => (c.items ?? []).reduce((n, i) => n + Math.max(0, Math.floor(i.value ?? 0)) * Math.max(0, i.qty), 0)
+
 /** Everything the coins are worth, in gold pieces. */
 export const totalGp = (c?: Coins) => (Object.keys(GP_VALUE) as CoinType[]).reduce((n, k) => n + (c?.[k] ?? 0) * GP_VALUE[k], 0)
 
@@ -159,7 +162,7 @@ export function weaponActions(c: Pick<Character, 'items' | 'abilities'>): Action
 /* Items from the SRD list                                                                                           */
 /* ---------------------------------------------------------------------------------------------------------------- */
 
-export const blankItem = (kind: Item['kind'] = 'gear'): Item => ({ id: newId(), name: '', kind, qty: 1 })
+export const blankItem = (kind: Item['kind'] = 'gear', name = ''): Item => ({ id: newId(), name, kind, qty: 1 })
 
 /** Same thing, so two stacks can share a row: everything but the id, the count and whether it is worn must match. */
 const stackKey = (i: Item) => JSON.stringify({ ...i, id: undefined, qty: undefined, equipped: undefined, attuned: undefined })
@@ -173,11 +176,16 @@ export function moveItems(from: Item[], to: Item[], itemId: string, qty: number)
   const n = Math.min(Math.floor(qty), item?.qty ?? 0)
   if (!item || !(n >= 1)) return null
   const moved: Item = { ...item, id: newId(), qty: n, equipped: false, attuned: false }
-  const twin = to.find((i) => stackKey(i) === stackKey(moved))
   return {
     from: n === item.qty ? from.filter((i) => i !== item) : from.map((i) => (i === item ? { ...i, qty: i.qty - n } : i)),
-    to: twin ? to.map((i) => (i === twin ? { ...i, qty: i.qty + n } : i)) : [...to, moved],
+    to: receiveItem(to, moved),
   }
+}
+
+/** Put an item into a list: the same item already there just gains the count. */
+export function receiveItem(to: Item[], item: Item): Item[] {
+  const twin = to.find((i) => stackKey(i) === stackKey(item))
+  return twin ? to.map((i) => (i === twin ? { ...i, qty: i.qty + item.qty } : i)) : [...to, item]
 }
 
 /** Headings of the item picker (translated where they are shown). */
@@ -192,11 +200,19 @@ export function equipmentGroup(e: SrdEquipment): { group: CatalogGroup; hint?: s
 
 const text = (lines?: string[]) => (lines?.length ? lines.join('\n\n') : undefined)
 
+/** The SRD price in whole gold pieces; cheaper things (silver, copper) and bundles (Arrows 20 for 1 gp) stay unset, because values are whole numbers per item. */
+function wholeGp(e: SrdEquipment): number | undefined {
+  if (!e.cost || (e.quantity ?? 1) > 1) return undefined
+  const rate: Record<string, number> = { pp: 10, gp: 1, ep: 0.5, sp: 0.1, cp: 0.01 }
+  const gp = e.cost.quantity * (rate[e.cost.unit] ?? 0)
+  return Number.isInteger(gp) && gp > 0 ? gp : undefined
+}
+
 /** An inventory item from an SRD equipment entry: weapons, armor and shields get their combat numbers. */
 export function itemFromEquipment(e: SrdEquipment): Item {
   const cats = e.equipment_categories.map((c) => c.index)
   const props = (e.properties ?? []).map((p) => p.index)
-  const base: Item = { id: newId(), name: e.name, kind: 'gear', qty: cats.includes('ammunition') ? (e.quantity ?? 1) : 1, weight: e.weight || undefined, desc: text(e.description), srd: { source: 'equipment', index: e.index } }
+  const base: Item = { id: newId(), name: e.name, kind: 'gear', qty: cats.includes('ammunition') ? (e.quantity ?? 1) : 1, weight: e.weight || undefined, value: wholeGp(e), desc: text(e.description), srd: { source: 'equipment', index: e.index } }
   if (e.damage) {
     const ranged = cats.includes('ranged-weapons')
     const range = ranged && e.range ? `range ${e.range.normal}${e.range.long ? `/${e.range.long}` : ''} ft.` : props.includes('reach') ? 'reach 10 ft.' : 'reach 5 ft.'

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { deriveAction } from '../lib/character'
 import { formatMod } from '../lib/dice'
 import { t, tDamage } from '../lib/i18n'
@@ -9,13 +9,17 @@ import {
   canLevelUp,
   carriedWeight,
   carryingCapacity,
+  itemsGp,
   levelForXp,
+  moveItems,
   totalGp,
   weaponActions,
   xpForNextLevel,
 } from '../lib/inventory'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
+import { addNotice, loadParty, sendGift, type PartyMember } from '../lib/gifts'
+import { useSession } from '../lib/session'
 import { transferItem } from '../lib/store'
 import { buildItem, useCustomItems, useItemCatalog, type CatalogEntry } from '../lib/itemCatalog'
 import { COIN_TYPES, DAMAGE_TYPES, type ArmorDex, type Character, type Item } from '../types'
@@ -30,6 +34,13 @@ interface Props {
   onChange: (patch: Partial<Character>) => void
   /** Offer "give to another character" (only for a saved character that is edited live, not in the form's draft) */
   transferable?: boolean
+}
+
+/** Who an item can be handed to: `local` = a character on this device (moved directly), otherwise another account's (left as a gift for their device to collect). */
+export interface Recipient {
+  key: string
+  label: string
+  local: boolean
 }
 
 const KINDS: Item['kind'][] = ['weapon', 'armor', 'shield', 'gear', 'magic', 'treasure']
@@ -49,8 +60,28 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
   const catalog = useItemCatalog()
   const custom = useCustomItems()
   const others = useLiveQuery(async () => (transferable ? (await db.characters.toArray()).filter((o) => o.id !== c.id) : []), [transferable, c.id]) ?? []
+  const { campaign } = useSession()
+  // a player's device only holds their own characters: the rest of the table comes from the server
+  const [party, setParty] = useState<PartyMember[]>([])
+  const asPlayer = !!campaign && campaign.role !== 'dm'
+  useEffect(() => {
+    if (!transferable || !campaign || !asPlayer) return
+    let off = false
+    loadParty(campaign.id)
+      .then((p) => !off && setParty(p))
+      .catch(() => {}) // offline: the characters on this device are still there to give to
+    return () => {
+      off = true
+    }
+  }, [transferable, campaign, asPlayer])
+  const localKeys = new Set(others.map((o) => String(o.id)))
+  const recipients: Recipient[] =
+    asPlayer && party.length
+      ? party.filter((p) => p.key !== String(c.id)).map((p) => ({ key: p.key, label: p.owner ? `${p.name} (${p.owner})` : p.name, local: localKeys.has(p.key) }))
+      : others.map((o) => ({ key: String(o.id), label: o.name, local: true }))
   const [adding, setAdding] = useState(false)
   const [filter, setFilter] = useState('')
+  const [fresh, setFresh] = useState<string>()
   const ac = armorClass(c)
   const attuned = attunedCount(items)
   const weight = carriedWeight(c)
@@ -59,6 +90,27 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
   const next = xpForNextLevel(c.level)
 
   const setItems = (list: Item[]) => onChange({ items: list })
+  /** A new custom item starts with a name and its details open, so there is something to edit right away and never a nameless row. */
+  const addNew = (item: Item) => {
+    setFresh(item.id)
+    setItems([...items, item])
+  }
+  /** Hand `qty` of an item over. A character on this device is moved directly; another account's is left as a gift on the server first (its owner's device adds it), and only then does it leave this inventory. */
+  const give = async (item: Item, toKey: string, qty: number) => {
+    const to = recipients.find((r) => r.key === toKey)
+    if (!to) return
+    if (to.local) return void transferItem(c.id!, Number(toKey), item.id, qty)
+    const moved = moveItems(items, [], item.id, qty)
+    if (!moved || !campaign) return
+    try {
+      await sendGift(campaign.id, String(c.id), toKey, moved.to[0])
+    } catch {
+      alert(t('inv.giftFail'))
+      return
+    }
+    onChange({ items: moved.from })
+    addNotice(t('gift.sent', { qty: moved.to[0].qty, name: item.name, to: to.label }))
+  }
   const patchItem = (id: string, patch: Partial<Item>) => setItems(items.map((i) => (i.id === id ? { ...i, ...patch } : i)))
   /** Only one suit of body armor and one shield count at a time, so equipping a second swaps the first out. */
   const setEquipped = (item: Item, on: boolean) =>
@@ -85,9 +137,12 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
       <div className="inv-top">
         <div className="coin-grid" title={t('inv.coinsTitle')}>
           {COIN_TYPES.map((k) => (
-            <NumberField key={k} label={k.toUpperCase()} value={c.coins?.[k] ?? 0} min={0} onChange={(n) => onChange({ coins: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0, ...c.coins, [k]: Math.max(0, Math.floor(n)) } })} />
+            <NumberField key={k} label={k.toUpperCase()} value={c.coins?.[k] ?? 0} min={0} integer onChange={(n) => onChange({ coins: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0, ...c.coins, [k]: Math.max(0, Math.floor(n)) } })} />
           ))}
           <span className="muted coin-total">≈ {Math.floor(totalGp(c.coins)).toLocaleString()} gp</span>
+          <span className="muted coin-total" title={t('inv.itemsWorthTitle')}>
+            🎒 {t('inv.itemsWorth', { n: itemsGp(c).toLocaleString() })}
+          </span>
         </div>
         <div className="xp-box">
           <NumberField label={t('inv.xpLabel')} value={xp} min={0} onChange={(n) => onChange({ xp: Math.max(0, Math.floor(n)) })} />
@@ -108,16 +163,16 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
           onChange={addFromCatalog}
         />
         {adding && <span className="muted">{t('inv.adding')}</span>}
-        <button onClick={() => setItems([...items, blankItem('gear')])}>{t('inv.addItem')}</button>
-        <button onClick={() => setItems([...items, { ...blankItem('weapon'), weapon: { damage: '1d6', damageType: 'slashing', proficient: true } }])}>{t('inv.addWeapon')}</button>
-        <button onClick={() => setItems([...items, { ...blankItem('armor'), armor: { base: 11, dex: 'full' } }])}>{t('inv.addArmor')}</button>
+        <button onClick={() => addNew(blankItem('gear', t('inv.newItem')))}>{t('inv.addItem')}</button>
+        <button onClick={() => addNew({ ...blankItem('weapon', t('inv.newWeapon')), weapon: { damage: '1d6', damageType: 'slashing', proficient: true } })}>{t('inv.addWeapon')}</button>
+        <button onClick={() => addNew({ ...blankItem('armor', t('inv.newArmor')), armor: { base: 11, dex: 'full' } })}>{t('inv.addArmor')}</button>
       </div>
 
       {items.length === 0 && <p className="muted">{t('inv.nothing')}</p>}
       {items.length > 8 && <input className="inv-filter" type="search" value={filter} placeholder={t('inv.filter')} onChange={(e) => setFilter(e.target.value)} />}
       <div className="inv-list">
         {items.filter((i) => i.name.toLowerCase().includes(filter.trim().toLowerCase())).map((item) => (
-          <ItemRow key={item.id} item={item} c={c} attunementFull={attuned >= MAX_ATTUNED} others={others} onTransfer={(toId, n) => void transferItem(c.id!, toId, item.id, n)} onChange={(p) => patchItem(item.id, p)} onEquip={(on) => setEquipped(item, on)} onRemove={() => setItems(items.filter((i) => i.id !== item.id))} />
+          <ItemRow key={item.id} item={item} c={c} attunementFull={attuned >= MAX_ATTUNED} startEditing={item.id === fresh} others={recipients} onTransfer={(toKey, n) => void give(item, toKey, n)} onChange={(p) => patchItem(item.id, p)} onEquip={(on) => setEquipped(item, on)} onRemove={() => setItems(items.filter((i) => i.id !== item.id))} />
         ))}
       </div>
 
@@ -139,17 +194,17 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
 }
 
 /** Pick who gets it and how many; handing over fewer than all leaves the rest with the giver. */
-function TransferPanel({ item, others, onMove, onClose }: { item: Item; others: Character[]; onMove: (toId: number, qty: number) => void; onClose: () => void }) {
-  const [to, setTo] = useState(others[0].id!)
+function TransferPanel({ item, others, onMove, onClose }: { item: Item; others: Recipient[]; onMove: (toKey: string, qty: number) => void; onClose: () => void }) {
+  const [to, setTo] = useState(others[0].key)
   const [qty, setQty] = useState(item.qty)
   return (
     <div className="inv-sub row gap wrap">
       <label className="field">
         <span>{t('inv.transferTo')}</span>
-        <select value={to} onChange={(e) => setTo(Number(e.target.value))}>
+        <select value={to} onChange={(e) => setTo(e.target.value)}>
           {others.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
+            <option key={o.key} value={o.key}>
+              {o.label}
             </option>
           ))}
         </select>
@@ -163,13 +218,18 @@ function TransferPanel({ item, others, onMove, onClose }: { item: Item; others: 
   )
 }
 
-/** One item. Without a character (the DM's item list) there is nothing to wield, attune or transfer, only the item's own numbers. */
+/**
+ * One item. Without a character (the DM's item list) there is nothing to wield, attune or transfer, only the item's own numbers.
+ * "Edit" opens the item in its own window (ItemEditDialog); Done saves, Cancel throws the changes away (for a freshly added item, Cancel also
+ * takes the item back out). The quick controls in the top line (count, wielded, attuned, charges) stay live.
+ */
 export function ItemRow({
-  item,
+  item: saved,
   c,
   attunementFull = false,
+  startEditing = false,
   others = [],
-  onChange,
+  onChange: commit,
   onEquip = () => {},
   onTransfer,
   onRemove,
@@ -177,19 +237,29 @@ export function ItemRow({
   item: Item
   c?: Character
   attunementFull?: boolean
-  /** The characters it could be handed to */
-  others?: Character[]
+  /** Open the editor from the start (a freshly added item) */
+  startEditing?: boolean
+  /** Who it could be handed to */
+  others?: Recipient[]
   onChange: (patch: Partial<Item>) => void
   onEquip?: (on: boolean) => void
-  onTransfer?: (toId: number, qty: number) => void
+  onTransfer?: (toKey: string, qty: number) => void
   onRemove: () => void
 }) {
   const [moving, setMoving] = useState(false)
+  const [editing, setEditing] = useState(startEditing)
+  const [isNew, setIsNew] = useState(startEditing)
+  const item = saved
+  const onChange = commit
+  const startEdit = () => setEditing(true)
+  const cancel = () => {
+    setEditing(false)
+    if (isNew) onRemove()
+  }
   const w = item.weapon
   const equippable = !!c && (item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'shield' || item.kind === 'magic')
   // what the equipped weapon would roll with this character's stats
   const attacks = c && w ? weaponActions({ abilities: c.abilities, items: [{ ...item, equipped: true }] }).map((a) => deriveAction(a, c)) : []
-  const setWeapon = (p: Partial<NonNullable<Item['weapon']>>) => onChange({ weapon: { damage: '1d6', damageType: 'slashing', proficient: true, ...w, ...p } })
 
   return (
     <div className={`item-card inv-item ${item.equipped ? 'equipped' : ''}`}>
@@ -206,10 +276,13 @@ export function ItemRow({
             label={t('inv.attuned')}
             title={attunementFull && !item.attuned ? t('inv.attunedFull') : t('inv.attunedTitle')}
             checked={!!item.attuned}
-            onChange={(on) => onChange({ attuned: on })}
+            onChange={(on) => commit({ attuned: on })}
           />
         )}
-        {onTransfer && others.length > 0 && item.qty >= 1 && (
+        <button title={t('inv.edit')} aria-label={t('inv.editItem', { name: item.name || t('common.unnamed') })} onClick={startEdit}>
+          ✎
+        </button>
+        {onTransfer && others.length > 0 && saved.qty >= 1 && (
           <button title={t('inv.transfer')} aria-label={t('inv.transferItem', { name: item.name || t('common.unnamed') })} aria-expanded={moving} onClick={() => setMoving(!moving)}>
             ⇄
           </button>
@@ -220,10 +293,10 @@ export function ItemRow({
       </div>
       {moving && onTransfer && (
         <TransferPanel
-          item={item}
+          item={saved}
           others={others}
-          onMove={(toId, qty) => {
-            onTransfer(toId, qty)
+          onMove={(toKey, qty) => {
+            onTransfer(toKey, qty)
             setMoving(false)
           }}
           onClose={() => setMoving(false)}
@@ -251,8 +324,56 @@ export function ItemRow({
       )}
       {item.notes && !item.desc && <div className="muted inv-sub">{item.notes}</div>}
 
-      <details className="inv-details">
-        <summary>{t('inv.details')}</summary>
+      {editing && (
+        <ItemEditDialog
+          saved={saved}
+          c={c}
+          onDone={(next) => {
+            commit(next)
+            setEditing(false)
+            setIsNew(false)
+          }}
+          onCancel={cancel}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * The editor for one item: its own window over a dimmed page (a native <dialog>), so nothing unfolds in the middle of the list. The fields change a
+ * draft; Done hands it back, Cancel or Escape drops it. Clicking the dimmed area does nothing, so a stray click cannot lose the edits.
+ */
+function ItemEditDialog({ saved, c, onDone, onCancel }: { saved: Item; c?: Character; onDone: (item: Item) => void; onCancel: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  const [item, setDraft] = useState<Item>(saved)
+  const onChange = (p: Partial<Item>) => setDraft((d) => ({ ...d, ...p }))
+  const w = item.weapon
+  const setWeapon = (p: Partial<NonNullable<Item['weapon']>>) => onChange({ weapon: { damage: '1d6', damageType: 'slashing', proficient: true, ...w, ...p } })
+  useEffect(() => {
+    if (!dialog.current?.open) dialog.current?.showModal()
+  }, [])
+
+  return (
+    <dialog
+      ref={dialog}
+      className="item-edit"
+      aria-labelledby="item-edit-title"
+      onCancel={(e) => {
+        e.preventDefault()
+        onCancel()
+      }}
+    >
+      <div className="item-edit-card">
+        <h3 id="item-edit-title">{t('inv.editTitle')}</h3>
+        <div className="item-edit-body">
+          <div className="field-grid">
+            <label className="field span-2">
+              <span>{t('inv.name')}</span>
+              <input value={item.name} placeholder={t('inv.namePlaceholder')} autoFocus onChange={(e) => onChange({ name: e.target.value })} />
+            </label>
+            <NumberField label={t('inv.qty')} value={item.qty} min={0} onChange={(n) => onChange({ qty: Math.max(0, Math.floor(n)) })} />
+          </div>
         <div className="field-grid">
           <label className="field">
             <span>{t('inv.kind')}</span>
@@ -275,6 +396,7 @@ export function ItemRow({
             </select>
           </label>
           <NumberField label={t('inv.weight')} value={item.weight ?? 0} min={0} onChange={(n) => onChange({ weight: n || undefined })} />
+          <NumberField label={t('inv.value')} value={item.value ?? 0} min={0} integer onChange={(n) => onChange({ value: n || undefined })} />
           {(item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'shield') && (
             <NumberField label={item.kind === 'weapon' ? t('inv.magicWeapon') : t('inv.magicArmor')} value={item.magicBonus ?? 0} onChange={(n) => onChange({ magicBonus: n || undefined })} />
           )}
@@ -355,7 +477,14 @@ export function ItemRow({
           </div>
         )}
         {item.desc && <p className="rules-text-inline inv-desc">{item.desc}</p>}
-      </details>
-    </div>
+        </div>
+        <div className="inv-done">
+          <button onClick={onCancel}>{t('common.cancel')}</button>
+          <button className="primary" onClick={() => onDone({ ...item, name: item.name.trim() || saved.name || t('inv.newItem') })}>
+            {t('inv.done')}
+          </button>
+        </div>
+      </div>
+    </dialog>
   )
 }

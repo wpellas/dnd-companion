@@ -8,6 +8,7 @@
     "api": "php backend/artisan serve --port=8000",
     "build": "tsc -b && node -e \"fs.rmSync('backend/public/assets',{recursive:true,force:true})\" && vite build",
     "lint": "oxlint",
+    "live": "node scripts/deploy.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

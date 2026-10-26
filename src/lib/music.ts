@@ -19,8 +19,9 @@ export interface Scene {
 }
 export interface MusicSettings {
   scenes: Scene[]
-  /** Starts by itself when a fight starts, and the music from before comes back when it ends */
+  /** Starts by itself when a fight starts, and the music from before comes back when it ends. A single track (combatTrackId) or a scene (combatSceneId): setting one clears the other */
   combatSceneId?: string
+  combatTrackId?: number
 }
 export interface TrackInfo {
   id: number
@@ -284,21 +285,45 @@ export function setVolume(v: number) {
 
 /* ---------------------------------------------------------------- combat */
 
-let before: { sceneId?: string } | null = null
+/** What played before the fight: a scene, a single track, or nothing (then the music just fades out when the fight ends). */
+let before: { sceneId?: string; trackId?: number } | null = null
 
-/** Start the chosen combat music. Call it first in the click that starts the fight (a click is what lets the browser play sound). */
+/** A scene or a single track as one picker value ("scene:<id>" / "track:<id>"), played right away. */
+export async function playPick(value: string, scenes: Scene[]) {
+  const [kind, id] = [value.slice(0, value.indexOf(':')), value.slice(value.indexOf(':') + 1)]
+  if (kind === 'scene') await playScene(id, scenes)
+  else if (kind === 'track') await playTrack(Number(id))
+}
+
+/** Choose the combat music from a picker value (or none): it is what Start combat plays. Nothing plays now. */
+export async function prepareCombatMusic(pick: string | undefined) {
+  const [kind, id] = pick ? [pick.slice(0, pick.indexOf(':')), pick.slice(pick.indexOf(':') + 1)] : []
+  await saveMusicSettings({ ...(await readMusic()), combatSceneId: kind === 'scene' ? id : undefined, combatTrackId: kind === 'track' ? Number(id) : undefined })
+}
+
+/** The scene or track chosen for the fight, as a picker value. */
+export const combatPick = (m: MusicSettings) => (m.combatTrackId !== undefined ? `track:${m.combatTrackId}` : m.combatSceneId ? `scene:${m.combatSceneId}` : undefined)
+
+/**
+ * Start the chosen combat music: it takes over from whatever is playing, or starts if nothing is. Call it first in the click that starts the fight
+ * (a click is what lets the browser play sound).
+ */
 export async function startCombatMusic() {
   const m = await readMusic()
-  if (!m.combatSceneId || (state.sceneId === m.combatSceneId && state.playing)) return
-  before = { sceneId: state.sceneId }
-  await playScene(m.combatSceneId, m.scenes)
+  const pick = combatPick(m)
+  if (!pick) return
+  const alreadyOn = pick.startsWith('scene:') ? state.sceneId === m.combatSceneId : state.sceneId === undefined && state.track === m.combatTrackId
+  if (alreadyOn && state.playing) return
+  before = { sceneId: state.sceneId, trackId: state.sceneId === undefined && state.playing ? state.track : undefined }
+  await playPick(pick, m.scenes)
 }
 
 /** Back to what played before the fight (or silence, if nothing did). */
 export async function endCombatMusic() {
   if (!before) return
-  const { sceneId } = before
+  const { sceneId, trackId } = before
   before = null
   if (sceneId) await playScene(sceneId, (await readMusic()).scenes)
+  else if (trackId !== undefined) await playTrack(trackId)
   else stopMusic()
 }

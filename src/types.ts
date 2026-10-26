@@ -185,6 +185,8 @@ export interface Item {
   qty: number
   /** Pounds each */
   weight?: number
+  /** What one is worth in gold pieces, a whole number. Only the "items are worth" counter uses it: it never touches the character's coins. */
+  value?: number
   notes?: string
   /** Full text, for items picked from the SRD list */
   desc?: string
@@ -532,6 +534,8 @@ export interface Encounter {
   name: string
   notes: string
   entries: EncounterEntry[]
+  /** A music scene or track to prepare as the combat music when the encounter is loaded ("scene:<id>" / "track:<id>", see lib/music.ts) */
+  music?: string
 }
 
 /** A DM-only entry in the campaign journal: a note, a session recap, or an automatic combat summary. */

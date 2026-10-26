@@ -19,6 +19,12 @@ export interface IncomingRoll {
 
 export const ROLL_MAX: Record<RollKind, number> = { initiative: 60, attack: 20, save: 20, death: 20, check: 60 }
 
+export const KIND_ICON: Record<RollKind, string> = { initiative: '⚡', attack: '⚔', save: '🛡', death: '💀', check: '🎲' }
+
+/** A natural 20 or 1 shows on the die: only for the kinds that are the bare d20 (the others are totals with a bonus added). */
+export const natOf = (kind: RollKind, value: number): 'nat20' | 'nat1' | undefined =>
+  kind === 'attack' || kind === 'save' || kind === 'death' ? (value === 20 ? 'nat20' : value === 1 ? 'nat1' : undefined) : undefined
+
 let rolls: IncomingRoll[] = []
 let campaignId: number | undefined
 const listeners = new Set<() => void>()

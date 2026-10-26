@@ -35,6 +35,7 @@ export const party = {
   // form
   'form.new': ['New character', 'Ny karaktär'],
   'form.edit': ['Edit character', 'Redigera karaktär'],
+  'form.identity': ['Who they are', 'Vem de är'],
   'form.owner': ['Player account', 'Spelarkonto'],
   'form.ownerHint': ['The account that owns this character: players edit their own characters, you can edit all of them', 'Kontot som äger rollpersonen: spelare redigerar sina egna rollpersoner, du kan redigera alla'],
   'form.ownerDm': [' (DM)', ' (spelledare)'],

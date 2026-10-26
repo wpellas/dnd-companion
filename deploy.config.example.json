@@ -1,0 +1,8 @@
+{
+  "host": "user@your-server",
+  "port": 22,
+  "appDir": "dnd-companion",
+  "webDir": "web",
+  "php": "php",
+  "composer": "composer"
+}

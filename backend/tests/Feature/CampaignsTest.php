@@ -13,7 +13,7 @@ class CampaignsTest extends TestCase
     /** A DM with a campaign, plus a player who joined it with an invite code. */
     private function table(): array
     {
-        $dm = User::factory()->create();
+        $dm = User::factory()->create(['can_dm' => true]);
         $player = User::factory()->create();
         $id = $this->actingAs($dm)->postJson('/api/campaigns', ['name' => 'Lost Mine'])->assertCreated()->assertJsonPath('role', 'dm')->json('id');
         $code = $this->postJson("/api/campaigns/{$id}/invites")->assertCreated()->json('code');
@@ -22,10 +22,15 @@ class CampaignsTest extends TestCase
         return [$dm, $player, $id, $code];
     }
 
-    public function test_any_account_can_be_dm_of_its_own_campaign_and_a_player_in_another(): void
+    public function test_only_allowed_accounts_start_campaigns_and_a_dm_can_also_be_a_player_elsewhere(): void
     {
         [$dm, $player, $id] = $this->table();
-        $this->actingAs($player)->postJson('/api/campaigns', ['name' => 'Second'])->assertJsonPath('role', 'dm');
+        // a plain account is a player: it joins with an invite but cannot start a campaign
+        $this->actingAs($player)->getJson('/api/me')->assertJsonPath('can_dm', false);
+        $this->actingAs($player)->postJson('/api/campaigns', ['name' => 'Second'])->assertForbidden();
+        // once an administrator allows the account it can, and it is still a player in the first one
+        $player->forceFill(['can_dm' => true])->save();
+        $this->actingAs($player)->postJson('/api/campaigns', ['name' => 'Second'])->assertCreated()->assertJsonPath('role', 'dm');
 
         $roles = $this->actingAs($player)->getJson('/api/campaigns')->assertOk()->json();
         $this->assertEqualsCanonicalizing(['dm', 'player'], array_column($roles, 'role'));

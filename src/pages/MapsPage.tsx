@@ -1,4 +1,5 @@
 import { useBlobUrl } from '../hooks'
+import { askText } from '../lib/ask'
 import { t } from '../lib/i18n'
 import { addMap, deleteMap, renameMap, showMap, stopShowingMap, useMapShown, useMaps, type PictureKind } from '../lib/maps'
 import type { MapRecord } from '../types'
@@ -53,8 +54,8 @@ function MapCard({ map, showing }: { map: MapRecord; showing: boolean }) {
           </button>
         )}
         <button
-          onClick={() => {
-            const name = prompt(t('maps.renamePrompt'), map.name)?.trim()
+          onClick={async () => {
+            const name = await askText({ title: t('maps.renamePrompt'), value: map.name, confirm: t('common.save') })
             if (name) void renameMap(map.id!, name)
           }}
         >

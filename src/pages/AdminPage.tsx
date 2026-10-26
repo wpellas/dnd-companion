@@ -16,6 +16,7 @@ interface AdminUser {
   name: string
   email: string
   is_admin: boolean
+  can_dm: boolean
   disabled: boolean
   campaigns: number
 }
@@ -54,6 +55,8 @@ const ACTION_KEYS = {
   'user.unlock': 'admin.act.userUnlock',
   'user.admin_grant': 'admin.act.adminGrant',
   'user.admin_revoke': 'admin.act.adminRevoke',
+  'user.dm_grant': 'admin.act.dmGrant',
+  'user.dm_revoke': 'admin.act.dmRevoke',
   'user.reset_link': 'admin.act.resetLink',
   'user.delete': 'admin.act.userDelete',
   'campaign.delete': 'admin.act.campaignDelete',
@@ -175,6 +178,7 @@ export function AdminPage() {
                   <td>
                     {u.name}
                     {u.is_admin && <span className="chip">{t('admin.badgeAdmin')}</span>}
+                    {u.can_dm && !u.is_admin && <span className="chip">{t('admin.badgeDm')}</span>}
                     {u.disabled && <span className="chip">{t('admin.badgeDisabled')}</span>}
                   </td>
                   <td>{u.email}</td>
@@ -183,6 +187,7 @@ export function AdminPage() {
                     <button onClick={() => run(async () => { await api.post(`/admin/users/${u.id}/reset-link`); return t('admin.resetSent', { email: u.email }) })}>{t('admin.resetLink')}</button>
                     {u.id !== me?.id && (
                       <>
+                        {!u.is_admin && <button title={t('admin.dmTitle')} onClick={() => run(() => api.patch(`/admin/users/${u.id}`, { can_dm: !u.can_dm }))}>{t(u.can_dm ? 'admin.removeDm' : 'admin.makeDm')}</button>}
                         <button onClick={() => run(() => api.patch(`/admin/users/${u.id}`, { is_admin: !u.is_admin }))}>{t(u.is_admin ? 'admin.removeAdmin' : 'admin.makeAdmin')}</button>
                         <button onClick={() => (u.disabled || confirm(t('admin.disableConfirm', { name: u.name }))) && run(() => api.patch(`/admin/users/${u.id}`, { disabled: !u.disabled }))}>
                           {t(u.disabled ? 'admin.enable' : 'admin.disable')}

@@ -408,8 +408,6 @@ button.badge { cursor: pointer; font: inherit; }
 .spell-info-box { display: flex; gap: 12px; align-items: flex-start; margin-top: 12px; }
 .selected-select { border-color: var(--gold-dark); box-shadow: 0 0 0 2px var(--gold); }
 
-.rest-panel { margin-bottom: 20px; border-color: var(--gold-dark); }
-.rest-panel h3 { color: var(--red-dark); margin-bottom: 6px; }
 .rest-panel table { margin: 10px 0 14px; }
 .rest-panel tr.off { opacity: 0.45; }
 
@@ -430,6 +428,7 @@ button.badge { cursor: pointer; font: inherit; }
   padding: 4px 10px 2px; font-family: var(--font-display); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--parchment-3); background: var(--leather);
 }
+.combobox-list { color: var(--ink); } /* a dropdown opened inside a dark bar must not inherit the bar's cream text */
 .combobox-option { display: flex; justify-content: space-between; gap: 16px; padding: 5px 10px; cursor: pointer; }
 .combobox-option small { color: var(--ink-muted); font-family: var(--font-display); }
 .combobox-option.active { background: rgba(217, 169, 46, 0.4); }
@@ -728,8 +727,12 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .kind-badge.loot { background: var(--good); border-color: #2a5a27; color: #fff; }
 
 /* ---------- Equipment, gold and XP ---------- */
-.card.wide { grid-column: 1 / -1; }
-.wealth { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-family: var(--font-display); font-size: 0.85rem; color: var(--ink-muted); }
+.wealth { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-family: var(--font-display); font-size: 0.8rem; font-weight: 600; color: var(--ink); }
+/* framed like the AC / HP pills, each in its own colour: gold for money, blue for experience (the blue fills towards the next level) */
+.wealth > span:not(.levelup-badge) { padding: 2px 8px; border: 1px solid; border-radius: 4px; }
+.wealth .gp { color: #4a3408; border-color: var(--gold-dark); background: linear-gradient(#f5e2a0, #e0b94c); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+.wealth .gp.items { border-style: dashed; background: rgba(217, 169, 46, 0.16); box-shadow: none; }
+.wealth .xp { --p: 0%; color: #12324a; border-color: #2e5a7a; background: linear-gradient(90deg, rgba(70, 140, 195, 0.55) var(--p), rgba(70, 140, 195, 0.08) var(--p)); }
 .levelup-badge { display: inline-block; margin-left: 8px; padding: 1px 9px; border-radius: 10px; background: var(--gold); border: 1px solid var(--gold-dark); color: var(--ink); font-family: var(--font-display); font-size: 0.75rem; font-weight: 700; }
 .inventory { display: flex; flex-direction: column; gap: 12px; }
 .inv-top { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-end; }
@@ -757,7 +760,6 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .inv-details .field-grid { margin-top: 8px; }
 .inv-desc { white-space: pre-wrap; margin: 8px 0 0; }
 .inv-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding-top: 6px; border-top: 1px solid var(--edge); }
-.award-panel { display: flex; flex-direction: column; gap: 12px; }
 .award-list { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .reward-banner { align-items: center; }
 
@@ -793,16 +795,55 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .sheet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
 .sheet-panel { padding: 14px 20px 16px; background: var(--parchment); border: 3px solid var(--leather); border-radius: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); font-size: 1.15rem; }
 .sheet-panel.wide { grid-column: 1 / -1; }
-.sheet-panel h2 { font-size: 1.3rem; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid var(--edge); }
+.sheet-panel h2 { display: flex; align-items: center; gap: 8px; font-size: 1.3rem; margin-bottom: 10px; padding-bottom: 5px; color: var(--red-dark); border-bottom: 3px double var(--gold-dark); }
 .sheet-panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .sheet-panel li { display: flex; justify-content: space-between; gap: 14px; }
 .sheet-panel li strong { font-family: var(--font-display); color: var(--ink); font-size: 1.05rem; }
 .sheet-panel p { margin: 6px 0 0; }
 .sheet-note { color: var(--ink-muted); }
 .sheet-pips { font-size: 1.3rem; letter-spacing: 0.15em; color: var(--gold-dark); }
-.sheet-items { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 28px !important; }
-.sheet-items li.equipped strong::before { content: '⚔ '; color: var(--good); }
-.sheet-items li span { color: var(--ink-muted); font-size: 0.95rem; text-align: right; }
+.sheet-items { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 8px 12px !important; }
+/* the three wealth tiles use the party card's colours: gold for money, blue for experience, leather for what is carried */
+.sheet-wealth { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.wealth-card { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 12px; border: 2px solid; border-radius: 10px; }
+.wc-label { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
+.wc-big { font-family: var(--font-display); font-size: 2.3rem; line-height: 1.05; }
+.wc-big small { font-size: 1.1rem; font-weight: 600; opacity: 0.75; }
+.wc-sub { font-size: 1rem; color: var(--ink-muted); }
+.wc-bar { height: 14px; overflow: hidden; border-radius: 7px; background: rgba(0, 0, 0, 0.18); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4); }
+.wc-bar > i { display: block; height: 100%; border-radius: 7px; }
+.wealth-card.gold { color: #4a3408; border-color: var(--gold-dark); background: linear-gradient(#f5e2a0, #e0b94c); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+.wealth-card.gold .wc-sub { color: #6b4e12; }
+.wc-coins { display: flex; flex-wrap: wrap; gap: 6px; }
+.coin { display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px 1px 3px; border: 1px solid rgba(74, 52, 8, 0.35); border-radius: 14px; background: rgba(255, 255, 255, 0.45); font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
+.coin::before { content: ''; width: 16px; height: 16px; border: 1px solid rgba(0, 0, 0, 0.35); border-radius: 50%; background: var(--c); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+.coin-pp { --c: #dfe7ee; } .coin-gp { --c: #e8b923; } .coin-ep { --c: #cdbf86; } .coin-sp { --c: #bfc3c7; } .coin-cp { --c: #c8794a; }
+.wealth-card.xp { color: #12324a; border-color: #2e5a7a; background: linear-gradient(#cfe3f2, #9fc3de); }
+.wealth-card.xp .wc-sub { color: #24506e; }
+.wealth-card.xp .wc-bar > i { background: linear-gradient(#5aa2d6, #2e6fa3); }
+.wc-ready { color: #1d5a1a; }
+.wealth-card.load { color: var(--ink); border-color: var(--leather); background: linear-gradient(var(--parchment-3), var(--parchment-2)); }
+.wealth-card.load .wc-bar > i { background: linear-gradient(#6aa764, var(--good)); }
+.wealth-card.load.heavy .wc-bar > i { background: linear-gradient(#e6a24a, var(--warn)); }
+.wealth-card.load.over { border-color: var(--red); }
+.wealth-card.load.over .wc-bar > i { background: linear-gradient(#d8353a, var(--red-dark)); }
+.wealth-card.load.over .wc-sub { color: var(--red-dark); font-weight: 700; }
+/* the items as cards: what is worn or wielded has the gold edge */
+.sheet-panel li.item-tile { align-items: center; justify-content: flex-start; gap: 10px; padding: 7px 10px; background: var(--parchment-3); border: 1px solid var(--edge); border-radius: 8px; }
+.item-tile.equipped { border-color: var(--gold-dark); background: linear-gradient(#fbf0cf, var(--parchment-3)); box-shadow: inset 4px 0 0 var(--gold), 0 0 0 1px var(--gold-dark); }
+.it-icon { flex: none; width: 34px; text-align: center; font-size: 1.5rem; }
+.it-main { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.it-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 2px; }
+.it-chip { padding: 0 7px; border: 1px solid; border-radius: 9px; font-family: var(--font-display); font-size: 0.72rem; font-weight: 700; }
+.it-chip.on { color: #1d4d1a; border-color: var(--good); background: rgba(61, 122, 56, 0.18); }
+.it-chip.att { color: #4a3a82; border-color: #6b58b4; background: rgba(110, 90, 190, 0.16); }
+.it-note { font-size: 0.9rem; color: var(--ink-muted); }
+.it-side { display: flex; flex: none; flex-direction: column; align-items: flex-end; }
+.it-qty { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; color: var(--red-dark); }
+.it-side small { font-size: 0.85rem; color: var(--ink-muted); }
+.sheet-stats .ac { border-color: #4d0a0c; background: linear-gradient(#c8272b, var(--red-dark)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.sheet-stats .ac span { color: #f6d6c4; }
+.sheet-stats .ac strong { color: var(--parchment-3); text-shadow: 0 1px 0 #000; }
 @media (max-width: 720px) {
   .sheet-view { padding: 10px 12px 28px; }
   .sheet-hero { padding: 12px 14px; gap: 10px 16px; }
@@ -813,6 +854,8 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
   .sheet-abilities { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .sheet-ability strong { font-size: 1.8rem; }
   .sheet-panel { font-size: 1rem; padding: 10px 14px 12px; }
+  .wc-big { font-size: 1.8rem; }
+  .sheet-items { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .sheet-hero .portrait { width: 88px !important; height: 88px !important; font-size: 40px !important; }
@@ -870,12 +913,56 @@ button.link { background: none; border: none; box-shadow: none; padding: 2px 0; 
 details.effects .popover { min-width: 330px; }
 
 /* ---------- Numbers players typed on their phones ---------- */
-.rolls-tray { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; padding: 6px 10px; background: rgba(184, 138, 29, 0.14); border-left: 4px solid var(--gold-dark); }
-.rolls-tray .chip-x { margin-left: 6px; padding: 0 6px; font-size: 0.7rem; }
+/* a die token carries the number; the words beside it say what it is */
+.die { --die-size: 54px; position: relative; flex: none; display: grid; place-items: center; width: var(--die-size); height: calc(var(--die-size) * 1.08);
+  font-family: var(--font-display); font-weight: 800; font-size: calc(var(--die-size) * 0.44); color: var(--parchment-3); text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.5);
+  --facets: linear-gradient(60deg, transparent 48.5%, rgba(255, 255, 255, 0.16) 50%, transparent 51.5%), linear-gradient(-60deg, transparent 48.5%, rgba(255, 255, 255, 0.16) 50%, transparent 51.5%), linear-gradient(0deg, transparent 48.5%, rgba(255, 255, 255, 0.12) 50%, transparent 51.5%);
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45)); }
+.die::before, .die::after { content: ''; position: absolute; clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); }
+.die::before { inset: 0; background: linear-gradient(#f1d36f, var(--gold-dark)); }
+.die::after { inset: 3px; background: var(--facets), radial-gradient(circle at 35% 22%, #d8353a, var(--red-dark) 72%); }
+.die .die-num { position: relative; z-index: 1; color: var(--parchment-3); }
+.die.large { --die-size: 84px; }
+.die.nat20 { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55); }
+.die.nat20 .die-num { color: var(--ink); }
+.die.nat20::after { background: var(--facets), radial-gradient(circle at 35% 22%, #fff0b3, var(--gold) 68%); }
+.die.nat1 .die-num { color: #ff8a80; }
+.die.nat1::after { background: var(--facets), radial-gradient(circle at 35% 22%, #4d3b33, var(--wood) 72%); }
+.die.nat1::before { background: linear-gradient(#d8353a, var(--red-dark)); }
+.die.ghost { opacity: 0.4; filter: grayscale(0.6) drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3)); }
+
+.rolls-tray { margin: 0 0 14px; padding: 10px 12px 12px; background: var(--grain), linear-gradient(#3a2412, var(--wood-2)); border: 2px solid var(--gold-dark); border-radius: 8px; box-shadow: var(--shadow-md); color: var(--parchment); }
+.roll-tray-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-family: var(--font-display); letter-spacing: 0.04em; }
+.roll-tray-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.roll-in { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; color: var(--ink); background: var(--grain), linear-gradient(var(--parchment-3), var(--parchment-2)); border: 1px solid var(--edge); border-left: 6px solid var(--gold-dark); border-radius: 6px; }
+.roll-in.nat20 { border-left-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(217, 169, 46, 0.6); }
+.roll-in.nat1 { border-left-color: var(--red); }
+.roll-in-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.25; }
+.roll-in-name { font-family: var(--font-display); font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roll-in-nat { font-style: normal; font-weight: 700; color: var(--red-dark); }
+.roll-in.nat20 .roll-in-nat, .roll-confirm .roll-in-nat { color: var(--gold-dark); }
+.roll-in .chip-x { align-self: flex-start; padding: 0 7px; font-size: 0.75rem; }
+@keyframes die-land { 0% { transform: translateY(-16px) rotate(-45deg) scale(0.6); opacity: 0; } 55% { transform: translateY(2px) rotate(10deg) scale(1.08); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes nat-glow { 0%, 100% { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45)); } 40% { filter: drop-shadow(0 0 14px rgba(255, 205, 70, 0.95)) drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45)); } }
+.roll-in .die { animation: die-land 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.roll-in .die.nat20 { animation: die-land 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) both, nat-glow 1.8s ease-out 0.5s 2; }
+@media (prefers-reduced-motion: reduce) { .roll-in .die, .roll-in .die.nat20 { animation: none; } }
 button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .roll-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; display: flex; justify-content: center; padding: 8px; pointer-events: none; }
 .roll-dock > * { pointer-events: auto; }
-.roll-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.roll-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 16px; box-shadow: var(--shadow-md), 0 0 0 2px var(--gold-dark); }
+/* a click outside the window closes it: this sits behind the card, inside the dock's own stacking context, and covers the whole screen */
+.roll-backdrop { position: fixed; inset: 0; z-index: -1; background: rgba(20, 10, 4, 0.55); }
+.roll-kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; }
+.roll-kinds button { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.roll-entry { display: flex; align-items: center; gap: 14px; }
+.roll-entry .roll-number { flex: 1; min-width: 0; height: 68px; padding: 4px 8px; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; color: var(--ink); background: var(--parchment-3); border: 2px solid var(--leather); border-radius: 8px; box-shadow: inset 0 2px 4px rgba(40, 22, 6, 0.25); appearance: textfield; -moz-appearance: textfield; }
+.roll-entry .roll-number::-webkit-inner-spin-button, .roll-entry .roll-number::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.roll-entry .roll-number::placeholder { font-family: var(--font-body); font-size: 1rem; font-weight: 600; color: var(--ink-muted); opacity: 1; }
+.roll-entry .roll-number:focus { outline: none; border-color: var(--gold-dark); box-shadow: inset 0 2px 4px rgba(40, 22, 6, 0.25), 0 0 0 3px rgba(217, 169, 46, 0.55); }
+.roll-confirm { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 6px 0; text-align: center; }
+.roll-confirm-ask { margin: 0; font-size: 1.15rem; line-height: 1.3; }
+.roll-ok { margin: 0; color: var(--good); font-weight: 700; }
 
 /* ---------- Pictures for enemy creatures ---------- */
 .avatar-gallery { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -948,6 +1035,7 @@ h2 { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45); }
 .card { box-shadow: inset 0 0 0 1px var(--gold-dark), var(--shadow-md); }
 .card-grid > .card { transition: transform 0.15s, box-shadow 0.15s; }
 .card-grid > .card:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--gold-dark), 0 4px 6px rgba(40, 22, 6, 0.3), 0 14px 26px rgba(40, 22, 6, 0.35); }
+.card-grid.still > .card:hover { transform: none; box-shadow: inset 0 0 0 1px var(--gold-dark), var(--shadow-md); } /* the Party cards are not targets */
 .card.inset, .card.form { box-shadow: none; }
 .card.form { box-shadow: inset 0 0 0 1px var(--gold-dark), var(--shadow-md); }
 
@@ -1203,3 +1291,56 @@ button.badge:hover { filter: brightness(1.15); }
   .player-name { letter-spacing: 0.01em; font-size: 1.15rem; }
   .init-badge { width: 38px; height: 38px; font-size: 1.05rem; border-width: 2px; }
 }
+
+/* the DM's initiative field: big enough to read, no spinner arrows eating the width, a clear frame (placed last so it beats the earlier .init rules) */
+.combatant .init { width: 78px; height: 46px; padding: 4px 6px; text-align: center; font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; color: var(--ink); background: var(--parchment-3); border: 2px solid var(--leather); border-radius: 8px; box-shadow: inset 0 2px 4px rgba(40, 22, 6, 0.25); appearance: textfield; -moz-appearance: textfield; }
+.combatant .init::-webkit-inner-spin-button, .combatant .init::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.combatant .init::placeholder { font-family: var(--font-body); font-weight: 600; font-size: 0.85rem; color: var(--ink-muted); opacity: 1; }
+.combatant .init:focus { outline: none; border-color: var(--gold-dark); box-shadow: inset 0 2px 4px rgba(40, 22, 6, 0.25), 0 0 0 3px rgba(217, 169, 46, 0.55); }
+.combatant.active .init { color: var(--ink); border-color: var(--gold-dark); }
+.inv-done { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+.inv-done { gap: 8px; }
+/* items passed between characters */
+.gift-notices { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); z-index: 70; display: flex; flex-direction: column; gap: 6px; width: min(460px, calc(100vw - 24px)); }
+.gift-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; background: linear-gradient(#e7bd45, #c9972b); color: var(--ink); border: 2px solid var(--gold-dark); border-radius: 8px; box-shadow: var(--shadow-md); font-weight: 600; }
+
+/* the in-app question dialog (askText): a parchment card over the dimmed table. The form fills the dialog, so a click on the dialog itself is a click outside. */
+dialog.ask { width: min(440px, calc(100vw - 24px)); padding: 0; border: 0; background: none; color: var(--ink); overflow: visible; }
+dialog.ask::backdrop { background: rgba(20, 10, 4, 0.62); backdrop-filter: blur(2px); }
+dialog.ask form { display: flex; flex-direction: column; gap: 14px; padding: 20px 22px 18px; background: var(--grain), linear-gradient(var(--parchment-3), var(--parchment-2)); border: 3px double var(--gold-dark); border-radius: 10px; box-shadow: 0 0 0 3px var(--leather), 0 22px 50px rgba(0, 0, 0, 0.6); }
+dialog.ask h3 { margin: 0; padding-bottom: 8px; font-family: var(--font-display); font-size: 1.25rem; letter-spacing: 0.03em; color: var(--red-dark); border-bottom: 3px double var(--gold-dark); }
+dialog.ask input { height: 48px; padding: 6px 12px; font-size: 1.2rem; border: 2px solid var(--leather); border-radius: 8px; }
+.ask-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@keyframes ask-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+dialog.ask[open] { animation: ask-in 0.16s ease-out; }
+@media (prefers-reduced-motion: reduce) { dialog.ask[open] { animation: none; } }
+.music-pick { min-width: 230px; }
+.music-bar .music-pick { min-width: 190px; }
+/* the music picker: roomier rows, and the right-hand text reads as a quiet note instead of small caps */
+.music-pick .combobox-list { max-width: 460px; max-height: 360px; }
+.music-pick .combobox-group { padding: 6px 12px 4px; }
+.music-pick .combobox-option { align-items: baseline; padding: 7px 12px; }
+.music-pick .combobox-option small { font-family: var(--font-body); font-size: 0.85rem; font-style: italic; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+
+/* editing an item: its own window over the dimmed page (a native <dialog>), so nothing unfolds inside the list */
+dialog.item-edit { width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 32px); padding: 0; border: 0; background: none; color: var(--ink); overflow: visible; }
+dialog.item-edit::backdrop { background: rgba(20, 10, 4, 0.62); backdrop-filter: blur(2px); }
+.item-edit-card { display: flex; flex-direction: column; max-height: calc(100vh - 32px); background: var(--grain), linear-gradient(var(--parchment-3), var(--parchment-2)); border: 3px double var(--gold-dark); border-radius: 10px; box-shadow: 0 0 0 3px var(--leather), 0 22px 50px rgba(0, 0, 0, 0.6); }
+.item-edit-card h3 { margin: 0 22px; padding: 16px 0 8px; font-family: var(--font-display); font-size: 1.25rem; letter-spacing: 0.03em; color: var(--red-dark); border-bottom: 3px double var(--gold-dark); }
+.item-edit-body { display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0; padding: 14px 22px; overflow-y: auto; }
+.item-edit-card .inv-done { margin: 0; padding: 12px 22px 16px; border-top: 1px solid var(--edge); }
+dialog.item-edit[open] { animation: ask-in 0.16s ease-out; }
+@media (prefers-reduced-motion: reduce) { dialog.item-edit[open] { animation: none; } }
+/* the page behind a window must not scroll under the dimmed area */
+body:has(dialog.item-edit[open]), body:has(dialog.ask[open]) { overflow: hidden; }
+/* windows: a wide one (the inventory, the character form), a heading with a switch on its right, and the read-only inventory without the sheet panel's frame */
+dialog.window-lg { width: min(1100px, calc(100vw - 24px)); }
+.window-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 22px; padding: 14px 0 8px; border-bottom: 3px double var(--gold-dark); }
+.item-edit-card .window-head h3 { margin: 0; padding: 0; border: 0; }
+.sheet-panel.bare { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: 1rem; }
+.sheet-panel.bare .wc-big { font-size: 1.9rem; }
+
+/* the collapsible tool panels on the Party and Combat pages: room between them and before the cards below */
+.spell-finder, .time-panel, .checks-panel { margin-bottom: 14px; }
+.card-grid.still { margin-top: 22px; }

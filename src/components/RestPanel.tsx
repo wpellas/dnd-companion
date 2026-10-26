@@ -1,3 +1,4 @@
+import { Window } from './Window'
 import { Fragment, useState } from 'react'
 import { t, tn } from '../lib/i18n'
 import { levelLabel } from '../lib/spells'
@@ -48,8 +49,20 @@ export function RestPanel({ kind, characters, onClose }: Props) {
   }
 
   return (
-    <div className="card rest-panel">
-      <h3>{kind === 'short' ? t('rest.short') : t('rest.long')}</h3>
+    <Window
+      large
+      bodyClass="rest-panel"
+      title={kind === 'short' ? t('rest.short') : t('rest.long')}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" disabled={included.size === 0} onClick={apply}>
+            {kind === 'short' ? t('rest.takeShort') : t('rest.takeLong')}
+          </button>
+        </>
+      }
+    >
       <p className="muted">
         {kind === 'short'
           ? t('rest.shortIntro', { how: t(settings.allowPlayerAppRolls ? 'rest.howRoll' : 'rest.howType') })
@@ -149,13 +162,7 @@ export function RestPanel({ kind, characters, onClose }: Props) {
           })}
         </tbody>
       </table>
-      <div className="row gap">
-        <button className="primary" disabled={included.size === 0} onClick={apply}>
-          {kind === 'short' ? t('rest.takeShort') : t('rest.takeLong')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
-    </div>
+    </Window>
   )
 }
 

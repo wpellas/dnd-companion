@@ -7,10 +7,12 @@ import '@fontsource/alegreya/400-italic.css'
 import '@fontsource/alegreya/600.css'
 import '@fontsource/alegreya/700.css'
 import './index.css'
+import { AskDialog } from './components/AskDialog.tsx'
 import Root from './Root.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Root />
+    <AskDialog />
   </StrictMode>,
 )

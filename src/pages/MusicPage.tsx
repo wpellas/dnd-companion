@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Combobox } from '../components/Combobox'
 import { CheckField } from '../components/Section'
 import { ApiError } from '../lib/api'
+import { askText } from '../lib/ask'
 import { newId } from '../lib/id'
 import { t } from '../lib/i18n'
 import { deleteTrack, loadLibrary, playScene, playTrack, renameTrack, saveMusicSettings, sceneTracks, uploadTrack, useMusic, useMusicSettings, type Scene, type TrackInfo } from '../lib/music'
@@ -84,8 +85,8 @@ export function MusicPage() {
         <h3>{t('music.scenes')}</h3>
         <button
           className="primary"
-          onClick={() => {
-            const name = prompt(t('music.scenePrompt'), t('music.newScene'))?.trim()
+          onClick={async () => {
+            const name = await askText({ title: t('music.scenePrompt'), value: t('music.newScene'), confirm: t('common.add') })
             if (name) save([...scenes, { id: newId(), name, tracks: [] }])
           }}
         >
@@ -101,13 +102,13 @@ export function MusicPage() {
               <div className="inv-line">
                 <strong className="grow">{scene.name}</strong>
                 <CheckField label={t('music.shuffle')} checked={!!scene.shuffle} onChange={(on) => patch(scene.id, { shuffle: on || undefined })} />
-                <CheckField label={t('music.combatScene')} title={t('music.combatSceneTitle')} checked={settings.combatSceneId === scene.id} onChange={(on) => save(scenes, on ? scene.id : undefined)} />
+                <CheckField label={t('music.combatScene')} title={t('music.combatSceneTitle')} checked={settings.combatSceneId === scene.id} onChange={(on) => void saveMusicSettings({ scenes, combatSceneId: on ? scene.id : undefined, combatTrackId: on ? undefined : settings.combatTrackId })} />
                 <button className="primary" disabled={!ids.length} onClick={() => void playScene(scene.id, scenes)}>
                   {t('music.play')}
                 </button>
                 <button
-                  onClick={() => {
-                    const name = prompt(t('music.scenePrompt'), scene.name)?.trim()
+                  onClick={async () => {
+                    const name = await askText({ title: t('music.scenePrompt'), value: scene.name, confirm: t('common.save') })
                     if (name) patch(scene.id, { name })
                   }}
                 >
@@ -170,8 +171,8 @@ function TrackRow({ track }: { track: TrackInfo }) {
           <button
             title={t('music.rename')}
             aria-label={t('music.rename')}
-            onClick={() => {
-              const name = prompt(t('music.trackPrompt'), track.name)?.trim()
+            onClick={async () => {
+              const name = await askText({ title: t('music.trackPrompt'), value: track.name, confirm: t('common.save') })
               if (name) void renameTrack(track.id, name)
             }}
           >

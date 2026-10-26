@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { GiftNotices } from '../components/GiftNotices'
 import { RollSender } from '../components/RollSender'
 import { SpellLibraryStatus } from '../components/SpellLibraryStatus'
 import { db } from '../db'
@@ -58,6 +59,7 @@ export function PlayerHome({ campaign }: { campaign: CampaignRef }) {
         <button onClick={() => void chooseCampaign(undefined)}>{t('camp.switch')}</button>
         <button onClick={() => void logout()}>{t('camp.logout')}</button>
       </div>
+      <GiftNotices />
       {showMine ? (
         <>
           <PartyPage />

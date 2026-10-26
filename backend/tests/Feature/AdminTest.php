@@ -82,6 +82,22 @@ class AdminTest extends TestCase
         $this->assertTrue($this->admin->fresh()->is_admin);
     }
 
+    public function test_an_administrator_allows_and_stops_accounts_from_being_a_dm(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($this->admin)->getJson('/api/me')->assertJsonPath('can_dm', true); // administrators can always start campaigns
+
+        $this->patchJson("/api/admin/users/{$user->id}", ['can_dm' => true])->assertOk();
+        $this->getJson('/api/admin/users')->assertJsonPath('1.can_dm', true);
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($user->fresh())->postJson('/api/campaigns', ['name' => 'Mine'])->assertCreated();
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->admin)->patchJson("/api/admin/users/{$user->id}", ['can_dm' => false])->assertOk();
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($user->fresh())->postJson('/api/campaigns', ['name' => 'Another'])->assertForbidden();
+    }
+
     public function test_every_change_is_written_to_the_log_with_who_did_it_and_to_what(): void
     {
         Notification::fake();

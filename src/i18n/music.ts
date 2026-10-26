@@ -52,7 +52,17 @@ export const music = {
   'music.err.empty': ['No playable track in this scene.', 'Inget spelbart spår i den här scenen.'],
   'music.err.blocked': ['The browser wants a click first: press play.', 'Webbläsaren vill ha ett klick först: tryck på spela.'],
   // the Combat page
+  'music.pickScenes': ['Scenes', 'Scener'],
+  'music.pickTracks': ['Tracks', 'Spår'],
+  'music.sceneHint.one': ['{count} track', '{count} spår'],
+  'music.sceneHint.other': ['{count} tracks', '{count} spår'],
+  'music.playNow': ['Play now', 'Spela nu'],
+  'music.playNowTitle': ['Switch the music right now to a scene or a single track', 'Byt musik direkt till en scen eller ett enskilt spår'],
+  'music.playNowPlaceholder': ['Pick a scene or track...', 'Välj en scen eller ett spår...'],
   'music.combat': ['Combat music', 'Stridsmusik'],
   'music.combatNone': ['No music', 'Ingen musik'],
-  'music.combatTitle': ['Starts with the fight. Changing it during a fight switches the music right away.', 'Startar med striden. Byter du under en strid byter musiken direkt.'],
+  'music.combatTitle': [
+    'Pick a scene or a single track before the fight: it starts when you press Start combat, taking over from whatever is playing. Changing it during a fight switches the music right away.',
+    'Välj en scen eller ett enskilt spår före striden: det startar när du trycker på Starta strid och tar över från det som spelas. Byter du under en strid byter musiken direkt.',
+  ],
 } as const satisfies Record<string, Msg>

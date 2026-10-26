@@ -2,6 +2,7 @@ import type { Table } from 'dexie'
 import { useSyncExternalStore } from 'react'
 import type { AppDB } from '../db'
 import { api, ApiError } from './api'
+import { receiveGifts, type IncomingGift } from './gifts'
 import { setIncomingRolls, type IncomingRoll } from './rolls'
 
 /**
@@ -308,7 +309,7 @@ class Engine {
   }
 
   private async pull() {
-    const res = await api.get<{ rev: number; owned?: string[]; rolls?: IncomingRoll[] | null; docs: { collection: Collection; key: string; data: string | null; deleted: boolean; owner_id: number | null }[] }>(
+    const res = await api.get<{ rev: number; owned?: string[]; rolls?: IncomingRoll[] | null; gifts?: IncomingGift[]; docs: { collection: Collection; key: string; data: string | null; deleted: boolean; owner_id: number | null }[] }>(
       `/campaigns/${this.campaignId}/sync?since=${this.needFull ? 0 : this.cursor}`,
     )
     const put = new Map<Collection, object[]>()
@@ -352,6 +353,8 @@ class Engine {
       }
     }
     setIncomingRolls(res.rolls ?? [], this.campaignId) // numbers players typed on their phones (the DM's poll carries them)
+    // items other players passed to characters this account owns (the characters were applied above, so they are here to receive them)
+    if (res.gifts?.length) void receiveGifts(res.gifts, this.campaignId).catch(() => {})
     this.cursor = res.rev
     this.needFull = false
   }

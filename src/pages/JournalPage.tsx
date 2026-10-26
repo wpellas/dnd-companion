@@ -1,3 +1,4 @@
+import { Window } from '../components/Window'
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
@@ -118,7 +119,19 @@ function EntryForm({ initial, onClose }: { initial: JournalEntry; onClose: () =>
   }
 
   return (
-    <div className="card form">
+    <Window
+      large
+      title={initial.id === undefined ? t('journal.formNew') : t('journal.formEdit')}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" disabled={!e.title.trim() && !e.body.trim()} onClick={save}>
+            {t('common.save')}
+          </button>
+        </>
+      }
+    >
       <div className="field-grid">
         <label className="field span-2">
           <span>{t('journal.formTitle')}</span>
@@ -139,12 +152,6 @@ function EntryForm({ initial, onClose }: { initial: JournalEntry; onClose: () =>
         <span>{t('common.notes')}</span>
         <textarea rows={10} value={e.body} placeholder={t('journal.bodyPlaceholder')} onChange={(ev) => set('body', ev.target.value)} />
       </label>
-      <div className="form-actions">
-        <button className="primary" disabled={!e.title.trim() && !e.body.trim()} onClick={save}>
-          {t('common.save')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
-    </div>
+    </Window>
   )
 }

@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { ActionsEditor } from '../components/ActionsEditor'
 import { AwardPanel } from '../components/AwardPanel'
+import { InventoryDialog } from '../components/InventoryDialog'
+import { Window } from '../components/Window'
+import { useSettings } from '../lib/settings'
 import { InventoryEditor } from '../components/InventoryEditor'
 import { LevelUpPanel } from '../components/LevelUpPanel'
 import { RewardBanner } from '../components/RewardBanner'
@@ -23,7 +26,7 @@ import { className, CLASS_SAVES } from '../lib/classes'
 import { t, tAbility, tClass, tn } from '../lib/i18n'
 import { mergeClassTable, normalizeCharacter, proficiencyBonus } from '../lib/character'
 import { abilityMod, defaultAbilities, formatMod } from '../lib/dice'
-import { canLevelUp, levelForXp, totalGp, withGearAc, xpForNextLevel } from '../lib/inventory'
+import { canLevelUp, itemsGp, levelForXp, totalGp, withGearAc, XP_FOR_LEVEL, xpForNextLevel } from '../lib/inventory'
 import { hitDiceRemaining } from '../lib/rest'
 import { levelLabel } from '../lib/spells'
 import { getClass, getClassLevel } from '../lib/srdApi'
@@ -61,6 +64,7 @@ export function PartyPage() {
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const campaign = useLiveQuery(getCampaign, [])
+  const { trackTime } = useSettings() // off: no "Light and time" panel on this page
   const [editing, setEditing] = useState<Character | null>(null)
   const [resting, setResting] = useState<'short' | 'long'>()
   const [awarding, setAwarding] = useState(false)
@@ -105,7 +109,7 @@ export function PartyPage() {
 
       {isDm && <RewardBanner />}
       {isDm && !!characters?.length && <SpellFinder characters={characters.map(normalizeCharacter)} />}
-      {isDm && <TimePanel />}
+      {isDm && trackTime && <TimePanel />}
       {isDm && !!characters?.length && <ChecksPanel characters={characters.map(normalizeCharacter)} />}
       {awarding && characters && <AwardPanel characters={characters.map(normalizeCharacter)} onClose={() => setAwarding(false)} />}
 
@@ -113,7 +117,7 @@ export function PartyPage() {
       {levelling && <LevelUpPanel c={levelling} onClose={() => setLevelling(null)} />}
       {editing && <CharacterForm initial={editing} onClose={() => setEditing(null)} />}
 
-      <div className="card-grid">
+      <div className="card-grid still">
         {characters?.map(normalizeCharacter).map((c) => (
           <CharacterCard key={c.id} c={c} onEdit={() => setEditing(c)} onLevelUp={() => setLevelling(c)} />
         ))}
@@ -130,12 +134,14 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
   const sc = c.spellcasting
   const xp = c.xp ?? 0
   const nextXp = xpForNextLevel(c.level)
+  const xpFrom = XP_FOR_LEVEL[Math.min(20, Math.max(1, c.level)) - 1]
+  const xpPct = nextXp === undefined ? 100 : Math.round(100 * Math.min(1, Math.max(0, (xp - xpFrom) / (nextXp - xpFrom))))
   const slotRows = sc?.slots.map((s, i) => ({ ...s, level: i + 1 })).filter((s) => s.max > 0) ?? []
   const update = (patch: Partial<Character>) => db.characters.update(c.id!, patch)
   const isDm = useSession().campaign?.role === 'dm'
 
   return (
-    <div className={`card ${showItems ? 'wide' : ''}`}>
+    <div className="card">
       <div className="row gap-lg">
         <Portrait name={c.name} image={c.image} size={72} />
         <div>
@@ -160,8 +166,16 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
       </div>
 
       <div className="wealth">
-        <span title={t('wealth.gpTitle')}>💰 {Math.floor(totalGp(c.coins)).toLocaleString()} gp</span>
-        <span title={t('wealth.xpTitle')}>
+        <span className="gp" title={t('wealth.gpTitle')}>
+          💰 {Math.floor(totalGp(c.coins)).toLocaleString()} gp
+        </span>
+        {itemsGp(c) > 0 && (
+          <span className="gp items" title={t('inv.itemsWorthTitle')}>
+            🎒 {itemsGp(c).toLocaleString()} gp
+          </span>
+        )}
+        {/* the blue pill fills as the character gets closer to the next level */}
+        <span className="xp" style={{ '--p': `${xpPct}%` } as CSSProperties} title={t('wealth.xpTitle')}>
           XP {xp.toLocaleString()}
           {nextXp !== undefined ? ` / ${nextXp.toLocaleString()}` : ''}
         </span>
@@ -193,7 +207,7 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
 
       <CharacterResources c={c} />
 
-      {showItems && <InventoryEditor c={c} transferable onChange={(patch) => updateCharacter(c.id!, patch)} />}
+      {showItems && <InventoryDialog c={c} onChange={(patch) => updateCharacter(c.id!, patch)} onClose={() => setShowItems(false)} />}
 
       <div className="card-actions">
         {isDm && (
@@ -208,7 +222,7 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
         <button className={c.heroicInspiration ? 'selected' : ''} title={t('insp.title')} aria-pressed={!!c.heroicInspiration} onClick={() => updateCharacter(c.id!, { heroicInspiration: !c.heroicInspiration })}>
           ★ {t('insp.button')}
         </button>
-        <button onClick={() => setShowItems((v) => !v)}>{t('inv.items')}{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
+        <button onClick={() => setShowItems(true)}>{t('inv.items')}{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
         {c.classIndex && c.level < 20 && (
           <button className={canLevelUp(c) ? 'primary' : ''} title={t('lvl.buttonTitle')} onClick={onLevelUp}>
             {t('lvl.button')}
@@ -273,8 +287,21 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
   }
 
   return (
-    <div className="card form">
-      <Section title={initial.id === undefined ? t('form.new') : t('form.edit')}>
+    // unsaved typing lives in this window, so a click on the dimmed area does not close it; Escape and Cancel do
+    <Window
+      large
+      title={initial.id === undefined ? t('form.new') : t('form.edit')}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={save} disabled={!c.name.trim()}>
+            {t('form.saveCharacter')}
+          </button>
+        </>
+      }
+    >
+      <Section title={t('form.identity')}>
         <div className="field-grid identity">
           <label className="field span-2">
             <span>{t('common.name')}</span>
@@ -430,12 +457,6 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
         </div>
       </Section>
 
-      <div className="form-actions">
-        <button className="primary" onClick={save} disabled={!c.name.trim()}>
-          {t('form.saveCharacter')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
-    </div>
+    </Window>
   )
 }

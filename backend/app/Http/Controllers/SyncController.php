@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Campaign;
 use App\Models\Document;
+use App\Models\ItemGift;
 use App\Models\PlayerRoll;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,8 +34,13 @@ class SyncController extends Controller
             $query->where('collection', 'characters')->where('owner_id', $user->id);
         }
 
-        // A player's list of their own characters, so a character the DM hands to someone else disappears from their device.
-        $owned = $role === 'dm' ? null : Document::where(['campaign_id' => $campaign->id, 'collection' => 'characters', 'owner_id' => $user->id, 'deleted' => false])->pluck('key')->all();
+        // The characters this account owns. A player is sent the list, so a character the DM hands to someone else disappears from their device.
+        $mine = Document::where(['campaign_id' => $campaign->id, 'collection' => 'characters', 'owner_id' => $user->id, 'deleted' => false])->pluck('key')->all();
+        $owned = $role === 'dm' ? null : $mine;
+
+        // Items other players passed to those characters. Only the owning account collects them (the DM's device never touches a player's character).
+        $gifts = ItemGift::where('campaign_id', $campaign->id)->whereIn('to_character', $mine)->orderBy('id')->get()
+            ->map(fn ($g) => ['id' => $g->id, 'to' => $g->to_character, 'from' => $g->from_name, 'item' => $g->item])->values();
 
         // What players typed for the DM's screen (fresh ones only); players get nothing here.
         $rolls = $role !== 'dm' ? null : PlayerRoll::where('campaign_id', $campaign->id)
@@ -45,6 +51,7 @@ class SyncController extends Controller
             'rev' => $rev,
             'owned' => $owned,
             'rolls' => $rolls,
+            'gifts' => $gifts,
             'docs' => $query->get(['collection', 'key', 'data', 'deleted', 'owner_id'])->map(fn ($d) => [
                 'collection' => $d->collection, 'key' => $d->key, 'data' => $d->data, 'deleted' => $d->deleted, 'owner_id' => $d->owner_id,
             ])->values(),

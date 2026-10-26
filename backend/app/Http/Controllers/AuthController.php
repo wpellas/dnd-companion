@@ -161,6 +161,6 @@ class AuthController extends Controller
 
     private function present(User $user): array
     {
-        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'is_admin' => (bool) $user->is_admin];
+        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'is_admin' => (bool) $user->is_admin, 'can_dm' => $user->canDm()];
     }
 }

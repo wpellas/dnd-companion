@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\GiftController;
 use App\Http\Controllers\LiveController;
 use App\Http\Controllers\MusicController;
 use App\Http\Controllers\RollController;
@@ -52,6 +53,9 @@ Route::prefix('api')->group(function () {
         Route::get('campaigns/{campaign}/live', [LiveController::class, 'pull']);
         Route::post('campaigns/{campaign}/live', [LiveController::class, 'push']);
         Route::post('campaigns/{campaign}/live-link', [LiveController::class, 'newLink']);
+        Route::get('campaigns/{campaign}/party', [GiftController::class, 'party']);
+        Route::post('campaigns/{campaign}/gifts', [GiftController::class, 'store'])->middleware('throttle:30,1');
+        Route::delete('campaigns/{campaign}/gifts/{gift}', [GiftController::class, 'destroy']);
         Route::post('campaigns/{campaign}/rolls', [RollController::class, 'store']);
         Route::delete('campaigns/{campaign}/rolls/{roll}', [RollController::class, 'destroy']);
         Route::get('campaigns/{campaign}/sync', [SyncController::class, 'pull']);

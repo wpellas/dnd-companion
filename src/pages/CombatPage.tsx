@@ -51,8 +51,10 @@ import { t, tAbility, tCondition, tDamage } from '../lib/i18n'
 import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/settings'
 import { pictureFor, useAvatars } from '../lib/avatars'
 import { useSentRoll } from '../lib/rolls'
+import { askText } from '../lib/ask'
 import { updateCharacter } from '../lib/store'
-import { endCombatMusic, playScene, saveMusicSettings, startCombatMusic, useMusicSettings } from '../lib/music'
+import { combatPick, endCombatMusic, playPick, prepareCombatMusic, startCombatMusic, useMusic, useMusicSettings } from '../lib/music'
+import { MusicPicker } from '../components/MusicPicker'
 import { saveBonus } from '../lib/resolve'
 import { effectiveAc, exhaustionLevel } from '../lib/conditionRules'
 import { isEnemy } from '../lib/sides'
@@ -63,6 +65,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
   useSingleOpenMenu()
   const settings = useSettings()
   const music = useMusicSettings()
+  const library = useMusic()
   const combat = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const { monsters: srd } = useSrdMonsters()
@@ -83,8 +86,8 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
   const saveEncounter = async () => {
     const entries = entriesFromCombat(combatants)
     if (!entries.length) return alert(t('combat.addMonstersFirst'))
-    const name = prompt(t('combat.namePrompt'), t('combat.newEncounter'))?.trim()
-    if (name) await db.encounters.add({ name, notes: '', entries })
+    const name = await askText({ title: t('combat.namePrompt'), value: t('combat.newEncounter'), confirm: t('common.save') })
+    if (name) await db.encounters.add({ name, notes: '', entries, music: combatPick(music) }) // keeps the music prepared for this fight
   }
 
   const allSet = combatants.length > 0 && combatants.every((c) => c.initiative !== null)
@@ -132,25 +135,27 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
           {t('combat.saveEncounter')}
         </button>
         {goTo && <button onClick={() => goTo('encounters')}>{t('combat.savedEncounters')}</button>}
-        {music.scenes.length > 0 && (
-          <label className="row gap" title={t('music.combatTitle')}>
-            <span className="muted">{t('music.combat')}</span>
-            <select
-              value={music.combatSceneId ?? ''}
-              onChange={(e) => {
-                const id = e.target.value || undefined
-                void saveMusicSettings({ ...music, combatSceneId: id })
-                if (started && id) void playScene(id, music.scenes) // mid-fight: switch right now
-              }}
-            >
-              <option value="">{t('music.combatNone')}</option>
-              {music.scenes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        {(music.scenes.length > 0 || library.tracks.length > 0) && (
+          <>
+            {/* what starts with the fight: set it before pressing Start (it takes over from whatever plays, or starts if nothing does) */}
+            <label className="row gap" title={t('music.combatTitle')}>
+              <span className="muted">{t('music.combat')}</span>
+              <MusicPicker
+                value={combatPick(music)}
+                placeholder={t('music.combatNone')}
+                clearLabel={t('music.combatNone')}
+                onChange={(pick) => {
+                  void prepareCombatMusic(pick)
+                  if (started && pick) void playPick(pick, music.scenes) // mid-fight: switch right now
+                }}
+              />
+            </label>
+            {/* a quick change at any time, in or out of a fight */}
+            <label className="row gap" title={t('music.playNowTitle')}>
+              <span className="muted">{t('music.playNow')}</span>
+              <MusicPicker placeholder={t('music.playNowPlaceholder')} onChange={(pick) => pick && void playPick(pick, music.scenes)} />
+            </label>
+          </>
         )}
         <label className="check small" title={t('combat.groupTitle')}>
           <input type="checkbox" checked={settings.groupInitiative} onChange={(e) => updateSettings({ groupInitiative: e.target.checked })} />

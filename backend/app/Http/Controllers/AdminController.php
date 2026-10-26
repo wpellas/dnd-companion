@@ -44,15 +44,15 @@ class AdminController extends Controller
     public function users(): JsonResponse
     {
         return response()->json(User::withCount('campaigns')->orderBy('id')->get()->map(fn ($u) => [
-            'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'is_admin' => $u->is_admin,
+            'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'is_admin' => $u->is_admin, 'can_dm' => $u->can_dm,
             'disabled' => $u->disabled_at !== null, 'campaigns' => $u->campaigns_count, 'created_at' => $u->created_at,
         ])->values());
     }
 
-    /** Lock or unlock an account, or hand over / take away administrator rights. Not for yourself: that is how people lock everyone out. */
+    /** Lock or unlock an account, hand over / take away administrator rights, or allow / stop it from starting campaigns (a DM). Not for yourself: that is how people lock everyone out. */
     public function updateUser(Request $request, User $user): JsonResponse
     {
-        $data = $request->validate(['disabled' => ['sometimes', 'boolean'], 'is_admin' => ['sometimes', 'boolean']]);
+        $data = $request->validate(['disabled' => ['sometimes', 'boolean'], 'is_admin' => ['sometimes', 'boolean'], 'can_dm' => ['sometimes', 'boolean']]);
         if ($user->is($request->user()) && (($data['disabled'] ?? false) || (array_key_exists('is_admin', $data) && ! $data['is_admin']))) {
             throw ValidationException::withMessages(['user' => 'You cannot lock yourself out or take away your own administrator rights.']);
         }
@@ -63,6 +63,10 @@ class AdminController extends Controller
         if (array_key_exists('is_admin', $data)) {
             $user->is_admin = $data['is_admin'];
             $this->log($request, $data['is_admin'] ? 'user.admin_grant' : 'user.admin_revoke', $this->who($user));
+        }
+        if (array_key_exists('can_dm', $data)) {
+            $user->can_dm = $data['can_dm'];
+            $this->log($request, $data['can_dm'] ? 'user.dm_grant' : 'user.dm_revoke', $this->who($user));
         }
         $user->save();
 

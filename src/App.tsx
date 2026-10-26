@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import logo from './assets/images/logo-128.png'
+import { GiftNotices } from './components/GiftNotices'
 import { MusicBar } from './components/MusicBar'
 import { SpellLibraryStatus } from './components/SpellLibraryStatus'
 import { SpotlightBar } from './components/SpotlightBar'
@@ -65,6 +66,7 @@ export default function App() {
       </nav>
       <SpotlightBar />
       <MusicBar />
+      <GiftNotices />
       {tab === 'combat' && <CombatPage goTo={(to) => setTab(to)} />}
       {tab === 'party' && <PartyPage />}
       {tab === 'bestiary' && <BestiaryPage />}

@@ -81,6 +81,7 @@ export const bestiary = {
   // monster form
   'mform.new': ['New monster', 'Nytt monster'],
   'mform.edit': ['Edit monster', 'Redigera monster'],
+  'mform.basics': ['Basics', 'Grunder'],
   'mform.cr': ['Challenge rating', 'Utmaningsvärde'],
   'mform.xp': ['XP (default {n})', 'XP (standard {n})'],
   'bestiary.ally': ['Ally', 'Allierad'],
@@ -112,6 +113,12 @@ export const bestiary = {
   ],
   'enc.formNew': ['New encounter', 'Nytt möte'],
   'enc.formEdit': ['Edit encounter', 'Redigera möte'],
+  'enc.formDetails': ['Details', 'Detaljer'],
+  'enc.music': ['Combat music', 'Stridsmusik'],
+  'enc.musicHint': [
+    'A scene or a track. Loading the encounter into combat prepares it as the combat music: it starts when you press Start combat.',
+    'En scen eller ett spår. När mötet laddas in i striden förbereds det som stridsmusik: det startar när du trycker på Starta strid.',
+  ],
   'enc.namePlaceholder': ['Goblin ambush', 'Goblinbakhåll'],
   'enc.notesPlaceholder': ['Terrain, tactics, treasure…', 'Terräng, taktik, skatt…'],
   'enc.monsters': ['Monsters', 'Monster'],

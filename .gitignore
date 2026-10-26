@@ -32,6 +32,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# where `pnpm live` uploads to (host and folders of the live server)
+/deploy.config.json
+
 # Build / tooling output
 *.tsbuildinfo
 coverage

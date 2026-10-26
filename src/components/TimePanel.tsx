@@ -1,16 +1,14 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { t } from '../lib/i18n'
-import { advanceTime, burnLights, getCampaign, setCampaign } from '../lib/store'
-import { updateSettings, useSettings } from '../lib/settings'
+import { advanceTime, getCampaign, setCampaign } from '../lib/store'
 import { clockOf, clockText, LIGHT_PRESETS, lightLeftText, minutesUntil, newLight, periodOf } from '../lib/time'
 
 /**
- * Campaign time for the DM: the day and the clock, and the light sources that burn down while it runs. Optional: the Settings switch (also here) hides it
- * for tables that do not track time. Nothing here is sent to the players.
+ * Campaign time for the DM: the day and the clock, and the light sources that burn down while it runs. Optional: the Party page only shows it when
+ * "track time and light" is on in Settings. Nothing here is sent to the players.
  */
 export function TimePanel() {
-  const { trackTime } = useSettings()
   const camp = useLiveQuery(getCampaign, [])
   const [preset, setPreset] = useState(LIGHT_PRESETS[0].name)
   const [open, setOpen] = useState(false)
@@ -21,13 +19,8 @@ export function TimePanel() {
 
   return (
     <details className="card time-panel" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>{trackTime ? t('time.summary', { day: camp.day, time: clockText(minutes), period: t(`time.${periodOf(minutes)}`) }) : t('time.title')}</summary>
-      <label className="check small" title={t('time.trackTitle')}>
-        <input type="checkbox" checked={trackTime} onChange={(e) => updateSettings({ trackTime: e.target.checked })} />
-        <span>{t('time.track')}</span>
-      </label>
-      {trackTime && (
-        <div className="row gap wrap">
+      <summary>{t('time.summary', { day: camp.day, time: clockText(minutes), period: t(`time.${periodOf(minutes)}`) })}</summary>
+      <div className="row gap wrap">
           <button onClick={() => void advanceTime(10)}>+10 {t('time.min')}</button>
           <button onClick={() => void advanceTime(60)}>+1 {t('time.hour')}</button>
           <button onClick={() => void advanceTime(480)}>+8 {t('time.hours')}</button>
@@ -45,8 +38,7 @@ export function TimePanel() {
               }}
             />
           </label>
-        </div>
-      )}
+      </div>
 
       <h4>{t('time.lights')}</h4>
       {lights.length === 0 && <p className="muted">{t('time.noLights')}</p>}
@@ -82,12 +74,6 @@ export function TimePanel() {
         >
           {t('time.light')}
         </button>
-        {!trackTime && lights.some((l) => l.lit) && (
-          <>
-            <button className="burn" onClick={() => void burnLights(10)}>{t('time.burn10')}</button>
-            <button className="burn" onClick={() => void burnLights(60)}>{t('time.burn60')}</button>
-          </>
-        )}
       </div>
       <p className="muted note-line">{t('time.note')}</p>
     </details>

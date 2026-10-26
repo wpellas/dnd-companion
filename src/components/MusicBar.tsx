@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { t } from '../lib/i18n'
-import { loadLibrary, nextTrack, playScene, setVolume, stopMusic, togglePause, useMusic, useMusicSettings } from '../lib/music'
+import { loadLibrary, nextTrack, playPick, setVolume, stopMusic, togglePause, useMusic, useMusicSettings } from '../lib/music'
+import { MusicPicker } from './MusicPicker'
 
 /** Shown on every DM tab while music is loaded: pause, skip, volume and a switch to another scene (also in the middle of a fight). */
 export function MusicBar() {
@@ -29,18 +30,7 @@ export function MusicBar() {
         ⏹
       </button>
       <input type="range" min={0} max={1} step={0.05} value={music.volume} aria-label={t('music.volume')} title={t('music.volume')} onChange={(e) => setVolume(Number(e.target.value))} />
-      {scenes.length > 0 && (
-        <select value={music.sceneId ?? ''} aria-label={t('music.switch')} onChange={(e) => e.target.value && void playScene(e.target.value, scenes)}>
-          <option value="" disabled>
-            {t('music.switch')}
-          </option>
-          {scenes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <MusicPicker placeholder={t('music.switch')} onChange={(pick) => pick && void playPick(pick, scenes)} />
     </div>
   )
 }

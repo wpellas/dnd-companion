@@ -19,6 +19,8 @@ class CampaignController extends Controller
     /** Whoever makes a campaign is its DM. */
     public function store(Request $request): JsonResponse
     {
+        // players join campaigns with an invite; starting one (being its DM) is for accounts an administrator has allowed
+        abort_unless($request->user()->canDm(), 403, 'Only accounts an administrator has allowed can start a campaign.');
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
         $campaign = Campaign::create($data);
         $campaign->members()->attach($request->user()->id, ['role' => 'dm']);

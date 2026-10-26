@@ -1,9 +1,9 @@
-import { ABILITIES, type Character, type Combatant, type CombatState, type Condition, type PublicEvent } from '../types'
+import { ABILITIES, type Character, type Combatant, type CombatState, type Condition, type Item, type PublicEvent } from '../types'
 import { hpStatus, type HpStatus } from './combat'
 import { isParty } from './sides'
 import { normalizeCharacter, proficiencyBonus, castingSnapshot, resolveCharacterActions } from './character'
 import { abilityMod, formatMod } from './dice'
-import { carriedWeight, carryingCapacity, xpForNextLevel } from './inventory'
+import { canLevelUp, carriedWeight, carryingCapacity, itemsGp, levelForXp, totalGp, XP_FOR_LEVEL, xpForNextLevel } from './inventory'
 import { t, tAbility, tClass, tDamage } from './i18n'
 import { hitDiceRemaining } from './rest'
 
@@ -113,9 +113,17 @@ export interface PublicSheet {
   /** Left out entirely when the DM keeps the inventory private */
   inventory?: {
     coins: Record<string, number>
+    /** What the coins are worth in whole gold pieces, and what the items are worth (a separate figure) */
+    coinGp?: number
+    itemsGp?: number
     xp: number
+    /** XP where the current level starts, XP where the next begins, and that next level (for the progress bar) */
+    xpFrom?: number
     nextXp?: number
-    items: { name: string; qty: number; equipped: boolean; attuned: boolean; notes?: string }[]
+    nextLevel?: number
+    /** Set when the XP already says the character can level up */
+    levelReady?: number
+    items: { name: string; kind?: Item['kind']; qty: number; equipped: boolean; attuned: boolean; notes?: string; value?: number }[]
     weight: number
     capacity: number
   }
@@ -184,9 +192,14 @@ export function toPublicSheet(c: Character, fighter: Combatant | undefined, opts
     inventory: opts.inventory
       ? {
           coins: { ...ch.coins },
+          coinGp: Math.floor(totalGp(ch.coins)),
+          itemsGp: itemsGp(ch),
           xp: ch.xp ?? 0,
+          xpFrom: XP_FOR_LEVEL[Math.min(20, Math.max(1, ch.level)) - 1],
           nextXp: next,
-          items: (ch.items ?? []).filter((i) => i.qty > 0).map((i) => ({ name: i.name, qty: i.qty, equipped: !!i.equipped, attuned: !!i.attuned, notes: i.notes })),
+          nextLevel: next === undefined ? undefined : ch.level + 1,
+          levelReady: canLevelUp(ch) ? levelForXp(ch.xp ?? 0) : undefined,
+          items: (ch.items ?? []).filter((i) => i.qty > 0).map((i) => ({ name: i.name, kind: i.kind, qty: i.qty, equipped: !!i.equipped, attuned: !!i.attuned, notes: i.notes, value: i.value })),
           weight: carriedWeight(ch),
           capacity: carryingCapacity(ch),
         }

@@ -1,3 +1,4 @@
+import { Window } from './Window'
 import { useState } from 'react'
 import { usePromise } from '../hooks'
 import { proficiencyBonus } from '../lib/character'
@@ -25,8 +26,8 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
   const [feat, setFeat] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (loaded.error) return <Frame c={c} onClose={onClose} closeButton><p className="warn">{t('lvl.failed')}</p></Frame>
-  if (!loaded.data) return <Frame c={c} onClose={onClose} closeButton><p className="muted">{t('lvl.loading')}</p></Frame>
+  if (loaded.error) return <Frame c={c} onClose={onClose}><p className="warn">{t('lvl.failed')}</p></Frame>
+  if (!loaded.data) return <Frame c={c} onClose={onClose}><p className="muted">{t('lvl.loading')}</p></Frame>
   const { cls, row } = loaded.data
 
   const features = (row.features ?? []).map((f) => f.name)
@@ -60,7 +61,18 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
   }
 
   return (
-    <Frame c={c} onClose={onClose}>
+    <Frame
+      c={c}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" disabled={!ready || busy} onClick={() => void apply()}>
+            {t('lvl.apply')}
+          </button>
+        </>
+      }
+    >
       <p>
         <strong>{t('lvl.from', { from: c.level, to: next })}</strong>
         {pb !== proficiencyBonus(c.level) && ` · ${t('lvl.pbRises', { n: `+${pb}` })}`}
@@ -132,26 +144,14 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
       )}
 
       <p className="muted note-line">{t('lvl.after')}</p>
-      <div className="form-actions">
-        <button className="primary" disabled={!ready || busy} onClick={() => void apply()}>
-          {t('lvl.apply')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
     </Frame>
   )
 }
 
-function Frame({ c, onClose, closeButton, children }: { c: Character; onClose: () => void; closeButton?: boolean; children: React.ReactNode }) {
+function Frame({ c, onClose, actions, children }: { c: Character; onClose: () => void; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="card form levelup" role="dialog" aria-label={t('lvl.title', { name: c.name })}>
-      <h3>{t('lvl.title', { name: c.name })}</h3>
+    <Window large title={t('lvl.title', { name: c.name })} onClose={onClose} actions={actions ?? <button onClick={onClose}>{t('common.cancel')}</button>}>
       {children}
-      {closeButton && (
-        <div className="form-actions">
-          <button onClick={onClose}>{t('common.cancel')}</button>
-        </div>
-      )}
-    </div>
+    </Window>
   )
 }

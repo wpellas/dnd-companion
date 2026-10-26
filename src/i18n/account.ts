@@ -28,6 +28,7 @@ export const account = {
   'camp.dm': ['DM', 'Spelledare'],
   'camp.player': ['Player', 'Spelare'],
   'camp.open': ['Open', 'Öppna'],
+  'camp.playerOnly': ['This account is a player account: join a campaign with an invite code. Ask an administrator if you want to run campaigns yourself.', 'Det här är ett spelarkonto: gå med i en kampanj med en inbjudningskod. Fråga en administratör om du vill leda egna kampanjer.'],
   'camp.create': ['Create a campaign', 'Skapa en kampanj'],
   'camp.namePlaceholder': ['Campaign name', 'Kampanjens namn'],
   'camp.createGo': ['Create', 'Skapa'],

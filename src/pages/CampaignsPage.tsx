@@ -39,13 +39,17 @@ export function CampaignsPage() {
           </div>
         ))}
         {error && <p className="warn">{error}</p>}
-        <form className="campaign-form" onSubmit={run(() => createCampaign(name.trim()))}>
-          <label className="field">
-            <span>{t('camp.create')}</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('camp.namePlaceholder')} maxLength={80} required />
-          </label>
-          <button>{t('camp.createGo')}</button>
-        </form>
+        {user?.can_dm ? (
+          <form className="campaign-form" onSubmit={run(() => createCampaign(name.trim()))}>
+            <label className="field">
+              <span>{t('camp.create')}</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('camp.namePlaceholder')} maxLength={80} required />
+            </label>
+            <button>{t('camp.createGo')}</button>
+          </form>
+        ) : (
+          <p className="muted small">{t('camp.playerOnly')}</p>
+        )}
         <form className="campaign-form" onSubmit={run(() => joinCampaign(code.trim()))}>
           <label className="field">
             <span>{t('camp.join')}</span>

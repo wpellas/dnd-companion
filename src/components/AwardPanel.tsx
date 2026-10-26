@@ -1,3 +1,4 @@
+import { Window } from './Window'
 import { useState } from 'react'
 import { t } from '../lib/i18n'
 import { splitEvenly } from '../lib/inventory'
@@ -26,8 +27,15 @@ export function AwardPanel({ characters, onClose }: { characters: Character[]; o
 
   if (done) {
     return (
-      <div className="card award-panel">
-        <h3>{t('award.done')}</h3>
+      <Window
+        title={t('award.done')}
+        onClose={onClose}
+        actions={
+          <button className="primary" onClick={onClose}>
+            {t('common.done')}
+          </button>
+        }
+      >
         <ul>
           {done.map((l) => (
             <li key={l.id}>
@@ -37,16 +45,27 @@ export function AwardPanel({ characters, onClose }: { characters: Character[]; o
           ))}
         </ul>
         <p className="muted">{t('award.journalNote')}</p>
-        <button className="primary" onClick={onClose}>
-          {t('common.done')}
-        </button>
-      </div>
+      </Window>
     )
   }
 
   return (
-    <div className="card award-panel">
-      <h3>{t('award.title')}</h3>
+    <Window
+      title={t('award.title')}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button
+            className="primary"
+            disabled={ids.length === 0 || (xpTotal === 0 && gpTotal === 0)}
+            onClick={async () => setDone(await awardRewards({ ids, xp: xpTotal, gp: gpTotal, note }))}
+          >
+            {t('award.go')}
+          </button>
+        </>
+      }
+    >
       <p className="muted">{t('award.note')}</p>
       <div className="field-grid">
         <label className="field">
@@ -55,7 +74,17 @@ export function AwardPanel({ characters, onClose }: { characters: Character[]; o
         </label>
         <label className="field">
           <span>{t('award.gold')}</span>
-          <input type="number" min={0} value={gp} onChange={(e) => setGp(e.target.value)} aria-label={t('award.goldAria')} />
+          <input
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={gp}
+            // whole gold only: no decimal point or comma
+            onKeyDown={(e) => ['.', ',', 'e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+            onChange={(e) => setGp(e.target.value.split(/[.,]/)[0].replace(/\D/g, ''))}
+            aria-label={t('award.goldAria')}
+          />
         </label>
         <label className="field span-2">
           <span>{t('award.what')}</span>
@@ -76,16 +105,6 @@ export function AwardPanel({ characters, onClose }: { characters: Character[]; o
           )
         })}
       </div>
-      <div className="row gap">
-        <button
-          className="primary"
-          disabled={ids.length === 0 || (xpTotal === 0 && gpTotal === 0)}
-          onClick={async () => setDone(await awardRewards({ ids, xp: xpTotal, gp: gpTotal, note }))}
-        >
-          {t('award.go')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
-    </div>
+    </Window>
   )
 }

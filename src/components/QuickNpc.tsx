@@ -1,3 +1,4 @@
+import { Window } from './Window'
 import { useState } from 'react'
 import { addMonsters, mutateCombat, sortCombatants } from '../lib/combat'
 import { t } from '../lib/i18n'
@@ -23,8 +24,7 @@ export function QuickNpc({ onClose }: { onClose: () => void }) {
   const template = all.find((m) => (m.srdIndex ?? `custom-${m.id}`) === block)
 
   return (
-    <div className="card npc-card">
-      <h3>{t('npc.title')}</h3>
+    <Window bodyClass="npc-card" title={t('npc.title')} onClose={onClose} actions={<button onClick={onClose}>{t('npc.close')}</button>}>
       {NPC_FIELDS.map((f) => (
         <div key={f} className="npc-field">
           <label className="field grow">
@@ -48,7 +48,6 @@ export function QuickNpc({ onClose }: { onClose: () => void }) {
           {t('npc.save')}
         </button>
         {saved && <span className="adv-text">{t('npc.saved')}</span>}
-        <button onClick={onClose}>{t('npc.close')}</button>
       </div>
       <div className="row gap wrap">
         <Combobox className="target-select" options={all.map((m) => ({ value: m.srdIndex ?? `custom-${m.id}`, label: m.name, hint: `CR ${m.cr}` }))} value={block} onChange={setBlock} placeholder={t('npc.fight')} />
@@ -67,6 +66,6 @@ export function QuickNpc({ onClose }: { onClose: () => void }) {
         </button>
         <span className="muted small">{t('npc.fightNote')}</span>
       </div>
-    </div>
+    </Window>
   )
 }

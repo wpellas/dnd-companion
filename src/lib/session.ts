@@ -10,6 +10,8 @@ export interface User {
   name: string
   email: string
   is_admin: boolean
+  /** May start campaigns (an administrator, or an account an administrator allowed); every account can join as a player */
+  can_dm: boolean
 }
 export interface CampaignRef {
   id: number

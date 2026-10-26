@@ -1,3 +1,6 @@
+import { Window } from '../components/Window'
+import { MusicPicker } from '../components/MusicPicker'
+import { prepareCombatMusic } from '../lib/music'
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
@@ -33,6 +36,8 @@ export function EncountersPage({ goTo }: { goTo: (tab: 'combat') => void }) {
   const levels = (characters ?? []).map((c) => c.level)
 
   const load = async (enc: Encounter) => {
+    // the encounter's music becomes the prepared combat music (it starts with Start combat); without one, what was chosen stays
+    if (enc.music) void prepareCombatMusic(enc.music)
     const missing = await loadEncounter(enc, srd, custom)
     if (missing.length) setMessage(t('enc.missing', { names: missing.join(', ') }))
     else goTo('combat')
@@ -116,8 +121,20 @@ function EncounterForm({ initial, srd, custom, levels, onClose }: { initial: Enc
   }
 
   return (
-    <div className="card form">
-      <Section title={initial.id === undefined ? t('enc.formNew') : t('enc.formEdit')}>
+    <Window
+      large
+      title={initial.id === undefined ? t('enc.formNew') : t('enc.formEdit')}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={save} disabled={!enc.name.trim()}>
+            {t('enc.save')}
+          </button>
+        </>
+      }
+    >
+      <Section title={t('enc.formDetails')}>
         <div className="field-grid">
           <label className="field span-2">
             <span>{t('common.name')}</span>
@@ -126,6 +143,10 @@ function EncounterForm({ initial, srd, custom, levels, onClose }: { initial: Enc
           <label className="field span-2">
             <span>{t('common.notes')}</span>
             <input value={enc.notes} onChange={(e) => setEnc({ ...enc, notes: e.target.value })} placeholder={t('enc.notesPlaceholder')} />
+          </label>
+          <label className="field span-2" title={t('enc.musicHint')}>
+            <span>{t('enc.music')}</span>
+            <MusicPicker value={enc.music} placeholder={t('music.combatNone')} clearLabel={t('music.combatNone')} onChange={(music) => setEnc({ ...enc, music })} />
           </label>
         </div>
       </Section>
@@ -152,12 +173,6 @@ function EncounterForm({ initial, srd, custom, levels, onClose }: { initial: Enc
           <Rating xp={encounterXp(enc.entries, srd, custom)} levels={levels} />
         </div>
       </Section>
-      <div className="form-actions">
-        <button className="primary" onClick={save} disabled={!enc.name.trim()}>
-          {t('enc.save')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
-    </div>
+    </Window>
   )
 }

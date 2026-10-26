@@ -1,4 +1,4 @@
-import { advance, burn } from './time'
+import { advance } from './time'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
 import { db } from '../db'
@@ -23,11 +23,6 @@ export interface Campaign {
 const DEFAULT_CAMPAIGN: Campaign = { day: 1, shortRestsSinceLong: 0 }
 
 /** Move the clock on (the day changes at midnight) and let every lit light burn down. Pure: see lib/time.ts. */
-/** Let the lit lights burn without moving the clock (for tables that do not track time). */
-export async function burnLights(minutes: number) {
-  await setCampaign(burn(await getCampaign(), minutes))
-}
-
 export async function advanceTime(minutes: number) {
   const camp = await getCampaign()
   await setCampaign(advance(camp, minutes))

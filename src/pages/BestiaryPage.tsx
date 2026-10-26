@@ -1,3 +1,4 @@
+import { Window } from '../components/Window'
 import { useMemo, useState } from 'react'
 import { db } from '../db'
 import { newId } from '../lib/id'
@@ -329,8 +330,20 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
   }
 
   return (
-    <div className="card form">
-      <Section title={initial.id === undefined && initial.source === 'custom' ? t('mform.new') : t('mform.edit')}>
+    <Window
+      large
+      title={initial.id === undefined && initial.source === 'custom' ? t('mform.new') : t('mform.edit')}
+      onClose={onClose}
+      actions={
+        <>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={save} disabled={!m.name.trim()}>
+            {t('mform.save')}
+          </button>
+        </>
+      }
+    >
+      <Section title={t('mform.basics')}>
         <div className="field-grid">
           <label className="field span-2">
             <span>{t('common.name')}</span>
@@ -385,12 +398,6 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
 
       <ActionsEditor actions={m.actions} onChange={(actions) => set('actions', actions)} />
 
-      <div className="form-actions">
-        <button className="primary" onClick={save} disabled={!m.name.trim()}>
-          {t('mform.save')}
-        </button>
-        <button onClick={onClose}>{t('common.cancel')}</button>
-      </div>
-    </div>
+    </Window>
   )
 }

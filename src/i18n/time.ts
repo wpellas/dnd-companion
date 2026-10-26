@@ -3,10 +3,8 @@ import type { Msg } from './types'
 /** The time and light panel on the Party page, and its setting. */
 export const time = {
   'time.title': ['Light and time', 'Ljus och tid'],
-  'time.track': ['Track the time of day in this campaign', 'Håll reda på tiden på dygnet i den här kampanjen'],
-  'time.trackTitle': ['Off: the clock is hidden. Light sources always stay, and burn down when you let time pass on them. The day counter for rests keeps working.', 'Av: klockan döljs. Ljuskällorna finns alltid kvar och brinner ner när du låter tiden gå för dem. Dagräknaren för vilor fortsätter fungera.'],
-  'time.burn10': ['Let 10 min pass', 'Låt 10 min gå'],
-  'time.burn60': ['Let 1 hour pass', 'Låt 1 timme gå'],
+  'time.track': ['Track time and light in this campaign', 'Håll reda på tid och ljus i den här kampanjen'],
+  'time.trackTitle': ['Off: the "Light and time" panel is not shown on the Party page. The day counter for rests keeps working.', 'Av: panelen "Ljus och tid" visas inte på Sällskap-sidan. Dagräknaren för vilor fortsätter fungera.'],
   'time.summary': ['Day {day} · {time} ({period})', 'Dag {day} · {time} ({period})'],
   'time.dawn': ['dawn', 'gryning'],
   'time.day': ['day', 'dag'],

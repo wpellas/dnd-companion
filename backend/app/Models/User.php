@@ -23,6 +23,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Campaign::class)->withPivot('role')->withTimestamps();
     }
 
+    /** May start campaigns (be a DM): an administrator, or an account an administrator has allowed. Everyone can be a player. */
+    public function canDm(): bool
+    {
+        return $this->is_admin || $this->can_dm;
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -34,6 +40,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'can_dm' => 'boolean',
         ];
     }
 }

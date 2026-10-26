@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, type ReactNode } from 'react'
 export function Window({
   title,
   large,
+  tall,
   headerExtra,
   actions,
   onClose,
@@ -16,6 +17,8 @@ export function Window({
 }: {
   title: string
   large?: boolean
+  /** A fixed tall size instead of fitting the content: for forms with big dropdowns, so a list opens in room and the window does not jump as content is added */
+  tall?: boolean
   /** Shown on the right of the heading (a view / edit switch) */
   headerExtra?: ReactNode
   actions: ReactNode
@@ -33,7 +36,7 @@ export function Window({
   return (
     <dialog
       ref={dialog}
-      className={`item-edit ${large ? 'window-lg' : ''}`}
+      className={`item-edit ${large ? 'window-lg' : ''} ${tall ? 'window-tall' : ''}`}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault()

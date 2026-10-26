@@ -87,7 +87,7 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
         </div>
       </div>
 
-      <section className="lu-card">
+      <section className="win-card">
         <h4>
           <span aria-hidden="true">✨</span> {t('lvl.features')}
         </h4>
@@ -102,22 +102,22 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
         )}
       </section>
 
-      <section className="lu-card">
+      <section className="win-card">
         <h4>
           <span aria-hidden="true">❤</span> {t('lvl.hp')}
         </h4>
-        <div className="lu-choices">
-          <label className="lu-choice">
+        <div className="choice-grid">
+          <label className="choice-card">
             <input type="radio" name={`hp-${c.id}`} checked={!useRoll} onChange={() => setUseRoll(false)} />
             <strong>{t('lvl.hpAverage', { n: averageRoll(cls.hit_die) })}</strong>
           </label>
-          <label className="lu-choice">
+          <label className="choice-card">
             <input type="radio" name={`hp-${c.id}`} checked={useRoll} onChange={() => setUseRoll(true)} />
             <strong>{t('lvl.hpRoll', { die: cls.hit_die })}</strong>
           </label>
         </div>
         {useRoll && (
-          <div className="lu-pickers">
+          <div className="win-pickers">
             <input className="narrow" type="number" min={1} max={cls.hit_die} value={rolled} placeholder={t('lvl.hpRollHint', { die: cls.hit_die })} aria-label={t('lvl.hpRoll', { die: cls.hit_die })} onChange={(e) => setRolled(e.target.value)} />
             {settings.allowPlayerAppRolls && <button onClick={() => setRolled(String(rollDie(cls.hit_die)))}>🎲</button>}
           </div>
@@ -131,20 +131,20 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
       </section>
 
       {needsAsi && (
-        <section className="lu-card">
+        <section className="win-card">
           <h4>
             <span aria-hidden="true">📈</span> {t('lvl.asi')}
           </h4>
-          <div className="lu-choices">
+          <div className="choice-grid">
             {(['two', 'split', 'feat'] as const).map((k) => (
-              <label key={k} className="lu-choice">
+              <label key={k} className="choice-card">
                 <input type="radio" name={`asi-${c.id}`} checked={kind === k} onChange={() => setKind(k)} />
                 <strong>{t(k === 'two' ? 'lvl.asiTwo' : k === 'split' ? 'lvl.asiSplit' : 'lvl.asiFeat')}</strong>
               </label>
             ))}
           </div>
           {kind !== 'feat' && (
-            <div className="lu-pickers">
+            <div className="win-pickers">
               {abilities.slice(0, kind === 'two' ? 1 : 2).map((a, i) => (
                 <label key={i} className="inline-field">
                   {t('lvl.ability')}

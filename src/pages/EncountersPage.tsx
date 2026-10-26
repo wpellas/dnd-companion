@@ -124,6 +124,7 @@ function EncounterForm({ initial, srd, custom, levels, onClose }: { initial: Enc
   return (
     <Window
       large
+      tall
       title={initial.id === undefined ? t('enc.formNew') : t('enc.formEdit')}
       onClose={onClose}
       actions={

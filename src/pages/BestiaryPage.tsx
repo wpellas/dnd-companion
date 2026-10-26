@@ -333,6 +333,7 @@ function MonsterForm({ initial, onClose }: { initial: MonsterTemplate; onClose: 
   return (
     <Window
       large
+      tall
       title={initial.id === undefined && initial.source === 'custom' ? t('mform.new') : t('mform.edit')}
       onClose={onClose}
       actions={

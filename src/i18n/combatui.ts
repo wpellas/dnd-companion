@@ -120,6 +120,8 @@ export const combatui = {
   'row.tempBtn': ['Temp', 'Temp'],
   'row.tempTitle': ['Set temp HP (kept if higher than current)', 'Sätt temp-HP (behålls om högre än nuvarande)'],
   'row.conditions': ['Conditions', 'Tillstånd'],
+  'row.conditionsOf': ['Conditions: {name}', 'Tillstånd: {name}'],
+  'row.status': ['Status', 'Status'],
   'row.concentratingSummary': [' · ◎ Concentrating', ' · ◎ Koncentrerar sig'],
   'row.concentratingTitle': ['Concentrating', 'Koncentrerar sig'],
   'row.exhaustionTitle': [

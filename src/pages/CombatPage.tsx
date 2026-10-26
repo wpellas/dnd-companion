@@ -5,7 +5,8 @@ import { InitiativeInput } from '../components/InitiativeInput'
 import { Portrait } from '../components/Portrait'
 import { Rich } from '../components/Rich'
 import { RewardBanner } from '../components/RewardBanner'
-import { EffectsEditor } from '../components/EffectsEditor'
+import { EffectsMenu } from '../components/EffectsEditor'
+import { Window } from '../components/Window'
 import { WildShape } from '../components/WildShape'
 import { HazardPanel } from '../components/HazardPanel'
 import { SpellFinder } from '../components/SpellFinder'
@@ -298,6 +299,7 @@ function useSingleOpenMenu() {
 
 function CombatantRow({ c, all, active, started, image, settings, character }: { c: Combatant; all: Combatant[]; active: boolean; started: boolean; image?: Blob; settings: Settings; character?: Character }) {
   const [amount, setAmount] = useState('')
+  const [condOpen, setCondOpen] = useState(false)
   const update = (fn: (c: Combatant) => void, resort = false, label?: string) =>
     mutateCombat((s) => {
       const target = s.combatants.find((x) => x.id === c.id)
@@ -483,22 +485,17 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
       </div>
 
       <div className="row-menus">
-      <details className="conditions effects">
-        <summary>{c.effects?.length ? t('eff.summary', { n: c.effects.length }) : t('eff.summaryNone')}</summary>
-        <div className="popover">
-          <EffectsEditor
-            c={c}
-            all={all}
-            onAdd={(e) => withState((s, who) => addEffect(s, who, e), t('lbl.effectAdd', { who: c.name, effect: e.name }))}
-            onRemove={(id) =>
-              withState((s, who) => {
-                const e = who.effects?.find((x) => x.id === id)
-                if (e) endEffect(s, who, e, 'removed')
-              }, t('lbl.effectEnd', { who: c.name, effect: c.effects?.find((x) => x.id === id)?.name ?? '' }))
-            }
-          />
-        </div>
-      </details>
+      <EffectsMenu
+        c={c}
+        all={all}
+        onAdd={(e) => withState((s, who) => addEffect(s, who, e), t('lbl.effectAdd', { who: c.name, effect: e.name }))}
+        onRemove={(id) =>
+          withState((s, who) => {
+            const e = who.effects?.find((x) => x.id === id)
+            if (e) endEffect(s, who, e, 'removed')
+          }, t('lbl.effectEnd', { who: c.name, effect: c.effects?.find((x) => x.id === id)?.name ?? '' }))
+        }
+      />
 
       {character?.classIndex === 'druid' && (
         <WildShape
@@ -509,68 +506,94 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
         />
       )}
 
-      <details className="conditions">
-        <summary title={[...c.conditions.map(tCondition), c.concentrating ? t('row.concentratingTitle') : ''].filter(Boolean).join(', ')}>
-          {c.conditions.length
-            ? c.conditions.map((x, i) => (
-                <span key={x}>
-                  {i > 0 && ', '}
-                  <span className="cond" data-tone={conditionTone(x)}>{x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x)}</span>
-                </span>
-              ))
-            : t('row.conditions')}
-          {c.concentrating && t('row.concentratingSummary')}
-          {c.inspired && ' ★'}
-        </summary>
-        <div className="popover">
-          <label>
-            <input type="checkbox" checked={c.concentrating} onChange={(e) => withState((s, who) => setConcentrating(s, who, e.target.checked), t('lbl.concentration', { name: c.name }))} />
-            {t('row.concentratingTitle')}
-          </label>
-          {c.kind === 'monster' && (
-            <>
-              <label title={t('row.allyTitle')}>
-                <input type="checkbox" checked={!!c.ally} onChange={(e) => withState((s, who) => setAlly(s, who, e.target.checked), t('lbl.ally', { name: c.name }))} />
-                {t('row.ally')}
+      <button
+        className="row-menu-btn"
+        title={[...c.conditions.map(tCondition), c.concentrating ? t('row.concentratingTitle') : ''].filter(Boolean).join(', ')}
+        onClick={() => setCondOpen(true)}
+      >
+        {c.conditions.length
+          ? c.conditions.map((x, i) => (
+              <span key={x}>
+                {i > 0 && ', '}
+                <span className="cond" data-tone={conditionTone(x)}>{x === 'Exhaustion' ? `${tCondition('Exhaustion')} ${exhaustionLevel(c)}` : tCondition(x)}</span>
+              </span>
+            ))
+          : t('row.conditions')}
+        {c.concentrating && t('row.concentratingSummary')}
+        {c.inspired && ' ★'}
+      </button>
+      {condOpen && (
+        <Window
+          title={t('row.conditionsOf', { name: c.name })}
+          onClose={() => setCondOpen(false)}
+          actions={
+            <button className="primary" onClick={() => setCondOpen(false)}>
+              {t('common.done')}
+            </button>
+          }
+        >
+          <section className="win-card">
+            <h4>
+              <span aria-hidden="true">🎯</span> {t('row.status')}
+            </h4>
+            <div className="choice-grid">
+              <label className="choice-card">
+                <input type="checkbox" checked={c.concentrating} onChange={(e) => withState((s, who) => setConcentrating(s, who, e.target.checked), t('lbl.concentration', { name: c.name }))} />
+                <strong>{t('row.concentratingTitle')}</strong>
               </label>
-              {c.ally && (
-                <label>
-                  {t('row.controlledBy')}{' '}
+              {c.kind === 'monster' && (
+                <label className="choice-card" title={t('row.allyTitle')}>
+                  <input type="checkbox" checked={!!c.ally} onChange={(e) => withState((s, who) => setAlly(s, who, e.target.checked), t('lbl.ally', { name: c.name }))} />
+                  <strong>{t('row.ally')}</strong>
+                </label>
+              )}
+              {c.kind === 'pc' && c.characterId !== undefined && (
+                <label className="choice-card" title={t('insp.title')}>
+                  <input
+                    type="checkbox"
+                    checked={!!c.inspired}
+                    onChange={(e) => {
+                      update((who) => (who.inspired = e.target.checked || undefined), false, t('lbl.inspiration', { name: c.name }))
+                      void updateCharacter(c.characterId!, { heroicInspiration: e.target.checked })
+                    }}
+                  />
+                  <strong>★ {t('insp.button')}</strong>
+                </label>
+              )}
+            </div>
+            {c.kind === 'monster' && c.ally && (
+              <div className="win-pickers">
+                <label className="inline-field">
+                  {t('row.controlledBy')}
                   <select value={c.controlledBy ?? ''} onChange={(e) => withState((s, who) => setController(s, who, e.target.value || undefined), t('lbl.ally', { name: c.name }))}>
                     <option value="">{t('row.ownInitiative')}</option>
                     {all.filter((x) => x.kind !== 'lair' && x.id !== c.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                   </select>
                 </label>
-              )}
-            </>
-          )}
-          {c.kind === 'pc' && c.characterId !== undefined && (
-            <label title={t('insp.title')}>
-              <input
-                type="checkbox"
-                checked={!!c.inspired}
-                onChange={(e) => {
-                  update((who) => (who.inspired = e.target.checked || undefined), false, t('lbl.inspiration', { name: c.name }))
-                  void updateCharacter(c.characterId!, { heroicInspiration: e.target.checked })
-                }}
-              />
-              ★ {t('insp.button')}
-            </label>
-          )}
-          <div className="exhaustion" title={t('row.exhaustionTitle')}>
-            <span>{tCondition('Exhaustion')}</span>
-            <button aria-label={t('row.lowerExhaustion')} disabled={exhaustionLevel(c) === 0} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) - 1), t('lbl.exhaustion', { name: c.name }))}>−</button>
-            <strong>{exhaustionLevel(c)}</strong>
-            <button aria-label={t('row.raiseExhaustion')} disabled={exhaustionLevel(c) >= 6} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) + 1), t('lbl.exhaustion', { name: c.name }))}>+</button>
-          </div>
-          {CONDITIONS.filter((cond) => cond !== 'Exhaustion').map((cond) => (
-            <label key={cond}>
-              <input type="checkbox" checked={c.conditions.includes(cond)} onChange={() => toggleCondition(cond)} />
-              {tCondition(cond)}
-            </label>
-          ))}
-        </div>
-      </details>
+              </div>
+            )}
+            <div className="exhaustion" title={t('row.exhaustionTitle')}>
+              <span>{tCondition('Exhaustion')}</span>
+              <button aria-label={t('row.lowerExhaustion')} disabled={exhaustionLevel(c) === 0} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) - 1), t('lbl.exhaustion', { name: c.name }))}>−</button>
+              <strong>{exhaustionLevel(c)}</strong>
+              <button aria-label={t('row.raiseExhaustion')} disabled={exhaustionLevel(c) >= 6} onClick={() => withState((s, who) => setExhaustion(s, who, exhaustionLevel(who) + 1), t('lbl.exhaustion', { name: c.name }))}>+</button>
+            </div>
+          </section>
+          <section className="win-card">
+            <h4>
+              <span aria-hidden="true">⚠</span> {t('row.conditions')}
+            </h4>
+            <div className="choice-grid compact">
+              {CONDITIONS.filter((cond) => cond !== 'Exhaustion').map((cond) => (
+                <label key={cond} className="choice-card" data-tone={conditionTone(cond)}>
+                  <input type="checkbox" checked={c.conditions.includes(cond)} onChange={() => toggleCondition(cond)} />
+                  <strong>{tCondition(cond)}</strong>
+                </label>
+              ))}
+            </div>
+          </section>
+        </Window>
+      )}
 
       </div>
 

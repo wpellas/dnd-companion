@@ -291,6 +291,7 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
     // unsaved typing lives in this window, so a click on the dimmed area does not close it; Escape and Cancel do
     <Window
       large
+      tall
       title={initial.id === undefined ? t('form.new') : t('form.edit')}
       onClose={onClose}
       actions={

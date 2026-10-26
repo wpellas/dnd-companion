@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { useState } from 'react'
 import { NumberField } from './NumberField'
 import { CheckField, Section } from './Section'
@@ -76,7 +77,7 @@ export function SpellcastingEditor({ c, setC }: Props) {
           {!sc.auto && (
             <button
               className="danger"
-              onClick={() => (spellsChosen === 0 || confirm(t('sc.removeConfirm'))) && setC((p) => ({ ...p, spellcasting: undefined }))}
+              onClick={async () => (spellsChosen === 0 || (await askConfirm(t('sc.removeConfirm'), t('common.remove')))) && setC((p) => ({ ...p, spellcasting: undefined }))}
             >
               {t('common.remove')}
             </button>

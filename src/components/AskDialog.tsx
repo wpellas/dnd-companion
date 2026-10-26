@@ -16,9 +16,11 @@ function AskBox({ ask }: { ask: Pending }) {
     if (!dialog.current?.open) dialog.current?.showModal()
     input.current?.select()
   }, [])
+  const confirmOnly = ask.mode === 'confirm'
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (text.trim()) ask.resolve(text)
+    if (confirmOnly) ask.resolve('yes')
+    else if (text.trim()) ask.resolve(text)
   }
   return (
     <dialog
@@ -33,13 +35,17 @@ function AskBox({ ask }: { ask: Pending }) {
       onClick={(e) => e.target === dialog.current && ask.resolve(null)}
     >
       <form onSubmit={submit}>
-        <h3 id="ask-title">{ask.title}</h3>
-        <input ref={input} value={text} placeholder={ask.placeholder} maxLength={80} aria-labelledby="ask-title" onChange={(e) => setText(e.target.value)} />
+        <h3 id="ask-title">{confirmOnly ? t('ask.confirmTitle') : ask.title}</h3>
+        {confirmOnly ? (
+          <p className="ask-message">{ask.title}</p>
+        ) : (
+          <input ref={input} value={text} placeholder={ask.placeholder} maxLength={80} aria-labelledby="ask-title" onChange={(e) => setText(e.target.value)} />
+        )}
         <div className="ask-actions">
           <button type="button" onClick={() => ask.resolve(null)}>
             {t('common.cancel')}
           </button>
-          <button className="primary" disabled={!text.trim()}>
+          <button className="primary" disabled={!confirmOnly && !text.trim()}>
             {ask.confirm}
           </button>
         </div>

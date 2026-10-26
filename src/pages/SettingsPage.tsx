@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, srdDb } from '../db'
@@ -30,7 +31,7 @@ export function SettingsPage() {
   }
 
   const restore = async (f: File) => {
-    if (!confirm(t('settings.restoreConfirm'))) return
+    if (!(await askConfirm(t('settings.restoreConfirm')))) return
     try {
       const c = await importBackup(f)
       await resyncAll() // the server follows the restored data, including what the backup no longer contains

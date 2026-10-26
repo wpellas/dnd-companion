@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { Window } from '../components/Window'
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -89,7 +90,7 @@ function JournalCard({ e, onEdit }: { e: JournalEntry; onEdit: () => void }) {
           📌
         </button>
         <button onClick={onEdit}>{t('common.edit')}</button>
-        <button className="danger" onClick={() => confirm(t('journal.deleteConfirm', { title: e.title || t('journal.thisEntry') })) && deleteEntry(e.id!)}>
+        <button className="danger" onClick={async () => (await askConfirm(t('journal.deleteConfirm', { title: e.title || t('journal.thisEntry') }), t('common.delete'))) && deleteEntry(e.id!)}>
           {t('common.delete')}
         </button>
       </div>

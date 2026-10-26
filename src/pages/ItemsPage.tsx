@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { useState } from 'react'
 import { ItemRow } from '../components/InventoryEditor'
 import { t } from '../lib/i18n'
@@ -33,7 +34,7 @@ export function ItemsPage() {
             item={item}
             startEditing={item.id === fresh}
             onChange={(p) => void saveCustomItems(items.map((i) => (i.id === item.id ? { ...i, ...p } : i)))}
-            onRemove={() => (!item.name || confirm(t('items.delete', { name: item.name }))) && void saveCustomItems(items.filter((i) => i.id !== item.id))}
+            onRemove={async () => (!item.name || (await askConfirm(t('items.delete', { name: item.name }), t('common.delete')))) && void saveCustomItems(items.filter((i) => i.id !== item.id))}
           />
         ))}
       </div>

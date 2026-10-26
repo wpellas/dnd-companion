@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { api } from '../lib/api'
@@ -32,7 +33,7 @@ export function TableLink() {
   if (campaign?.role !== 'dm') return null
 
   const renew = async () => {
-    if (!confirm(t('table.newConfirm'))) return
+    if (!(await askConfirm(t('table.newConfirm')))) return
     setToken((await api.post<{ view_token: string }>(`/campaigns/${campaign.id}/live-link`)).view_token)
   }
 

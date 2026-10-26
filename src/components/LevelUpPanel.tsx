@@ -73,52 +73,78 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
         </>
       }
     >
-      <p>
-        <strong>{t('lvl.from', { from: c.level, to: next })}</strong>
-        {pb !== proficiencyBonus(c.level) && ` · ${t('lvl.pbRises', { n: `+${pb}` })}`}
-      </p>
-      {xpLevel < next && (c.xp ?? 0) > 0 && <p className="muted">{t('lvl.notReady', { n: xpLevel })}</p>}
-
-      <h4>{t('lvl.features')}</h4>
-      {features.length ? <ul>{features.map((f) => <li key={f}>{f}</li>)}</ul> : <p className="muted">{t('lvl.noFeatures')}</p>}
-
-      <h4>{t('lvl.hp')}</h4>
-      <div className="row gap wrap">
-        <label className="check">
-          <input type="radio" name={`hp-${c.id}`} checked={!useRoll} onChange={() => setUseRoll(false)} />
-          <span>{t('lvl.hpAverage', { n: averageRoll(cls.hit_die) })}</span>
-        </label>
-        <label className="check">
-          <input type="radio" name={`hp-${c.id}`} checked={useRoll} onChange={() => setUseRoll(true)} />
-          <span>{t('lvl.hpRoll', { die: cls.hit_die })}</span>
-        </label>
-        {useRoll && (
-          <>
-            <input className="narrow" type="number" min={1} max={cls.hit_die} value={rolled} placeholder={t('lvl.hpRollHint', { die: cls.hit_die })} onChange={(e) => setRolled(e.target.value)} />
-            {settings.allowPlayerAppRolls && <button onClick={() => setRolled(String(rollDie(cls.hit_die)))}>🎲</button>}
-          </>
-        )}
+      <div className="lu-hero">
+        <div className="lu-levels" aria-label={t('lvl.from', { from: c.level, to: next })}>
+          <span className="lu-lv">{c.level}</span>
+          <span className="lu-arrow" aria-hidden="true">
+            →
+          </span>
+          <span className="lu-lv next">{next}</span>
+        </div>
+        <div className="lu-notes">
+          {pb !== proficiencyBonus(c.level) && <span className="lu-chip">{t('lvl.pbRises', { n: `+${pb}` })}</span>}
+          {xpLevel < next && (c.xp ?? 0) > 0 && <span className="lu-chip warn">{t('lvl.notReady', { n: xpLevel })}</span>}
+        </div>
       </div>
-      {ready && (
-        <p className="adv-text">
-          {t('lvl.hpResult', { n: preview.hpGain, max: preview.character.maxHp })}
-          {preview.conRetro > 0 && ` ${t('lvl.conRetro', { n: preview.conRetro })}`}
-        </p>
-      )}
+
+      <section className="lu-card">
+        <h4>
+          <span aria-hidden="true">✨</span> {t('lvl.features')}
+        </h4>
+        {features.length ? (
+          <ul className="lu-features">
+            {features.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{t('lvl.noFeatures')}</p>
+        )}
+      </section>
+
+      <section className="lu-card">
+        <h4>
+          <span aria-hidden="true">❤</span> {t('lvl.hp')}
+        </h4>
+        <div className="lu-choices">
+          <label className="lu-choice">
+            <input type="radio" name={`hp-${c.id}`} checked={!useRoll} onChange={() => setUseRoll(false)} />
+            <strong>{t('lvl.hpAverage', { n: averageRoll(cls.hit_die) })}</strong>
+          </label>
+          <label className="lu-choice">
+            <input type="radio" name={`hp-${c.id}`} checked={useRoll} onChange={() => setUseRoll(true)} />
+            <strong>{t('lvl.hpRoll', { die: cls.hit_die })}</strong>
+          </label>
+        </div>
+        {useRoll && (
+          <div className="lu-pickers">
+            <input className="narrow" type="number" min={1} max={cls.hit_die} value={rolled} placeholder={t('lvl.hpRollHint', { die: cls.hit_die })} aria-label={t('lvl.hpRoll', { die: cls.hit_die })} onChange={(e) => setRolled(e.target.value)} />
+            {settings.allowPlayerAppRolls && <button onClick={() => setRolled(String(rollDie(cls.hit_die)))}>🎲</button>}
+          </div>
+        )}
+        {ready && (
+          <p className="lu-result">
+            ❤ {t('lvl.hpResult', { n: preview.hpGain, max: preview.character.maxHp })}
+            {preview.conRetro > 0 && ` ${t('lvl.conRetro', { n: preview.conRetro })}`}
+          </p>
+        )}
+      </section>
 
       {needsAsi && (
-        <>
-          <h4>{t('lvl.asi')}</h4>
-          <div className="row gap wrap">
+        <section className="lu-card">
+          <h4>
+            <span aria-hidden="true">📈</span> {t('lvl.asi')}
+          </h4>
+          <div className="lu-choices">
             {(['two', 'split', 'feat'] as const).map((k) => (
-              <label key={k} className="check">
+              <label key={k} className="lu-choice">
                 <input type="radio" name={`asi-${c.id}`} checked={kind === k} onChange={() => setKind(k)} />
-                <span>{t(k === 'two' ? 'lvl.asiTwo' : k === 'split' ? 'lvl.asiSplit' : 'lvl.asiFeat')}</span>
+                <strong>{t(k === 'two' ? 'lvl.asiTwo' : k === 'split' ? 'lvl.asiSplit' : 'lvl.asiFeat')}</strong>
               </label>
             ))}
           </div>
           {kind !== 'feat' && (
-            <div className="row gap wrap">
+            <div className="lu-pickers">
               {abilities.slice(0, kind === 'two' ? 1 : 2).map((a, i) => (
                 <label key={i} className="inline-field">
                   {t('lvl.ability')}
@@ -140,7 +166,7 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
             </label>
           )}
           <p className="muted note-line">{t('lvl.asiMax')}</p>
-        </>
+        </section>
       )}
 
       <p className="muted note-line">{t('lvl.after')}</p>
@@ -150,7 +176,7 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
 
 function Frame({ c, onClose, actions, children }: { c: Character; onClose: () => void; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Window large title={t('lvl.title', { name: c.name })} onClose={onClose} actions={actions ?? <button onClick={onClose}>{t('common.cancel')}</button>}>
+    <Window large bodyClass="levelup" title={t('lvl.title', { name: c.name })} onClose={onClose} actions={actions ?? <button onClick={onClose}>{t('common.cancel')}</button>}>
       {children}
     </Window>
   )

@@ -51,7 +51,7 @@ import { t, tAbility, tCondition, tDamage } from '../lib/i18n'
 import { canAppRoll, updateSettings, useSettings, type Settings } from '../lib/settings'
 import { pictureFor, useAvatars } from '../lib/avatars'
 import { useSentRoll } from '../lib/rolls'
-import { askText } from '../lib/ask'
+import { askConfirm, askText } from '../lib/ask'
 import { updateCharacter } from '../lib/store'
 import { combatPick, endCombatMusic, playPick, prepareCombatMusic, startCombatMusic, useMusic, useMusicSettings } from '../lib/music'
 import { MusicPicker } from '../components/MusicPicker'
@@ -116,7 +116,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
             <button className="primary" onClick={() => mutateCombat(advanceTurn, t('lbl.nextTurn'))}>
               {t('combat.next')}
             </button>
-            <button className="danger" onClick={() => confirm(t('combat.endConfirm')) && void endCombat().then(endCombatMusic)}>
+            <button className="danger" onClick={async () => (await askConfirm(t('combat.endConfirm'), t('combat.end'))) && void endCombat().then(endCombatMusic)}>
               {t('combat.end')}
             </button>
           </>

@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { Window } from '../components/Window'
 import { MusicPicker } from '../components/MusicPicker'
 import { prepareCombatMusic } from '../lib/music'
@@ -77,7 +78,7 @@ export function EncountersPage({ goTo }: { goTo: (tab: 'combat') => void }) {
               </button>
               <button onClick={() => setEditing(enc)}>{t('common.edit')}</button>
               <button onClick={() => db.encounters.add({ ...enc, id: undefined, name: `${enc.name} (${t('enc.copySuffix')})` })}>{t('enc.duplicate')}</button>
-              <button className="danger" onClick={() => confirm(t('enc.deleteConfirm', { name: enc.name })) && db.encounters.delete(enc.id!)}>
+              <button className="danger" onClick={async () => (await askConfirm(t('enc.deleteConfirm', { name: enc.name }), t('common.delete'))) && db.encounters.delete(enc.id!)}>
                 {t('common.delete')}
               </button>
             </div>

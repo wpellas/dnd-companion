@@ -10,6 +10,7 @@ export const shell = {
   'common.remove': ['Remove', 'Ta bort'],
   'common.done': ['Done', 'Klar'],
   'common.ok': ['OK', 'OK'],
+  'ask.confirmTitle': ['Are you sure?', 'Är du säker?'],
   'common.dismiss': ['Dismiss', 'Avfärda'],
   'common.clear': ['Clear', 'Rensa'],
   'common.add': ['Add', 'Lägg till'],

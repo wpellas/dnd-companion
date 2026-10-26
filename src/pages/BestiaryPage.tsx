@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { Window } from '../components/Window'
 import { useMemo, useState } from 'react'
 import { db } from '../db'
@@ -220,7 +221,7 @@ function MonsterRow({ m, avatars, expanded, onToggle, onEdit }: { m: MonsterTemp
           <div className="row gap">
             <button onClick={onEdit}>{m.source === 'srd' ? t('bestiary.copy') : t('common.edit')}</button>
             {m.source === 'custom' && (
-              <button className="danger" onClick={() => confirm(t('bestiary.deleteConfirm', { name: m.name })) && db.monsters.delete(m.id!)}>
+              <button className="danger" onClick={async () => (await askConfirm(t('bestiary.deleteConfirm', { name: m.name }), t('common.delete'))) && db.monsters.delete(m.id!)}>
                 {t('common.delete')}
               </button>
             )}

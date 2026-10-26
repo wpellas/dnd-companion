@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Combobox } from '../components/Combobox'
 import { CheckField } from '../components/Section'
 import { ApiError } from '../lib/api'
-import { askText } from '../lib/ask'
+import { askConfirm, askText } from '../lib/ask'
 import { newId } from '../lib/id'
 import { t } from '../lib/i18n'
 import { deleteTrack, loadLibrary, playScene, playTrack, renameTrack, saveMusicSettings, sceneTracks, uploadTrack, useMusic, useMusicSettings, type Scene, type TrackInfo } from '../lib/music'
@@ -116,7 +116,7 @@ export function MusicPage() {
                 </button>
                 <button
                   className="danger"
-                  onClick={() => confirm(t('music.deleteConfirm', { name: scene.name })) && save(scenes.filter((s) => s.id !== scene.id), settings.combatSceneId === scene.id ? undefined : settings.combatSceneId)}
+                  onClick={async () => (await askConfirm(t('music.deleteConfirm', { name: scene.name }), t('common.delete'))) && save(scenes.filter((s) => s.id !== scene.id), settings.combatSceneId === scene.id ? undefined : settings.combatSceneId)}
                 >
                   {t('music.delete')}
                 </button>
@@ -178,7 +178,7 @@ function TrackRow({ track }: { track: TrackInfo }) {
           >
             ✎
           </button>
-          <button className="danger" title={t('music.deleteTrack')} aria-label={t('music.deleteTrack')} onClick={() => confirm(t('music.deleteTrackConfirm', { name: track.name })) && void deleteTrack(track.id)}>
+          <button className="danger" title={t('music.deleteTrack')} aria-label={t('music.deleteTrack')} onClick={async () => (await askConfirm(t('music.deleteTrackConfirm', { name: track.name }), t('common.delete'))) && void deleteTrack(track.id)}>
             ✕
           </button>
         </>

@@ -226,7 +226,8 @@ is CSS variables at the top of `src/index.css`: dragon red, parchment, gold, lea
 - Hooks must run before early returns in components (`TurnPanel` computes everything before `if (!active) return`).
 - Image blobs are stored on `Character.image`; show them with `useBlobUrl` / `Portrait`.
 - Match the style: no semicolons, single quotes, small focused components, comments that explain *why*.
-- **Asking for a line of text:** `await askText({ title, value, confirm })` (`lib/ask.ts`, one `AskDialog` in `main.tsx`, a native `<dialog>`), never the browser's `prompt()`. It gives the trimmed text or null. `confirm()` / `alert()` are still the browser's.
+- **Asking the user:** `await askText({ title, value, confirm })` for a line of text (trimmed text or null) and `await askConfirm(message, confirmLabel?)` for a yes / no question (true / false; Cancel, Escape and a click outside are false). One `AskDialog` in `main.tsx` (a native `<dialog>`, `lib/ask.ts`) serves both: never the browser's `prompt()` or `confirm()`. A handler that confirms must be `async`. Name the confirm button after the action ("Delete", "End combat"). `alert()` for errors is still the browser's.
+- **Level-up window** (`LevelUpPanel`): a banner with the two levels as tokens and chips (proficiency rise, XP note), then one framed `lu-card` per step (new features as gold pills, hit points, ability improvement); choices are `lu-choice` cards (a visually hidden radio inside a label, `:has(input:checked)` lights it), the HP result is the green `lu-result` pill.
 
 ## Testing
 

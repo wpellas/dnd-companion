@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { useEffect, useState } from 'react'
 import { Section } from '../components/Section'
 import { api, ApiError } from '../lib/api'
@@ -189,10 +190,10 @@ export function AdminPage() {
                       <>
                         {!u.is_admin && <button title={t('admin.dmTitle')} onClick={() => run(() => api.patch(`/admin/users/${u.id}`, { can_dm: !u.can_dm }))}>{t(u.can_dm ? 'admin.removeDm' : 'admin.makeDm')}</button>}
                         <button onClick={() => run(() => api.patch(`/admin/users/${u.id}`, { is_admin: !u.is_admin }))}>{t(u.is_admin ? 'admin.removeAdmin' : 'admin.makeAdmin')}</button>
-                        <button onClick={() => (u.disabled || confirm(t('admin.disableConfirm', { name: u.name }))) && run(() => api.patch(`/admin/users/${u.id}`, { disabled: !u.disabled }))}>
+                        <button onClick={async () => (u.disabled || (await askConfirm(t('admin.disableConfirm', { name: u.name }), t('admin.disable')))) && run(() => api.patch(`/admin/users/${u.id}`, { disabled: !u.disabled }))}>
                           {t(u.disabled ? 'admin.enable' : 'admin.disable')}
                         </button>
-                        <button className="danger" onClick={() => confirm(t('admin.deleteUserConfirm', { name: u.name })) && run(() => api.delete(`/admin/users/${u.id}`))}>
+                        <button className="danger" onClick={async () => (await askConfirm(t('admin.deleteUserConfirm', { name: u.name }), t('common.delete'))) && run(() => api.delete(`/admin/users/${u.id}`))}>
                           {t('admin.delete')}
                         </button>
                       </>
@@ -242,7 +243,7 @@ export function AdminPage() {
                     <td>{c.dms.join(', ')}</td>
                     <td>{c.members}</td>
                     <td className="actions">
-                      <button className="danger" onClick={() => confirm(t('admin.deleteCampaignConfirm', { name: c.name })) && run(() => api.delete(`/admin/campaigns/${c.id}`))}>
+                      <button className="danger" onClick={async () => (await askConfirm(t('admin.deleteCampaignConfirm', { name: c.name }), t('common.delete'))) && run(() => api.delete(`/admin/campaigns/${c.id}`))}>
                         {t('admin.delete')}
                       </button>
                     </td>

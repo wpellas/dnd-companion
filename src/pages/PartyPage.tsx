@@ -1,3 +1,4 @@
+import { askConfirm } from '../lib/ask'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
@@ -229,7 +230,7 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
           </button>
         )}
         <button onClick={onEdit}>{t('common.edit')}</button>
-        <button className="danger" onClick={() => confirm(t('party.deleteConfirm', { name: c.name })) && db.characters.delete(c.id!)}>
+        <button className="danger" onClick={async () => (await askConfirm(t('party.deleteConfirm', { name: c.name }), t('common.delete'))) && db.characters.delete(c.id!)}>
           {t('common.delete')}
         </button>
       </div>

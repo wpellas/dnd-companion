@@ -1,5 +1,5 @@
 import { useBlobUrl } from '../hooks'
-import { askText } from '../lib/ask'
+import { askConfirm, askText } from '../lib/ask'
 import { t } from '../lib/i18n'
 import { addMap, deleteMap, renameMap, showMap, stopShowingMap, useMapShown, useMaps, type PictureKind } from '../lib/maps'
 import type { MapRecord } from '../types'
@@ -61,7 +61,7 @@ function MapCard({ map, showing }: { map: MapRecord; showing: boolean }) {
         >
           {t('maps.rename')}
         </button>
-        <button className="danger" onClick={() => confirm(t('maps.deleteConfirm', { name: map.name })) && void deleteMap(map.id!)}>
+        <button className="danger" onClick={async () => (await askConfirm(t('maps.deleteConfirm', { name: map.name }), t('common.delete'))) && void deleteMap(map.id!)}>
           {t('maps.delete')}
         </button>
       </div>

@@ -19,5 +19,13 @@ export const maps = {
   'maps.deleteConfirm': ['Delete "{name}"?', 'Ta bort "{name}"?'],
   'maps.failed': ['Could not read that picture.', 'Kunde inte läsa bilden.'],
   'maps.shownBar': ['The players are looking at {name}.', 'Spelarna tittar på {name}.'],
-  'maps.fogSoon': ['Fog of war is planned: you will be able to hide the map and reveal it piece by piece.', 'Dimma över kartan är planerad: du kommer kunna dölja kartan och avslöja den bit för bit.'],
+  'maps.layersHint': [
+    'Fog of war: add layers to a map (transparent PNGs, same size as the map; they are stretched to fit if not). A ticked layer is painted over the map for the players, an unticked one never leaves your browser. The ticks are remembered when you stop showing the map.',
+    'Dimma över kartan: lägg lager på en karta (genomskinliga PNG-bilder i kartans storlek, de sträcks annars). Ett ikryssat lager läggs över kartan för spelarna, ett avkryssat lämnar aldrig din webbläsare. Kryssen sparas när du slutar visa kartan.',
+  ],
+  'maps.layerAdd': ['Add layer', 'Lägg till lager'],
+  'maps.layerUp': ['Move up (further on top)', 'Flytta upp (längre fram)'],
+  'maps.layerDown': ['Move down (further back)', 'Flytta ner (längre bak)'],
+  'maps.layerDelete': ['Remove', 'Ta bort'],
+  'maps.layerDeleteConfirm': ['Remove the layer "{name}"?', 'Ta bort lagret "{name}"?'],
 } as const satisfies Record<string, Msg>

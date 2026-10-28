@@ -5,7 +5,7 @@ import heroLogo from '../assets/images/logo-360.png'
 import navLogo from '../assets/images/logo-128.png'
 import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
-import { useMapShown, type PublicMap } from '../lib/maps'
+import { publicMap, useMapShown, type PublicMap } from '../lib/maps'
 import { explainCondition, explainEffect, GLOSSARY } from '../lib/explain'
 import { conditionTone, type Tone } from '../lib/tones'
 import { pictureFor } from '../lib/avatars'
@@ -135,7 +135,7 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
   const localMapShown = useMapShown()
   const localMap = useLiveQuery(async (): Promise<PublicMap | null> => {
     const m = localMapShown ? await db.maps.get(localMapShown.mapId) : undefined
-    return m ? { name: m.name, imageData: URL.createObjectURL(m.image) } : null
+    return m ? publicMap(m) : null // composed like the upload, so this window never shows a layer that is switched off
   }, [localMapShown?.mapId])
   const map = remote.map !== undefined ? remote.map : localMap
   const showingSheet = !!sheet

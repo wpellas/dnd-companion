@@ -980,6 +980,9 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 12px; }
 .map-card { display: flex; flex-direction: column; gap: 8px; }
 .map-card img { width: 100%; height: 160px; object-fit: cover; border: 2px solid var(--leather); border-radius: 4px; }
+.map-stack { position: relative; }
+.map-card .map-stack img + img { position: absolute; inset: 0; height: 100%; border-color: transparent; }
+.map-layers { display: flex; flex-direction: column; gap: 6px; }
 .map-card.showing { box-shadow: 0 0 0 3px var(--gold); }
 /* the picture takes the whole display: no caption, almost no margin (.player.map-view beats every `.player` padding, also in the media queries) */
 .player.map-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 6px; }

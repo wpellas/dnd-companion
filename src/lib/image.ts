@@ -7,6 +7,16 @@ export const blobToDataUrl = (blob: Blob) =>
     r.readAsDataURL(blob)
   })
 
+/** A picture stretched to exactly `width` x `height` as a PNG (keeps transparency: for overlay layers that must line up pixel for pixel with a map). */
+export async function fitImage(file: Blob, width: number, height: number): Promise<Blob> {
+  const bmp = await createImageBitmap(file)
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  canvas.getContext('2d')!.drawImage(bmp, 0, 0, width, height)
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not read that picture'))), 'image/png'))
+}
+
 /** A picture shrunk to fit in `max` pixels (a JPEG), so avatars stay a few kilobytes on disk, in the sync and on a phone. Never enlarges. */
 export async function shrinkImage(file: Blob, max = 256): Promise<Blob> {
   const bmp = await createImageBitmap(file)

@@ -92,8 +92,18 @@ async function toServer(collection: Collection, row: object): Promise<string> {
     return JSON.stringify(rest)
   }
   if (collection !== 'characters' && collection !== 'avatars' && collection !== 'maps') return JSON.stringify(row)
-  const { image, ownerId, ...rest } = row as { image?: Blob; ownerId?: number }
+  const { image, ownerId, layers, ...rest } = row as { image?: Blob; ownerId?: number; layers?: { image: Blob }[] }
   void ownerId // the owner is the server's column, not part of the record
+  if (layers) {
+    // map layers are PNGs at the map's size: kept as they are, each Blob remembers its string like a portrait does
+    ;(rest as Record<string, unknown>).layers = await Promise.all(
+      layers.map(async ({ image: img, ...l }) => {
+        let imageData = portraits.get(img)
+        if (!imageData) portraits.set(img, (imageData = await blobToDataUrl(img)))
+        return { ...l, imageData }
+      }),
+    )
+  }
   if (!image) return JSON.stringify(rest)
   let imageData = portraits.get(image)
   if (!imageData) {
@@ -110,6 +120,13 @@ function fromServer(collection: Collection, json: string): object {
     portraits.set(image, row.imageData)
     delete row.imageData
     row.image = image
+  }
+  if (collection === 'maps' && Array.isArray(row.layers)) {
+    row.layers = row.layers.map(({ imageData, ...l }: { imageData: string }) => {
+      const image = dataUrlToBlob(imageData)
+      portraits.set(image, imageData)
+      return { ...l, image }
+    })
   }
   return row
 }

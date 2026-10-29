@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAsk, type Pending } from '../lib/ask'
 import { t } from '../lib/i18n'
 
-/** The one dialog behind `askText`. A native <dialog>: it sits above everything, traps focus, and Escape or a click on the dimmed area cancels. */
+/** The one dialog behind `askText`. A native <dialog>: it sits above everything, traps focus, and only the Cancel button closes it. */
 export function AskDialog() {
   const ask = useAsk()
   return ask ? <AskBox key={ask.id} ask={ask} /> : null
@@ -27,12 +27,8 @@ function AskBox({ ask }: { ask: Pending }) {
       ref={dialog}
       className="ask"
       aria-labelledby="ask-title"
-      onCancel={(e) => {
-        e.preventDefault()
-        ask.resolve(null)
-      }}
-      // the form fills the whole dialog, so a click that lands on the dialog itself is a click on the dimmed area
-      onClick={(e) => e.target === dialog.current && ask.resolve(null)}
+      // Escape and a click on the dimmed area do nothing: only the Cancel button closes it (a stray key must not lose typing)
+      onCancel={(e) => e.preventDefault()}
     >
       <form onSubmit={submit}>
         <h3 id="ask-title">{confirmOnly ? t('ask.confirmTitle') : ask.title}</h3>

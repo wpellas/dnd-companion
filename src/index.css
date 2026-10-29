@@ -773,7 +773,7 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 .music-folder { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 16px 0 28px; padding: 16px 20px; }
 .music-library { display: flex; flex-direction: column; gap: 12px; margin: 16px 0 28px; padding: 16px 20px; }
 .music-library .music-folder { margin: 0; padding: 0; }
-.music-tracks { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
+.music-tracks { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; overflow-x: hidden; padding: 0 4px 6px 0; }
 .music-scenes { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
 .music-scenes .card { padding: 16px 20px; gap: 12px; }
 .sheet-view { color: var(--ink); }
@@ -983,6 +983,10 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .map-stack { position: relative; }
 .map-card .map-stack img + img { position: absolute; inset: 0; height: 100%; border-color: transparent; }
 .map-layers { display: flex; flex-direction: column; gap: 6px; }
+/* the name takes what is left and shortens, so the buttons stay inside the card */
+.map-layers .row { flex-wrap: wrap; padding-bottom: 6px; border-bottom: 1px solid rgba(90, 56, 27, 0.25); }
+.map-layers .row > :first-child { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
+.map-layers .row > .danger { margin-left: auto; }
 .map-card.showing { box-shadow: 0 0 0 3px var(--gold); }
 /* the picture takes the whole display: no caption, almost no margin (.player.map-view beats every `.player` padding, also in the media queries) */
 .player.map-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 6px; }
@@ -1097,6 +1101,9 @@ html { scrollbar-color: var(--leather-2) var(--wood-2); }
 .player header { font-size: 2.4rem; padding: 6px 4px 12px; text-shadow: 0 3px 0 #000, 0 0 24px rgba(217, 169, 46, 0.35); border-bottom: 3px double var(--gold-dark); }
 .glossary-btn { font-size: 1.1rem; background: transparent; color: var(--gold); border: 2px solid var(--gold-dark); box-shadow: none; text-shadow: none; }
 .glossary-btn:hover:not(:disabled) { background: rgba(217, 169, 46, 0.2); }
+.glossary-btn + .glossary-btn { margin-left: 8px; }
+/* glyphs sit on the text baseline by default, which leaves them off-centre in the circle */
+.glossary-btn { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
 
 /* side colour carried onto the card itself, so team reads even when the portrait is a placeholder */
 .player-card { border-left-width: 8px; border-left-color: var(--good); }

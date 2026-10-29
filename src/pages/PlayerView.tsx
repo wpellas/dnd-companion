@@ -31,6 +31,19 @@ function useNow(interval = 1000) {
   return now
 }
 
+/** Fullscreen hides the browser's address bar (Android Chrome); the browser only allows it from a tap, so it is a button. */
+function useFullscreen() {
+  const [on, setOn] = useState(() => !!document.fullscreenElement)
+  useEffect(() => {
+    const sync = () => setOn(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+  // shortcut: iPhone Safari has no element fullscreen, so the button is hidden there
+  const toggle = () => (on ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {})
+  return { on, toggle, supported: document.fullscreenEnabled }
+}
+
 /**
  * Read-only table display. Monsters show a status instead of exact HP / AC so the DM doesn't leak numbers (the data it
  * receives never contains them). With a `source` (a signed-in player, or the TV's secret link) it shows what the DM's app
@@ -38,6 +51,7 @@ function useNow(interval = 1000) {
  */
 export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; mine?: ReadonlySet<number>; vibrate?: boolean }) {
   const remote = useRemoteView(source)
+  const fullscreen = useFullscreen()
   const localState = useLiveQuery(() => db.combat.get('current'), [])
   const characters = useLiveQuery(() => db.characters.toArray(), [])
   const now = useNow()
@@ -190,6 +204,11 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
         <img src={navLogo} alt="" />
         {combat.started ? t('player.round', { n: combat.round }) : t('player.rolling')}
         {remote.connected && !remote.hostOnline && <span className="player-note">{t('player.dmOffline')}</span>}
+        {fullscreen.supported && (
+          <button className="glossary-btn" title={t('player.fullscreen')} aria-label={t('player.fullscreen')} aria-pressed={fullscreen.on} onClick={fullscreen.toggle}>
+            {fullscreen.on ? '🗗' : '⛶'}
+          </button>
+        )}
         <button className="glossary-btn" title={t('gloss.title')} aria-label={t('gloss.title')} aria-expanded={glossary} onClick={() => setGlossary(!glossary)}>
           ?
         </button>

@@ -5,6 +5,7 @@ export const player = {
   'player.gather': ['Gather your party…', 'Samla ditt sällskap…'],
   'player.waitingDm': ['Waiting for the DM…', 'Väntar på spelledaren…'],
   'player.dmOffline': ['DM offline', 'Spelledaren är offline'],
+  'player.fullscreen': ['Fullscreen', 'Helskärm'],
   'player.rolling': ['Rolling initiative…', 'Slår initiativ…'],
   'player.round': ['Round {n}', 'Runda {n}'],
   'player.turn': ['{who} turn', '{who} tur'],

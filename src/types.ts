@@ -545,6 +545,8 @@ export interface MapRecord {
   name: string
   /** 'image' = a picture to show for storytelling (no fog of war ever); absent = a map */
   kind?: 'map' | 'image'
+  /** Folder path ('Dungeons/Level 1'); absent = top level */
+  folder?: string
   image: Blob
   /** Transparent PNGs at the map's pixel size, stacked in order over `image` (fog of war, secret rooms). `on` = drawn on what the players see; it belongs to the map, so it survives showing / hiding it. */
   layers?: MapLayer[]

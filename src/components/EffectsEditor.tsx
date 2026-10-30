@@ -1,3 +1,4 @@
+import { Hourglass, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { effectLine, PRESETS, presetFor } from '../lib/effects'
 import { newId } from '../lib/id'
@@ -85,7 +86,7 @@ function EffectsEditor({ c, all, onAdd, onRemove }: Props) {
     <div className="effects-editor">
       <section className="win-card">
         <h4>
-          <span aria-hidden="true">⏳</span> {t('eff.active')}
+          <Hourglass aria-hidden="true" /> {t('eff.active')}
         </h4>
         {c.effects?.length ? (
           <ul className="effect-list">
@@ -96,7 +97,7 @@ function EffectsEditor({ c, all, onAdd, onRemove }: Props) {
                   <span className="muted"> {effectLine(e, all)}</span>
                 </div>
                 <button className="danger" title={t('eff.remove')} aria-label={t('eff.remove')} onClick={() => onRemove(e.id)}>
-                  ✕
+                  <X />
                 </button>
               </li>
             ))}
@@ -108,7 +109,7 @@ function EffectsEditor({ c, all, onAdd, onRemove }: Props) {
 
       <section className="win-card">
         <h4>
-          <span aria-hidden="true">✨</span> {t('eff.addTitle')}
+          <Sparkles aria-hidden="true" /> {t('eff.addTitle')}
         </h4>
         <div className="field-grid">
           <label className="field span-2">

@@ -1,3 +1,4 @@
+import { Dices } from 'lucide-react'
 import { Window } from './Window'
 import { useState } from 'react'
 import { addMonsters, mutateCombat, sortCombatants } from '../lib/combat'
@@ -32,7 +33,7 @@ export function QuickNpc({ onClose }: { onClose: () => void }) {
             <input value={npc[f]} onChange={(e) => set(f, e.target.value)} />
           </label>
           <button title={t('npc.reroll')} aria-label={t('npc.reroll')} onClick={() => set(f, rollNpcField(f))}>
-            🎲
+            <Dices />
           </button>
         </div>
       ))}

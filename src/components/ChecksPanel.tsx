@@ -1,3 +1,4 @@
+import { Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { t } from '../lib/i18n'
 import { useSentRoll } from '../lib/rolls'
@@ -78,7 +79,7 @@ function CheckRow({ c, need, value, onChange }: { c: Character; need?: number; v
         <input className="narrow" type="number" value={value} aria-label={t('checks.total')} onChange={(e) => onChange(e.target.value)} />
         {sent.roll && value !== '' && Number(value) !== sent.roll.value && (
           <button className="tiny-button" title={t('roll.useTitle')} onClick={() => { onChange(String(sent.roll!.value)); sent.take() }}>
-            📱 {sent.roll.value}
+            <Smartphone /> {sent.roll.value}
           </button>
         )}
       </td>

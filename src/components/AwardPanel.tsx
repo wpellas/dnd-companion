@@ -1,3 +1,4 @@
+import { ArrowUp } from 'lucide-react'
 import { Window } from './Window'
 import { useState } from 'react'
 import { t } from '../lib/i18n'
@@ -40,7 +41,7 @@ export function AwardPanel({ characters, onClose }: { characters: Character[]; o
           {done.map((l) => (
             <li key={l.id}>
               <strong>{l.name}</strong>: {[l.xp ? `${l.xp} XP` : '', l.gp ? `${l.gp} gp` : ''].filter(Boolean).join(', ') || t('journal.nothing')}
-              {l.levelUp && <span className="levelup-badge">{t('award.canLevel')}</span>}
+              {l.levelUp && <span className="levelup-badge"><ArrowUp /> {t('award.canLevel')}</span>}
             </li>
           ))}
         </ul>

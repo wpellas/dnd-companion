@@ -1,3 +1,4 @@
+import { Dices } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { autoFailsSave, saveHasDisadvantage } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
@@ -151,7 +152,7 @@ export function SaveResolver({ attacker, action, targets, canRollFor, canRollDam
                           setRollNote((s) => ({ ...s, [r.t.id]: v.note }))
                         }}
                       >
-                        🎲
+                        <Dices />
                       </button>
                     ) : null}
                   </div>

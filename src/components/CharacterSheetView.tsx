@@ -1,3 +1,4 @@
+import { ArrowUp, Backpack, Coins, Gem, Layers, Scale, Shield, Sparkles, Star, Swords } from 'lucide-react'
 import type { PublicSheet } from '../lib/publicState'
 import { formatMod } from '../lib/dice'
 import { t, tCondition } from '../lib/i18n'
@@ -7,7 +8,7 @@ import { Portrait } from './Portrait'
 
 const pips = (max: number, used: number) => '●'.repeat(Math.max(0, max - used)) + '○'.repeat(Math.min(max, used))
 
-const KIND_ICON: Record<Item['kind'], string> = { weapon: '⚔', armor: '🛡', shield: '🛡', magic: '✨', gear: '🎒', treasure: '💎' }
+const ItemIcon = ({ kind }: { kind: Item['kind'] }) => ({ weapon: <Swords />, armor: <Shield />, shield: <Shield />, magic: <Sparkles />, gear: <Backpack />, treasure: <Gem /> })[kind]
 const KIND_ORDER: Item['kind'][] = ['weapon', 'armor', 'shield', 'magic', 'gear', 'treasure']
 const COIN_LABEL: Record<CoinType, string> = { pp: 'pp', gp: 'gp', ep: 'ep', sp: 'sp', cp: 'cp' }
 
@@ -84,7 +85,7 @@ export function CharacterSheetView({ sheet, src, image }: { sheet: PublicSheet; 
       <div className="sheet-grid">
         {sheet.attacks.length > 0 && (
           <section className="sheet-panel">
-            <h2><span aria-hidden="true">⚔</span> {t('sheet.attacks')}</h2>
+            <h2><Swords aria-hidden="true" /> {t('sheet.attacks')}</h2>
             <ul>
               {sheet.attacks.map((a, i) => (
                 <li key={i}>
@@ -98,7 +99,7 @@ export function CharacterSheetView({ sheet, src, image }: { sheet: PublicSheet; 
 
         {sc && (
           <section className="sheet-panel">
-            <h2><span aria-hidden="true">✨</span> {t('sheet.spellcasting')}</h2>
+            <h2><Sparkles aria-hidden="true" /> {t('sheet.spellcasting')}</h2>
             <p className="sheet-note">{t('sheet.spellLine', { ability: sc.ability, dc: sc.saveDc, atk: formatMod(sc.attackBonus) })}</p>
             <ul>
               {sc.slots.map((s) => (
@@ -123,7 +124,7 @@ export function CharacterSheetView({ sheet, src, image }: { sheet: PublicSheet; 
 
         {sheet.features.length > 0 && (
           <section className="sheet-panel">
-            <h2><span aria-hidden="true">🌀</span> {t('sheet.features')}</h2>
+            <h2><Layers aria-hidden="true" /> {t('sheet.features')}</h2>
             <ul>
               {sheet.features.map((f, i) => (
                 <li key={i}>
@@ -137,7 +138,7 @@ export function CharacterSheetView({ sheet, src, image }: { sheet: PublicSheet; 
 
         {defences.some(([, list]) => list.length > 0) && (
           <section className="sheet-panel">
-            <h2><span aria-hidden="true">🛡</span> {t('sheet.defences')}</h2>
+            <h2><Shield aria-hidden="true" /> {t('sheet.defences')}</h2>
             {defences.map(([label, list]) =>
               list.length ? (
                 <p key={label}>
@@ -171,11 +172,11 @@ export function InventoryPanel({ inv, bare }: { inv: Inventory; bare?: boolean }
 
   return (
     <section className={`sheet-panel wide ${bare ? 'bare' : ''}`}>
-      {!bare && <h2><span aria-hidden="true">🎒</span> {t('sheet.inventory')}</h2>}
+      {!bare && <h2><Backpack aria-hidden="true" /> {t('sheet.inventory')}</h2>}
 
       <div className="sheet-wealth">
         <div className="wealth-card gold">
-          <span className="wc-label">💰 {t('sheet.gold')}</span>
+          <span className="wc-label"><Coins /> {t('sheet.gold')}</span>
           <strong className="wc-big">
             ≈ {coinGp.toLocaleString()} <small>gp</small>
           </strong>
@@ -190,11 +191,11 @@ export function InventoryPanel({ inv, bare }: { inv: Inventory; bare?: boolean }
               <span className="wc-sub">{t('sheet.noCoins')}</span>
             )}
           </div>
-          {(inv.itemsGp ?? 0) > 0 && <span className="wc-sub">🎒 {t('inv.itemsWorth', { n: (inv.itemsGp ?? 0).toLocaleString() })}</span>}
+          {(inv.itemsGp ?? 0) > 0 && <span className="wc-sub"><Backpack /> {t('inv.itemsWorth', { n: (inv.itemsGp ?? 0).toLocaleString() })}</span>}
         </div>
 
         <div className="wealth-card xp">
-          <span className="wc-label">⭐ {t('sheet.experience')}</span>
+          <span className="wc-label"><Star /> {t('sheet.experience')}</span>
           <strong className="wc-big">
             {inv.xp.toLocaleString()}
             {inv.nextXp !== undefined && <small> / {inv.nextXp.toLocaleString()}</small>}
@@ -203,12 +204,12 @@ export function InventoryPanel({ inv, bare }: { inv: Inventory; bare?: boolean }
             <i style={{ width: `${xpPct}%` }} />
           </div>
           <span className="wc-sub">
-            {inv.levelReady ? <b className="wc-ready">⬆ {t('sheet.levelReady', { n: inv.levelReady })}</b> : inv.nextXp !== undefined ? t('sheet.xpToNext', { n: (inv.nextXp - inv.xp).toLocaleString(), level: inv.nextLevel ?? '' }) : t('sheet.maxLevel')}
+            {inv.levelReady ? <b className="wc-ready"><ArrowUp /> {t('sheet.levelReady', { n: inv.levelReady })}</b> : inv.nextXp !== undefined ? t('sheet.xpToNext', { n: (inv.nextXp - inv.xp).toLocaleString(), level: inv.nextLevel ?? '' }) : t('sheet.maxLevel')}
           </span>
         </div>
 
         <div className={`wealth-card load ${loadState}`}>
-          <span className="wc-label">⚖ {t('sheet.carry')}</span>
+          <span className="wc-label"><Scale /> {t('sheet.carry')}</span>
           <strong className="wc-big">
             {Math.round(inv.weight * 10) / 10} <small>/ {inv.capacity} lb</small>
           </strong>
@@ -226,7 +227,7 @@ export function InventoryPanel({ inv, bare }: { inv: Inventory; bare?: boolean }
           {items.map((i, k) => (
             <li key={k} className={`item-tile ${i.equipped ? 'equipped' : ''}`}>
               <span className="it-icon" aria-hidden="true">
-                {KIND_ICON[i.kind ?? 'gear']}
+                <ItemIcon kind={i.kind ?? 'gear'} />
               </span>
               <div className="it-main">
                 <strong>{i.name}</strong>

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { inFolder, joinPath, parentPath } from './maps'
 import { db } from '../db'
 import { api } from './api'
 
@@ -22,6 +23,11 @@ export interface MusicSettings {
   /** Starts by itself when a fight starts, and the music from before comes back when it ends. A single track (combatTrackId) or a scene (combatSceneId): setting one clears the other */
   combatSceneId?: string
   combatTrackId?: number
+  /** Optional, for the fight at hand: a picker value ("scene:<id>" / "track:<id>") that plays when the fight ends, instead of the music from before. Used up (cleared) when it plays. */
+  afterPick?: string
+  /** Folders for the library list (paths like 'Town/Tavern'), kept here so empty ones survive; `trackFolders` files a track id under one (none = top level). Filing is per campaign: the library is shared. */
+  folders?: string[]
+  trackFolders?: Record<number, string>
 }
 export interface TrackInfo {
   id: number
@@ -41,6 +47,27 @@ const EMPTY: MusicSettings = { scenes: [] }
 const readMusic = async () => ((await db.kv.get(KEY))?.value as MusicSettings | undefined) ?? EMPTY
 export const useMusicSettings = (): MusicSettings => useLiveQuery(readMusic, []) ?? EMPTY
 export const saveMusicSettings = (m: MusicSettings) => db.kv.put({ key: KEY, value: m })
+const editMusic = (fn: (m: MusicSettings) => MusicSettings) => db.transaction('rw', db.kv, async () => saveMusicSettings(fn(await readMusic())))
+/** Rewrites every folder path (the kept list and every track's folder) with `fn`; '' = top level. */
+const mapFolders = (fn: (path: string) => string) =>
+  editMusic((m) => ({
+    ...m,
+    folders: [...new Set((m.folders ?? []).map(fn).filter(Boolean))],
+    trackFolders: Object.fromEntries(Object.entries(m.trackFolders ?? {}).map(([id, p]) => [id, fn(p)] as const).filter(([, p]) => p)),
+  }))
+export const createMusicFolder = (path: string) => editMusic((m) => ({ ...m, folders: [...new Set([...(m.folders ?? []), path])] }))
+export const renameMusicFolder = (path: string, name: string) => {
+  const to = joinPath(parentPath(path), name)
+  return mapFolders((p) => (inFolder(path, p) ? to + p.slice(path.length) : p))
+}
+/** The tracks and folders inside move up one level, so nothing is lost. */
+export const deleteMusicFolder = (path: string) =>
+  mapFolders((p) => (p === path ? parentPath(path) : inFolder(path, p) ? joinPath(parentPath(path), p.slice(path.length + 1)) : p))
+export const moveTrackToFolder = (id: number, folder: string) =>
+  editMusic((m) => {
+    const { [id]: _old, ...rest } = m.trackFolders ?? {}
+    return { ...m, trackFolders: folder ? { ...rest, [id]: folder } : rest }
+  })
 export const sceneTracks = (s: Scene) => s.tracks.filter((t): t is number => typeof t === 'number')
 
 /* ---------------------------------------------------------------- state (for the UI) */
@@ -318,8 +345,20 @@ export async function startCombatMusic() {
   await playPick(pick, m.scenes)
 }
 
-/** Back to what played before the fight (or silence, if nothing did). */
+/** Choose (or clear) the music that plays once this fight is over. */
+export async function setAfterCombatMusic(pick: string | undefined) {
+  await saveMusicSettings({ ...(await readMusic()), afterPick: pick })
+}
+
+/** The chosen after-fight music if there is one, else back to what played before the fight (or silence, if nothing did). */
 export async function endCombatMusic() {
+  const m = await readMusic()
+  if (m.afterPick) {
+    before = null
+    await saveMusicSettings({ ...m, afterPick: undefined })
+    await playPick(m.afterPick, m.scenes)
+    return
+  }
   if (!before) return
   const { sceneId, trackId } = before
   before = null

@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { CheckField, Section } from './Section'
 import { NumberField } from './NumberField'
 import { newId } from '../lib/id'
@@ -99,7 +100,7 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
                 />
               )}
               <button className="danger icon-btn" title={t('act.removeAction')} onClick={() => onChange(actions.filter((x) => x.id !== a.id))}>
-                ✕
+                <X />
               </button>
             </div>
 
@@ -229,7 +230,7 @@ export function ActionsEditor({ actions, onChange, owner }: Props) {
                       />
                     </label>
                     <button className="danger icon-btn" title={t('common.remove')} onClick={() => patch(a.id, { extraDamage: (a.extraDamage ?? []).filter((_, j) => j !== i) })}>
-                      ✕
+                      <X />
                     </button>
                   </div>
                 ))}

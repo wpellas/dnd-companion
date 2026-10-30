@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { Window } from '../components/Window'
 import { MusicPicker } from '../components/MusicPicker'
@@ -166,7 +167,7 @@ function EncounterForm({ initial, srd, custom, levels, onClose }: { initial: Enc
               </div>
               <NumberField label={t('enc.count')} value={e.count} min={1} onChange={(n) => setEntries(enc.entries.map((x, j) => (j === i ? { ...x, count: Math.max(1, Math.floor(n)) } : x)))} />
               <button className="danger icon-btn" onClick={() => setEntries(enc.entries.filter((_, j) => j !== i))} title={t('common.remove')}>
-                ✕
+                <X />
               </button>
             </div>
           </div>

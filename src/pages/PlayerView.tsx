@@ -1,3 +1,4 @@
+import { Castle, Maximize, Minimize, PawPrint, Sparkles, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
@@ -206,7 +207,7 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
         {remote.connected && !remote.hostOnline && <span className="player-note">{t('player.dmOffline')}</span>}
         {fullscreen.supported && (
           <button className="glossary-btn" title={t('player.fullscreen')} aria-label={t('player.fullscreen')} aria-pressed={fullscreen.on} onClick={fullscreen.toggle}>
-            {fullscreen.on ? '🗗' : '⛶'}
+            {fullscreen.on ? <Minimize /> : <Maximize />}
           </button>
         )}
         <button className="glossary-btn" title={t('gloss.title')} aria-label={t('gloss.title')} aria-expanded={glossary} onClick={() => setGlossary(!glossary)}>
@@ -260,7 +261,7 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
             <div key={c.id} className={`player-row ${c.kind} ${c.ally ? 'ally' : ''} ${isActive ? 'active' : ''} ${down ? 'down' : ''} ${fx?.fx?.targetId === c.id ? `fx-${fx.fx.kind}` : ''}`} data-fx={fx?.fx?.targetId === c.id ? fx.id : undefined}>
               {/* The portrait sits outside the info bar, overlapping its left edge like a medallion. */}
               {c.kind === 'lair' ? (
-                <div className="portrait placeholder" style={{ width: 140, height: 140, fontSize: 64 }}>☗</div>
+                <div className="portrait placeholder" style={{ width: 140, height: 140, fontSize: 64 }}><Castle /></div>
               ) : (
                 <Portrait name={c.name} src={c.characterId !== undefined ? portraitFor(c.characterId) : remote.portraits[c.id]} image={c.characterId !== undefined ? imageFor(c.characterId) : localAvatars?.get(c.id)} size={140} />
               )}
@@ -287,10 +288,10 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
                   {c.kind === 'monster' && !c.ally && <div className={`status ${c.status.toLowerCase()}`}>{t(`status.${c.status}`)}</div>}
                   {(c.conditions.length > 0 || c.concentrating || c.inspired || !!c.form || !!c.effects?.length) && (
                     <div className="badges">
-                      {c.form && badge(c.id, 'form', () => t('gloss.form', { form: c.form! }), <>🐾 {c.form}</>)}
-                      {c.inspired && badge(c.id, 'insp', () => t('gloss.inspiration.text'), <>★ {t('insp.button')}</>)}
+                      {c.form && badge(c.id, 'form', () => t('gloss.form', { form: c.form! }), <><PawPrint /> {c.form}</>)}
+                      {c.inspired && badge(c.id, 'insp', () => t('gloss.inspiration.text'), <><Star /> {t('insp.button')}</>)}
                       {c.concentrating && badge(c.id, 'conc', () => t('gloss.concentration.text'), t('player.concentrating'))}
-                      {c.effects?.map((e) => badge(c.id, `e-${e.name}`, () => explainEffect(e.name), <>✦ {e.name}{e.rounds !== undefined && ` · ${e.rounds}`}</>))}
+                      {c.effects?.map((e) => badge(c.id, `e-${e.name}`, () => explainEffect(e.name), <><Sparkles /> {e.name}{e.rounds !== undefined && ` · ${e.rounds}`}</>))}
                       {c.conditions.map((cond) => badge(c.id, cond, () => explainCondition(cond), cond === 'Exhaustion' && c.exhaustion ? `${tCondition('Exhaustion')} ${c.exhaustion}` : tCondition(cond), conditionTone(cond)))}
                     </div>
                   )}

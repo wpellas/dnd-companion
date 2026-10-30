@@ -1,3 +1,4 @@
+import { ArrowUp, Backpack, Coins, Moon, Sparkles, Star, Sun, Tv } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -89,17 +90,17 @@ export function PartyPage() {
               title={inCombat ? t('party.finishFirst') : undefined}
               onClick={() => setResting('short')}
             >
-              {t('rest.short')}
+              <Moon /> {t('rest.short')}
             </button>
             <button
               disabled={inCombat || !characters?.length}
               title={inCombat ? t('party.finishFirst') : undefined}
               onClick={() => setResting('long')}
             >
-              {t('rest.long')}
+              <Sun /> {t('rest.long')}
             </button>
             <button disabled={!characters?.length} onClick={() => setAwarding(true)}>
-              {t('award.button')}
+              <Sparkles /> {t('award.button')}
             </button>
           </>
         )}
@@ -168,11 +169,11 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
 
       <div className="wealth">
         <span className="gp" title={t('wealth.gpTitle')}>
-          💰 {Math.floor(totalGp(c.coins)).toLocaleString()} gp
+          <Coins /> {Math.floor(totalGp(c.coins)).toLocaleString()} gp
         </span>
         {itemsGp(c) > 0 && (
           <span className="gp items" title={t('inv.itemsWorthTitle')}>
-            🎒 {itemsGp(c).toLocaleString()} gp
+            <Backpack /> {itemsGp(c).toLocaleString()} gp
           </span>
         )}
         {/* the blue pill fills as the character gets closer to the next level */}
@@ -180,7 +181,7 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
           XP {xp.toLocaleString()}
           {nextXp !== undefined ? ` / ${nextXp.toLocaleString()}` : ''}
         </span>
-        {canLevelUp(c) && <span className="levelup-badge">{t('wealth.ready', { n: levelForXp(xp) })}</span>}
+        {canLevelUp(c) && <span className="levelup-badge"><ArrowUp /> {t('wealth.ready', { n: levelForXp(xp) })}</span>}
       </div>
 
       {slotRows.length > 0 && (
@@ -217,16 +218,16 @@ function CharacterCard({ c, onEdit, onLevelUp }: { c: Character; onEdit: () => v
             title={shown ? t('party.showTitleOn') : t('party.showTitle')}
             onClick={() => (shown ? stopShowing() : showToPlayers(c.id!))}
           >
-            📺 {shown ? t('party.showcasing') : t('party.showcase')}
+            <Tv /> {shown ? t('party.showcasing') : t('party.showcase')}
           </button>
         )}
         <button className={c.heroicInspiration ? 'selected' : ''} title={t('insp.title')} aria-pressed={!!c.heroicInspiration} onClick={() => updateCharacter(c.id!, { heroicInspiration: !c.heroicInspiration })}>
-          ★ {t('insp.button')}
+          <Star /> {t('insp.button')}
         </button>
-        <button onClick={() => setShowItems(true)}>{t('inv.items')}{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
+        <button onClick={() => setShowItems(true)}><Backpack /> {t('inv.items')}{(c.items ?? []).length ? ` (${(c.items ?? []).length})` : ''}</button>
         {c.classIndex && c.level < 20 && (
           <button className={canLevelUp(c) ? 'primary' : ''} title={t('lvl.buttonTitle')} onClick={onLevelUp}>
-            {t('lvl.button')}
+            <ArrowUp /> {t('lvl.button')}
           </button>
         )}
         <button onClick={onEdit}>{t('common.edit')}</button>

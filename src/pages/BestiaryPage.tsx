@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { Window } from '../components/Window'
 import { useMemo, useState } from 'react'
@@ -79,7 +80,7 @@ export function BestiaryPage() {
   const keyOf = (m: MonsterTemplate) => m.srdIndex ?? `custom-${m.id}`
   const avatars = useAvatars()
   const sortBy = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))
-  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : '')
+  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 1 ? <ChevronUp /> : <ChevronDown />) : '')
   const filtered = search || crMin !== '0' || crMax !== '30' || type || size || source !== 'all'
 
   return (
@@ -196,7 +197,7 @@ function MonsterRow({ m, avatars, expanded, onToggle, onEdit }: { m: MonsterTemp
           <div className="name-cell">
             {avatars[0] && <Portrait name={m.name} image={avatars[0].blob} size={28} />}
             <button className="link-btn name-btn" onClick={onToggle} aria-expanded={expanded}>
-              {expanded ? '▾' : '▸'} {m.name}
+              {expanded ? <ChevronDown /> : <ChevronRight />} {m.name}
             </button>
             {m.source === 'custom' && <span className="tag">{t('bestiary.tagCustom')}</span>}
             {m.legendaryUses ? <span className="tag legendary">{t('bestiary.tagLegendary')}</span> : null}

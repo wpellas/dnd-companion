@@ -1,3 +1,4 @@
+import { Eye, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { possessive, t } from '../lib/i18n'
 import { toPublicSheet } from '../lib/publicState'
@@ -23,7 +24,7 @@ export function InventoryDialog({ c, onChange, onClose }: { c: Character; onChan
       dismissOnBackdrop
       headerExtra={
         <button aria-pressed={editing} onClick={() => setEditing((on) => !on)}>
-          {editing ? t('inv.viewMode') : t('inv.editMode')}
+          {editing ? <Eye /> : <Pencil />} {editing ? t('inv.viewMode') : t('inv.editMode')}
         </button>
       }
       actions={

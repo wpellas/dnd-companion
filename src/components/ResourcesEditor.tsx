@@ -1,3 +1,4 @@
+import { RotateCcw, X } from 'lucide-react'
 import { Combobox, type ComboOption } from './Combobox'
 import { NumberField } from './NumberField'
 import { newId } from '../lib/id'
@@ -103,11 +104,11 @@ export function ResourcesEditor({ resources, onChange, owner }: Props) {
               </label>
               {official && !r.auto && (
                 <button title={t('res.officialTitle')} onClick={() => reset(r)}>
-                  {t('res.official')}
+                  <RotateCcw /> {t('res.official')}
                 </button>
               )}
               <button className="danger icon-btn" title={t('common.remove')} onClick={() => onChange(resources.filter((x) => x.id !== r.id))}>
-                ✕
+                <X />
               </button>
             </div>
             {official?.note && <p className="muted note-line">{official.note}</p>}

@@ -1,3 +1,4 @@
+import { Tv } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { possessive, t } from '../lib/i18n'
@@ -27,7 +28,7 @@ export function SpotlightBar() {
   return (
     <div className="spotlight-bar" role="status">
       <span>
-        <Rich text={t('spot.text')} parts={{ who: <strong>{possessive(character?.name ?? t('spot.fallback'))}</strong> }} />
+        <Tv /> <Rich text={t('spot.text')} parts={{ who: <strong>{possessive(character?.name ?? t('spot.fallback'))}</strong> }} />
       </span>
       <label className="check small">
         <input type="checkbox" checked={spotlight.inventory} onChange={(e) => setSpotlightInventory(e.target.checked)} />

@@ -1,3 +1,4 @@
+import { Dices } from 'lucide-react'
 import { RIDER_NOTE } from '../../lib/monsters'
 import { t, tDamage } from '../../lib/i18n'
 import type { DamageEntryState } from './useDamageEntry'
@@ -43,7 +44,7 @@ export function DamageEntry({ entry, label, canRoll, crit }: Props) {
         ))}
         {canRoll ? (
           <button className="roll-btn" onClick={entry.roll}>
-            {t('de.roll', { dice, crit: crit ? t('de.rollCrit') : '' })}
+            <Dices /> {t('de.roll', { dice, crit: crit ? t('de.rollCrit') : '' })}
           </button>
         ) : (
           <span className="roll-hint">{t('de.table', { dice, crit: crit ? t('de.tableCrit') : '' })}</span>

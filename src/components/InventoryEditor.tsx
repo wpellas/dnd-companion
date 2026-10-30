@@ -1,3 +1,4 @@
+import { ArrowLeftRight, ArrowUp, Backpack, Pencil, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { deriveAction } from '../lib/character'
 import { formatMod } from '../lib/dice'
@@ -141,7 +142,7 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
           ))}
           <span className="muted coin-total">≈ {Math.floor(totalGp(c.coins)).toLocaleString()} gp</span>
           <span className="muted coin-total" title={t('inv.itemsWorthTitle')}>
-            🎒 {t('inv.itemsWorth', { n: itemsGp(c).toLocaleString() })}
+            <Backpack /> {t('inv.itemsWorth', { n: itemsGp(c).toLocaleString() })}
           </span>
         </div>
         <div className="xp-box">
@@ -151,7 +152,7 @@ export function InventoryEditor({ c, onChange, transferable }: Props) {
             {next !== undefined ? t('inv.nextAt', { xp: next.toLocaleString() }) : t('inv.maxLevel')}
             {levelForXp(xp) !== c.level && xp > 0 ? t('inv.xpSays', { n: levelForXp(xp) }) : ''}
           </span>
-          {canLevelUp(c) && <span className="levelup-badge">{t('inv.ready', { n: levelForXp(xp) })}</span>}
+          {canLevelUp(c) && <span className="levelup-badge"><ArrowUp /> {t('inv.ready', { n: levelForXp(xp) })}</span>}
         </div>
       </div>
 
@@ -280,15 +281,15 @@ export function ItemRow({
           />
         )}
         <button title={t('inv.edit')} aria-label={t('inv.editItem', { name: item.name || t('common.unnamed') })} onClick={startEdit}>
-          ✎
+          <Pencil />
         </button>
         {onTransfer && others.length > 0 && saved.qty >= 1 && (
           <button title={t('inv.transfer')} aria-label={t('inv.transferItem', { name: item.name || t('common.unnamed') })} aria-expanded={moving} onClick={() => setMoving(!moving)}>
-            ⇄
+            <ArrowLeftRight />
           </button>
         )}
         <button className="danger" title={t('inv.remove')} aria-label={t('inv.removeItem', { name: item.name || t('common.unnamed') })} onClick={onRemove}>
-          ✕
+          <X />
         </button>
       </div>
       {moving && onTransfer && (

@@ -212,6 +212,7 @@ and `useRemoteView` / `PlayerView` apply it (a phone has no saved settings; the 
 RPG theme from `src/assets/images/logo.png` (don't import the 2.3 MB original; use `logo-128.png` / `logo-360.png`, `public/favicon.png`). Palette
 is CSS variables at the top of `src/index.css`: dragon red, parchment, gold, leather brown on dark wood.
 - DM screens are a parchment `.page`; the player view is the inverse (parchment cards on wood) for TV readability and phones (it has a mobile layout).
+- **Icons are `lucide-react`** (tree-shaken; `svg.lucide` in `index.css` sizes them to the text, colour = `currentColor`). No emoji as icons: import the icon and put it before the message, which holds the words only (`<Dices /> {t('seq.rollAll')}`). Text-flow glyphs (→ ↑ ✓ ✗ ● ○ ▲ ▼ in rule lines and pips) stay as characters, and so does anything inside an `<option>`.
 - Fonts are bundled via `@fontsource` (Cinzel, Alegreya) so the app works offline. No CDN fonts (their Latin subset covers å ä ö).
 - Reuse classes (`.card`, `.chip`, `.primary`, `.danger`, `.field`) rather than one-off colours. Inside `.card`, `<strong>` is coloured dark red:
   badges need an explicit rule (see `strong.diff`).

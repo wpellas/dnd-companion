@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { t } from '../lib/i18n'
 import { Portrait } from './Portrait'
 
@@ -9,7 +10,7 @@ export function AvatarGallery({ name, images, onAdd, onRemove }: { name: string;
         <span key={i} className="avatar-thumb">
           <Portrait name={name} image={img} size={56} />
           <button title={t('avatar.remove')} aria-label={t('avatar.remove')} onClick={() => onRemove(i)}>
-            ✕
+            <X />
           </button>
         </span>
       ))}

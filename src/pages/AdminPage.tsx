@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { useEffect, useState } from 'react'
 import { Section } from '../components/Section'
@@ -119,7 +120,7 @@ export function AdminPage() {
     <div className="page">
       <div className="toolbar">
         <h2>{t('admin.title')}</h2>
-        <button onClick={() => (location.hash = '')}>{t('admin.back')}</button>
+        <button onClick={() => (location.hash = '')}><ArrowLeft /> {t('admin.back')}</button>
       </div>
       {msg && <p className={msg.ok ? 'adv-text' : 'warn'}>{msg.text}</p>}
 

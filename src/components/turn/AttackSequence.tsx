@@ -1,3 +1,4 @@
+import { Dices, X } from 'lucide-react'
 import { useState } from 'react'
 import type { TargetOutcome } from '../../lib/combat'
 import { isParty } from '../../lib/sides'
@@ -107,7 +108,7 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
         </label>
         {canRoll && (
           <button disabled={rows.some((r) => !r.targetId)} onClick={() => rows.forEach((_, i) => rollRow(i))} title={t('seq.rollAllTitle')}>
-            {t('seq.rollAll')}
+            <Dices /> {t('seq.rollAll')}
           </button>
         )}
       </div>
@@ -202,7 +203,7 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                   <div className="row gap">
                     {canRoll && (
                       <button title={t('seq.rollThis')} disabled={!row.targetId} onClick={() => rollRow(i)}>
-                        🎲
+                        <Dices />
                       </button>
                     )}
                     <button
@@ -215,7 +216,7 @@ export function AttackSequence({ attacker, steps: initial, pickable, canRoll, me
                         setRollNotes({})
                       }}
                     >
-                      ✕
+                      <X />
                     </button>
                   </div>
                 </td>

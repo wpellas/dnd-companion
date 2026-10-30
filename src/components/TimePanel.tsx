@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { t } from '../lib/i18n'
@@ -55,7 +56,7 @@ export function TimePanel() {
               <span>{t('time.lit')}</span>
             </label>
             <button className="danger" aria-label={t('common.remove')} onClick={() => void setLights(lights.filter((x) => x.id !== l.id))}>
-              ✕
+              <X />
             </button>
           </li>
         ))}

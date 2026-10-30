@@ -1,6 +1,8 @@
+import { Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { t } from '../lib/i18n'
-import { KIND_ICON, natOf, ROLL_MAX, sendRoll, type RollKind } from '../lib/rolls'
+import { RollKindIcon } from './KindIcon'
+import { natOf, ROLL_MAX, sendRoll, type RollKind } from '../lib/rolls'
 import type { Character } from '../types'
 import { DieToken } from './DieToken'
 
@@ -55,7 +57,7 @@ export function RollSender({ campaignId, characters }: { campaignId: number; cha
     <div className="roll-dock">
       {!open ? (
         <button className="primary" onClick={() => setOpen(true)}>
-          📱 {t('roll.send')}
+          <Smartphone /> {t('roll.send')}
         </button>
       ) : (
         <>
@@ -90,7 +92,7 @@ export function RollSender({ campaignId, characters }: { campaignId: number; cha
                 <div className="roll-kinds">
                   {KINDS.map((k) => (
                     <button key={k} className={k === kind ? 'selected' : ''} aria-pressed={k === kind} onClick={() => setKind(k)}>
-                      {KIND_ICON[k]} {t(`roll.kind.${k}`)}
+                      <RollKindIcon kind={k} /> {t(`roll.kind.${k}`)}
                     </button>
                   ))}
                 </div>

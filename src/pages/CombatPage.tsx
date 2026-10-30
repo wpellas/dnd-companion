@@ -1,3 +1,4 @@
+import { Castle, Crosshair, Dices, ExternalLink, Music, Play, Save, ScrollText, Shield, Smartphone, Sparkles, Star, TriangleAlert, Undo2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
@@ -54,7 +55,7 @@ import { pictureFor, useAvatars } from '../lib/avatars'
 import { useSentRoll } from '../lib/rolls'
 import { askConfirm, askText } from '../lib/ask'
 import { updateCharacter } from '../lib/store'
-import { combatPick, endCombatMusic, playPick, prepareCombatMusic, startCombatMusic, useMusic, useMusicSettings } from '../lib/music'
+import { combatPick, endCombatMusic, playPick, prepareCombatMusic, setAfterCombatMusic, startCombatMusic, useMusic, useMusicSettings } from '../lib/music'
 import { MusicPicker } from '../components/MusicPicker'
 import { saveBonus } from '../lib/resolve'
 import { effectiveAc, exhaustionLevel } from '../lib/conditionRules'
@@ -103,8 +104,16 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
         <h2>
           {t('combat.title')} {started && <span className="muted">{t('combat.round', { n: combat?.round ?? 0 })}</span>}
         </h2>
+        {rating && (
+          <span className="difficulty" title={t('combat.budgetTitle', { xp, low: rating.budget.low, mod: rating.budget.moderate, high: rating.budget.high })}>
+            {xp} XP · <strong className={`diff ${rating.difficulty?.replace(' ', '-').toLowerCase()}`}>{rating.difficulty ? t(`diff.${rating.difficulty}`) : ''}</strong> {t('combat.forParty')}
+          </span>
+      )}
+      </div>
+
+      <div className="toolbar flat">
         <button onClick={addParty}>{t('combat.addParty')}</button>
-        <button onClick={() => mutateCombat((s) => rollAllMonsterInitiative(s, settings.groupInitiative), t('lbl.rolledInit'))}>{t('combat.rollMonsters')}</button>
+        <button onClick={() => mutateCombat((s) => rollAllMonsterInitiative(s, settings.groupInitiative), t('lbl.rolledInit'))}><Dices /> {t('combat.rollMonsters')}</button>
         {!started ? (
           <button className="primary" disabled={!allSet} onClick={() => {
               void startCombatMusic() // first: the click is what lets the browser play sound and reopen the music folder
@@ -115,17 +124,17 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
         ) : (
           <>
             <button className="primary" onClick={() => mutateCombat(advanceTurn, t('lbl.nextTurn'))}>
-              {t('combat.next')}
+              {t('combat.next')} <Play />
             </button>
             <button className="danger" onClick={async () => (await askConfirm(t('combat.endConfirm'), t('combat.end'))) && void endCombat().then(endCombatMusic)}>
               {t('combat.end')}
             </button>
           </>
-        )}
+      )}
         <button disabled={!lastUndo} title={lastUndo ? t('combat.undoTitle', { label: lastUndo.label }) : t('combat.nothingUndo')} onClick={() => undoCombat()}>
-          {t('combat.undo')}
+          <Undo2 /> {t('combat.undo')}
         </button>
-        <button onClick={() => window.open('#player', 'dnd-player-view')}>{t('combat.openPlayer')}</button>
+        <button onClick={() => window.open('#player', 'dnd-player-view')}>{t('combat.openPlayer')} <ExternalLink /></button>
       </div>
 
       <div className="toolbar sub">
@@ -133,41 +142,42 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
           {t('combat.lair')}
         </button>
         <button onClick={saveEncounter} disabled={!monsters.length}>
-          {t('combat.saveEncounter')}
+          <Save /> {t('combat.saveEncounter')}
         </button>
-        {goTo && <button onClick={() => goTo('encounters')}>{t('combat.savedEncounters')}</button>}
-        {(music.scenes.length > 0 || library.tracks.length > 0) && (
-          <>
-            {/* what starts with the fight: set it before pressing Start (it takes over from whatever plays, or starts if nothing does) */}
-            <label className="row gap" title={t('music.combatTitle')}>
-              <span className="muted">{t('music.combat')}</span>
-              <MusicPicker
-                value={combatPick(music)}
-                placeholder={t('music.combatNone')}
-                clearLabel={t('music.combatNone')}
-                onChange={(pick) => {
-                  void prepareCombatMusic(pick)
-                  if (started && pick) void playPick(pick, music.scenes) // mid-fight: switch right now
-                }}
-              />
-            </label>
-            {/* a quick change at any time, in or out of a fight */}
-            <label className="row gap" title={t('music.playNowTitle')}>
-              <span className="muted">{t('music.playNow')}</span>
-              <MusicPicker placeholder={t('music.playNowPlaceholder')} onChange={(pick) => pick && void playPick(pick, music.scenes)} />
-            </label>
-          </>
-        )}
+        {goTo && <button onClick={() => goTo('encounters')}><ScrollText /> {t('combat.savedEncounters')}</button>}
         <label className="check small" title={t('combat.groupTitle')}>
           <input type="checkbox" checked={settings.groupInitiative} onChange={(e) => updateSettings({ groupInitiative: e.target.checked })} />
           <span>{t('combat.group')}</span>
         </label>
-        {rating && (
-          <span className="difficulty" title={t('combat.budgetTitle', { xp, low: rating.budget.low, mod: rating.budget.moderate, high: rating.budget.high })}>
-            {xp} XP · <strong className={`diff ${rating.difficulty?.replace(' ', '-').toLowerCase()}`}>{rating.difficulty ? t(`diff.${rating.difficulty}`) : ''}</strong> {t('combat.forParty')}
-          </span>
-        )}
       </div>
+      {(music.scenes.length > 0 || library.tracks.length > 0) && (
+        <div className="music-strip">
+          <Music className="music-icon" aria-hidden />
+          {/* what starts with the fight: set it before pressing Start (it takes over from whatever plays, or starts if nothing does) */}
+          <label title={t('music.combatTitle')}>
+            <span>{t('music.combat')}</span>
+            <MusicPicker
+              value={combatPick(music)}
+              placeholder={t('music.combatNone')}
+              clearLabel={t('music.combatNone')}
+              onChange={(pick) => {
+                void prepareCombatMusic(pick)
+                if (started && pick) void playPick(pick, music.scenes) // mid-fight: switch right now
+              }}
+            />
+          </label>
+          {/* optional: what plays when this fight ends, instead of the music from before (used up when it plays) */}
+          <label title={t('music.afterTitle')}>
+            <span>{t('music.after')}</span>
+            <MusicPicker value={music.afterPick} placeholder={t('music.afterNone')} clearLabel={t('music.afterNone')} onChange={(pick) => void setAfterCombatMusic(pick)} />
+          </label>
+          {/* a quick change at any time, in or out of a fight */}
+          <label title={t('music.playNowTitle')}>
+            <span>{t('music.playNow')}</span>
+            <MusicPicker placeholder={t('music.playNowPlaceholder')} onChange={(pick) => pick && void playPick(pick, music.scenes)} />
+          </label>
+        </div>
+      )}
 
       {!!characters?.length && <SpellFinder characters={characters.map(normalizeCharacter)} />}
       {combatants.length > 0 && <HazardPanel combatants={combatants} settings={settings} />}
@@ -220,7 +230,7 @@ function PromptBanner({ prompt, combatants, settings }: { prompt: Prompt; combat
       <div className="prompt-banner">
         <Rich text={t('prompt.conc', { dc: prompt.dc, bonus: formatMod(bonus) })} parts={{ name: <strong>{c.name}</strong> }} />
         <input className="narrow" type="number" placeholder="d20" value={d} onChange={(e) => setD(e.target.value)} aria-label="d20" />
-        {canRoll && <button onClick={() => setD(String(rollDie(20)))}>🎲</button>}
+        {canRoll && <button onClick={() => setD(String(rollDie(20)))}><Dices /></button>}
         {total !== undefined && <span className={pass ? 'adv' : 'dis'}>{total} → {pass ? t('prompt.keeps') : t('prompt.loses')}</span>}
         <button className="primary" disabled={pass === undefined} onClick={() => mutateCombat((s) => settleConcentration(s, prompt.id, !!pass), t('lbl.concCheck', { name: c.name }))}>
           {t('prompt.apply')}
@@ -244,7 +254,7 @@ function PromptBanner({ prompt, combatants, settings }: { prompt: Prompt; combat
           parts={{ name: <strong>{c.name}</strong> }}
         />
         <input className="narrow" type="number" placeholder="d20" value={d} onChange={(e) => setD(e.target.value)} aria-label="d20" />
-        {canRoll && <button onClick={() => setD(String(rollDie(20)))}>🎲</button>}
+        {canRoll && <button onClick={() => setD(String(rollDie(20)))}><Dices /></button>}
         {total !== undefined && <span className={pass ? 'adv' : 'dis'}>{total} → {pass ? t('eff.saved') : t('eff.notSaved')}</span>}
         <button className="primary" disabled={pass === undefined} onClick={() => settle(!!pass)}>
           {t('prompt.apply')}
@@ -262,7 +272,7 @@ function PromptBanner({ prompt, combatants, settings }: { prompt: Prompt; combat
         parts={{ name: <strong>{c.name}</strong>, action: <strong>{action?.name}</strong> }}
       />
       <input className="narrow" type="number" min={1} max={6} placeholder="d6" value={d} onChange={(e) => setD(e.target.value)} aria-label="d6" />
-      <button onClick={() => setD(String(rollDie(6)))}>🎲</button>
+      <button onClick={() => setD(String(rollDie(6)))}><Dices /></button>
       <button className="primary" disabled={roll === undefined} onClick={() => mutateCombat((s) => settleRecharge(s, prompt.id, roll!), t('lbl.recharge', { name: c.name }))}>
         {t('prompt.apply')}
       </button>
@@ -343,7 +353,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
       <div className={`combatant lair ${active ? 'active' : ''}`}>
         <InitiativeInput value={c.initiative} onCommit={(n) => update((who) => (who.initiative = n), true, t('lbl.lairInit'))} />
         <span />
-        <div className="portrait placeholder" style={{ width: 48, height: 48, fontSize: 22 }}>☗</div>
+        <div className="portrait placeholder" style={{ width: 48, height: 48, fontSize: 22 }}><Castle /></div>
         <div className="who">
           <strong>{c.name}</strong>
           <span className="muted">{c.notes || t('row.lairNote')}</span>
@@ -351,7 +361,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
         <span />
         <span />
         <span />
-        <button title={t('row.removeTitle')} onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), t('lbl.removedLair'))}>✕</button>
+        <button title={t('row.removeTitle')} onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), t('lbl.removedLair'))}><X /></button>
       </div>
     )
   }
@@ -361,7 +371,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
       <InitiativeInput value={c.initiative} onCommit={(n) => withState((s, who) => { who.initiative = n; if (settings.groupInitiative) shareInitiative(s, who); else sortCombatants(s) }, t('lbl.initiative', { name: c.name }))} />
       {canAppRoll(c.kind, settings) ? (
         <button title={c.surprised ? t('row.rollInitSurprised') : t('row.rollInit')} onClick={() => withState((s, who) => { who.initiative = rollInitiative(who.initiativeBonus, !!who.surprised); if (settings.groupInitiative) shareInitiative(s, who); else sortCombatants(s) }, t('lbl.rolledInitOne', { name: c.name }))}>
-          🎲
+          <Dices />
         </button>
       ) : (
         <span title={t('row.playersRoll')} />
@@ -371,9 +381,9 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
         <strong>{c.name}</strong>
         {sentInit.roll && c.initiative !== null && sentInit.roll.value !== c.initiative && (
           <button className="tiny-button" title={t('roll.useTitle')} onClick={takePhoneInitiative}>
-            📱 {sentInit.roll.value}
+            <Smartphone /> {sentInit.roll.value}
           </button>
-        )}
+      )}
         <span className="muted">
           {t('row.ac', { n: effectiveAc(c) })}
           {(c.resistances?.length || c.immunities?.length || c.vulnerabilities?.length) ? (
@@ -385,7 +395,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
                 v: (c.vulnerabilities ?? []).map(tDamage).join(', ') || none,
               })}
             >
-              {' '}🛡{c.resistances?.length ? ` R${c.resistances.length}` : ''}{c.immunities?.length ? ` I${c.immunities.length}` : ''}{c.vulnerabilities?.length ? ` V${c.vulnerabilities.length}` : ''}
+              {' '}<Shield />{c.resistances?.length ? ` R${c.resistances.length}` : ''}{c.immunities?.length ? ` I${c.immunities.length}` : ''}{c.vulnerabilities?.length ? ` V${c.vulnerabilities.length}` : ''}
             </span>
           ) : null}
         </span>
@@ -397,7 +407,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
               {c.surprised ? (canAppRoll(c.kind, settings) ? t('row.surprisedRolls') : t('row.surprisedPlayer')) : ''}
             </span>
           </label>
-        )}
+      )}
         {active && (
           <span className="econ">
             {ECON.map(({ key, letter, title }) => (
@@ -411,17 +421,17 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
               </button>
             ))}
           </span>
-        )}
+      )}
         {!!c.effects?.length && (
           <div className="effect-chips">
             {c.effects.map((e) => (
               <span key={e.id} className="chip" title={effectLine(e, all)}>
-                ✦ {e.name}
+                <Sparkles /> {e.name}
                 {e.rounds !== undefined && ` · ${e.rounds}`}
               </span>
             ))}
           </div>
-        )}
+      )}
         {c.legendary && <span className="muted tiny">{t('row.legendary', { left: c.legendary.max - c.legendary.used, max: c.legendary.max })}</span>}
         {c.kind === 'pc' && down && sentDeath.roll && (
           <button
@@ -433,15 +443,15 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
               sentDeath.take()
             }}
           >
-            📱 {sentDeath.roll.value}
+            <Smartphone /> {sentDeath.roll.value}
           </button>
-        )}
+      )}
         {c.kind === 'pc' && down && (
           <div className="saves" title={t('row.deathSaves')}>
             <Pips label="✓" n={c.deathSaves.successes} onChange={(n) => withState((s, who) => setDeathSaves(s, who, 'successes', n), t('lbl.deathSave', { name: c.name }))} />
             <Pips label="✗" n={c.deathSaves.failures} onChange={(n) => withState((s, who) => setDeathSaves(s, who, 'failures', n), t('lbl.deathSave', { name: c.name }))} />
           </div>
-        )}
+      )}
       </div>
 
       <div className="hp">
@@ -520,7 +530,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
             ))
           : t('row.conditions')}
         {c.concentrating && t('row.concentratingSummary')}
-        {c.inspired && ' ★'}
+        {c.inspired && <Star />}
       </button>
       {condOpen && (
         <Window
@@ -534,7 +544,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
         >
           <section className="win-card">
             <h4>
-              <span aria-hidden="true">🎯</span> {t('row.status')}
+              <Crosshair aria-hidden="true" /> {t('row.status')}
             </h4>
             <div className="choice-grid">
               <label className="choice-card">
@@ -557,7 +567,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
                       void updateCharacter(c.characterId!, { heroicInspiration: e.target.checked })
                     }}
                   />
-                  <strong>★ {t('insp.button')}</strong>
+                  <strong><Star /> {t('insp.button')}</strong>
                 </label>
               )}
             </div>
@@ -581,7 +591,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
           </section>
           <section className="win-card">
             <h4>
-              <span aria-hidden="true">⚠</span> {t('row.conditions')}
+              <TriangleAlert aria-hidden="true" /> {t('row.conditions')}
             </h4>
             <div className="choice-grid compact">
               {CONDITIONS.filter((cond) => cond !== 'Exhaustion').map((cond) => (
@@ -598,7 +608,7 @@ function CombatantRow({ c, all, active, started, image, settings, character }: {
       </div>
 
       <button title={t('row.removeTitle')} onClick={() => mutateCombat((s) => void (s.combatants = s.combatants.filter((x) => x.id !== c.id)), t('lbl.removed', { name: c.name }))}>
-        ✕
+        <X />
       </button>
     </div>
   )

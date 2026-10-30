@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { useState } from 'react'
 import { NumberField } from './NumberField'
@@ -221,7 +222,7 @@ function SpellList({
               </button>
               {showLevel && <small>{levelLabel(s.level)}</small>}
               <button className="x" onClick={() => onRemove(s.index)} aria-label={t('ui.remove', { what: s.name })}>
-                ✕
+                <X />
               </button>
             </span>
           ))}

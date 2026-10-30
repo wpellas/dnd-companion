@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { t, tDamage } from '../lib/i18n'
 import { DAMAGE_TYPES } from '../types'
 
@@ -21,7 +22,7 @@ export function DamageTypeList({ label, value, onChange, hint }: Props) {
           <span className="spell-chip" key={d}>
             {tDamage(d)}
             <button className="x" onClick={() => onChange(value.filter((x) => x !== d))} aria-label={t('ui.remove', { what: tDamage(d) })}>
-              ✕
+              <X />
             </button>
           </span>
         ))}

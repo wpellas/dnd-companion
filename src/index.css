@@ -766,7 +766,7 @@ strong.diff.beyond-high, .card strong.diff.beyond-high { color: #ffd9d9; }
 /* ---------- Character spotlight: the DM shows one sheet on the players' screens ---------- */
 .spotlight-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; max-width: 1200px; margin: 12px auto 0; padding: 10px 16px; background: linear-gradient(#e7bd45, #c9972b); border: 2px solid var(--gold-dark); border-radius: 8px; color: var(--ink); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); }
 .spotlight-bar > span:first-child { flex: 1; min-width: 220px; }
-.music-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: 1200px; margin: 12px auto 0; padding: 8px 14px; background: linear-gradient(#5a381b, #3d2410); border: 2px solid var(--gold-dark); border-radius: 8px; color: var(--parchment); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); }
+.music-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: 1200px; margin: 12px auto 0; padding: 8px 14px; background: linear-gradient(#5a381b, #3d2410); border: 2px solid var(--gold-dark); border-radius: 8px; color: var(--parchment); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); position: sticky; top: calc(var(--nav-h, 56px) + 8px); z-index: 25; }
 .music-bar .music-now { flex: 1; min-width: 200px; }
 .music-bar .warn { color: #ffb09a; font-style: normal; }
 .music-bar input[type='range'] { width: 110px; }
@@ -969,7 +969,7 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 @media (min-width: 1000px) {
   .combatant {
     display: grid; flex-wrap: nowrap; align-items: center; column-gap: 12px;
-    grid-template-columns: 64px 40px 48px minmax(160px, 1fr) 150px max-content max-content 40px;
+    grid-template-columns: 78px 46px 48px minmax(160px, 1fr) 150px max-content max-content 40px;
   }
   .combatant .hp { min-width: 0; }
   .combatant .row-menus { flex-wrap: nowrap; justify-content: flex-end; margin-left: 0; }
@@ -981,13 +981,37 @@ button.tiny-button { padding: 0 8px; font-size: 0.75rem; margin-left: 6px; }
 .map-card { display: flex; flex-direction: column; gap: 8px; }
 .map-card img { width: 100%; height: 160px; object-fit: cover; border: 2px solid var(--leather); border-radius: 4px; }
 .map-stack { position: relative; }
-.map-card .map-stack img + img { position: absolute; inset: 0; height: 100%; border-color: transparent; }
+.map-card .map-stack img:not(:first-of-type) { position: absolute; inset: 0; height: 100%; border-color: transparent; }
 .map-layers { display: flex; flex-direction: column; gap: 6px; }
-/* the name takes what is left and shortens, so the buttons stay inside the card */
-.map-layers .row { flex-wrap: wrap; padding-bottom: 6px; border-bottom: 1px solid rgba(90, 56, 27, 0.25); }
-.map-layers .row > :first-child { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
-.map-layers .row > .danger { margin-left: auto; }
 .map-card.showing { box-shadow: 0 0 0 3px var(--gold); }
+.map-card[draggable='true'] { cursor: grab; }
+.map-card.is-dragged { opacity: 0.45; transform: rotate(-1.5deg) scale(0.97); outline: 2px dashed var(--leather); }
+/* a grip on the picture says "pick me up" */
+.grip { position: absolute; top: 6px; left: 6px; z-index: 2; padding: 0 7px; border-radius: 6px; background: rgba(30, 18, 8, 0.72); color: var(--gold); font-size: 1.2rem; line-height: 1.5; pointer-events: none; }
+.map-card:hover .grip { background: var(--gold); color: var(--ink); }
+/* while a picture is carried, every place it can land announces itself, and the one under the pointer lights up */
+.drag-banner { margin: 10px 0 0; padding: 8px 14px; border-radius: 8px; background: linear-gradient(#f5e2a0, #e0b94c); border: 2px solid var(--gold-dark); color: var(--ink); font-weight: 700; }
+.dragging .folder-card[data-drop], .dragging .folder-row[data-drop], .dragging .crumbs button[data-drop] { outline: 2px dashed var(--gold-dark); outline-offset: 3px; animation: drop-pulse 1.1s ease-in-out infinite; }
+.dragging .folder-card[data-over], .dragging .folder-row[data-over], .dragging .crumbs button[data-over] { outline: 3px solid var(--gold-dark); background: linear-gradient(#f5e2a0, #e0b94c); animation: none; transform: scale(1.04); box-shadow: 0 0 0 5px rgba(224, 185, 76, 0.45), 0 8px 18px rgba(0, 0, 0, 0.3); }
+.dragging .folder-card *, .dragging .folder-row * { pointer-events: none; }
+.drop-label { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; padding: 4px 14px; border-radius: 999px; background: var(--leather); color: var(--gold); font-family: var(--font-display); white-space: nowrap; }
+.folder-card[data-over] .drop-label, .folder-row[data-over] .drop-label { display: block; }
+.folder-card[data-over] .folder-open { opacity: 0.25; }
+.folder-row { position: relative; }
+.folder-link { display: flex; align-items: center; gap: 8px; justify-content: flex-start; border: 0; background: none; box-shadow: none; color: var(--ink); text-shadow: none; text-align: left; }
+.track-row[draggable='true'] { cursor: grab; }
+.grip-inline { color: var(--gold-dark); }
+@keyframes drop-pulse { 50% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .dragging .folder-card[data-drop], .dragging .crumbs button[data-drop] { animation: none; } }
+/* folders: a leather-edged card with a gold tab, so they read as folders next to the picture cards */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.crumbs button { padding: 4px 12px; border-radius: 999px; }
+.crumbs button.here { background: linear-gradient(#f5e2a0, #e0b94c); border-color: var(--gold-dark); color: var(--ink); text-shadow: none; font-weight: 700; }
+.folder-card { position: relative; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; border: 2px solid var(--leather); background: var(--parchment-3); }
+.folder-card::before { content: ''; position: absolute; left: 14px; top: -12px; width: 64px; height: 12px; border: 2px solid var(--leather); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--gold); }
+.folder-open { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 160px; justify-content: center; border: 0; background: none; cursor: pointer; }
+.folder-icon { font-size: 3rem; line-height: 1; }
+.folder-card:has(.folder-open:focus-visible) { outline: 3px solid var(--gold); outline-offset: 2px; }
 /* the picture takes the whole display: no caption, almost no margin (.player.map-view beats every `.player` padding, also in the media queries) */
 .player.map-view { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 6px; }
 .map-view img { max-width: 100%; max-height: calc(100vh - 12px); object-fit: contain; border: 3px solid var(--leather); border-radius: 4px; background: #000; }
@@ -1348,6 +1372,8 @@ dialog.window-lg { width: min(1100px, calc(100vw - 24px)); }
 
 /* the collapsible tool panels on the Party and Combat pages: room between them and before the cards below */
 .spell-finder, .time-panel, .checks-panel { margin-bottom: 14px; }
+.hazard-panel { margin-bottom: 24px; } /* more room before the turn panel that follows */
+.combatant .init + button { flex: none; width: 46px; height: 46px; padding: 0; display: grid; place-items: center; font-size: 1.35rem; line-height: 1; }
 .card-grid.still { margin-top: 22px; }
 dialog.ask .ask-message { margin: 0; font-size: 1.15rem; line-height: 1.4; }
 
@@ -1393,3 +1419,27 @@ dialog.window-tall .item-edit-card { height: min(780px, calc(100vh - 32px)); }
 .choice-card[data-tone]:has(input:checked) { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 18%, var(--parchment-3)); box-shadow: 0 0 0 2px var(--tone); }
 .choice-card[data-tone]:has(input:checked) strong { color: var(--tone); }
 .win-card .exhaustion { display: flex; align-items: center; gap: 10px; }
+/* Combat page header: the title row, the run controls, the prep tools and the music each get a row of their own */
+.toolbar.flat { margin-top: -8px; padding-bottom: 0; border-bottom: 0; }
+.toolbar .difficulty { margin-left: auto; }
+.music-strip { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; margin: 0 0 20px; padding: 10px 14px; border: 2px solid var(--edge); border-radius: 10px; background: var(--parchment-3); }
+.music-icon { align-self: center; font-size: 1.6rem; color: var(--gold-dark); }
+.music-strip label { display: flex; flex-direction: column; gap: 3px; }
+.music-strip label > span { font-size: 0.85rem; color: var(--leather-2); }
+/* layer manager: one compact row per layer */
+.map-layers > summary { cursor: pointer; font-family: var(--font-display); font-size: 0.85rem; color: var(--ink-muted); padding: 4px 0; }
+.map-layers[open] { display: flex; flex-direction: column; gap: 6px; }
+.layer-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; padding: 4px 0; border-top: 1px solid rgba(90, 56, 27, 0.25); }
+.layer-row .check { overflow-wrap: anywhere; min-width: 0; }
+.layer-row button.tiny-button { margin: 0; min-width: 28px; height: 28px; }
+.layer-thumb { width: 40px; height: 28px; border: 1px solid var(--leather); border-radius: 3px; background: repeating-conic-gradient(#d9c99b 0% 25%, #efe2bb 0% 50%) 0 0 / 8px 8px; overflow: hidden; }
+.layer-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+.combobox-list.flip { left: auto; right: 0; }
+
+/* Lucide icons sit in the text like the glyphs they replace: as tall as the letters, in the text colour */
+svg.lucide { width: 1.1em; height: 1.1em; flex: none; vertical-align: -0.18em; }
+.folder-icon svg, svg.folder-icon { width: 3rem; height: 3rem; vertical-align: baseline; }
+.combobox-caret svg { width: 1em; height: 1em; vertical-align: -0.15em; }
+.tiny-button svg.lucide, .inv-line button svg.lucide { width: 1em; height: 1em; }
+.portrait.placeholder svg.lucide { width: 55%; height: 55%; }
+.grip svg.lucide { width: 1em; height: 1em; vertical-align: middle; }

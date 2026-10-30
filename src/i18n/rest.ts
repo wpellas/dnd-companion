@@ -2,8 +2,8 @@ import type { Msg } from './types'
 
 /** Short and long rests. */
 export const rest = {
-  'rest.short': ['☾ Short rest', '☾ Kort vila'],
-  'rest.long': ['☀ Long rest', '☀ Lång vila'],
+  'rest.short': ['Short rest', 'Kort vila'],
+  'rest.long': ['Long rest', 'Lång vila'],
   'rest.shortIntro': [
     'About an hour. Spend Hit Dice to heal ({how}). Short-rest features recharge, Warlocks regain their Pact Magic slots, and Arcane Recovery-style features can give slots back.',
     'Ungefär en timme. Använd vilotärningar för att läka ({how}). Förmågor som laddas om vid kort vila återfås, häxmästare får tillbaka sina Pact Magic-platser, och förmågor som Arcane Recovery kan ge tillbaka platser.',

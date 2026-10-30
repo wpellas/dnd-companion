@@ -25,9 +25,58 @@ export const useMaps = (kind?: PictureKind) =>
 export const useMapShown = () => useLiveQuery(async () => ((await db.kv.get(KEY))?.value as MapShown | undefined) ?? null, [])
 
 /** 1800 px is sharp on a phone and a TV and keeps the file a few hundred kilobytes (it travels as JSON to the table). */
-export const addMap = async (file: File, kind: PictureKind = 'map') =>
-  db.maps.add({ name: file.name.replace(/\.[^.]+$/, '') || (kind === 'map' ? 'Map' : 'Image'), ...(kind === 'image' ? { kind } : {}), image: await shrinkImage(file, 1800) })
+export const addMap = async (file: File, kind: PictureKind = 'map', folder = '') =>
+  db.maps.add({
+    name: file.name.replace(/\.[^.]+$/, '') || (kind === 'map' ? 'Map' : 'Image'),
+    ...(kind === 'image' ? { kind } : {}),
+    ...(folder ? { folder } : {}),
+    image: await shrinkImage(file, 1800),
+  })
 export const renameMap = (id: number, name: string) => db.maps.update(id, { name })
+
+/**
+ * Folders (maps and story images each have their own tree). A picture holds its folder as a path ('Dungeons/Level 1', none = top level); the folders that exist
+ * are those paths and their parents, plus the ones kept in kv `mapFolders:<kind>` so an empty folder survives. Nothing here is sent to the players.
+ */
+const foldersKey = (kind: PictureKind) => `mapFolders:${kind}`
+export const useFolders = (kind: PictureKind) =>
+  useLiveQuery(async () => ((await db.kv.get(foldersKey(kind)))?.value as string[] | undefined) ?? [], [kind]) ?? []
+export const joinPath = (parent: string, name: string) => (parent ? `${parent}/${name}` : name)
+export const parentPath = (path: string) => path.slice(0, Math.max(0, path.lastIndexOf('/')))
+export const folderName = (path: string) => path.slice(path.lastIndexOf('/') + 1)
+/** Every folder path that exists, parents included, sorted so a parent comes before its children. */
+export const allFolders = (explicit: string[], pictures: MapRecord[]) => {
+  const out = new Set<string>()
+  for (const p of [...explicit, ...pictures.map((m) => m.folder ?? '')])
+    p.split('/').filter(Boolean).forEach((_, i, parts) => out.add(parts.slice(0, i + 1).join('/')))
+  return [...out].sort((a, b) => a.localeCompare(b))
+}
+export const inFolder = (path: string, folder?: string) => folder === path || !!folder?.startsWith(`${path}/`)
+
+/** Rewrites every folder path (pictures of this kind and the kept list) with `fn`; '' means the top level. */
+const rewriteFolders = (kind: PictureKind, fn: (path: string) => string) =>
+  db.transaction('rw', db.maps, db.kv, async () => {
+    const list = ((await db.kv.get(foldersKey(kind)))?.value as string[] | undefined) ?? []
+    await db.kv.put({ key: foldersKey(kind), value: [...new Set(list.map(fn).filter(Boolean))] })
+    for (const m of await db.maps.toArray()) {
+      if ((m.kind ?? 'map') !== kind || !m.folder) continue
+      const folder = fn(m.folder)
+      if (folder !== m.folder) await db.maps.update(m.id!, { folder: folder || undefined })
+    }
+  })
+export const createFolder = (kind: PictureKind, path: string) =>
+  db.transaction('rw', db.kv, async () => {
+    const list = ((await db.kv.get(foldersKey(kind)))?.value as string[] | undefined) ?? []
+    await db.kv.put({ key: foldersKey(kind), value: [...new Set([...list, path])] })
+  })
+export const renameFolder = (kind: PictureKind, path: string, name: string) => {
+  const to = joinPath(parentPath(path), name)
+  return rewriteFolders(kind, (p) => (inFolder(path, p) ? to + p.slice(path.length) : p))
+}
+/** The pictures and folders inside move up one level, so nothing is lost. */
+export const deleteFolder = (kind: PictureKind, path: string) =>
+  rewriteFolders(kind, (p) => (p === path ? parentPath(path) : inFolder(path, p) ? joinPath(parentPath(path), p.slice(path.length + 1)) : p))
+export const moveMap = (id: number, folder: string) => db.maps.update(id, { folder: folder || undefined })
 
 export async function showMap(mapId: number) {
   await db.kv.delete('spotlight') // one thing at a time
@@ -66,6 +115,7 @@ export const moveLayer = (mapId: number, layerId: string, dir: -1 | 1) =>
     ;[out[i], out[j]] = [out[j], out[i]]
     return out
   })
+export const setAllLayers = (mapId: number, on: boolean) => changeLayers(mapId, (ls) => ls.map((l) => ({ ...l, on })))
 export const deleteLayer = (mapId: number, layerId: string) => changeLayers(mapId, (ls) => ls.filter((l) => l.id !== layerId))
 
 /** What the table sees of a map. */

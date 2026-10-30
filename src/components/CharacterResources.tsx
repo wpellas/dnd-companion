@@ -1,10 +1,11 @@
+import { Crosshair, Moon, Sparkles, Sun } from 'lucide-react'
 import { db } from '../db'
 import { t } from '../lib/i18n'
 import { ammoFor } from '../lib/inventory'
 import type { Character } from '../types'
 import { UsePips } from './UsePips'
 
-const RECHARGE_ICON = { short: '☾', 'short-one': '☾¹', long: '☀' } as const
+const RECHARGE_ICON = { short: <Moon />, 'short-one': <><Moon />¹</>, long: <Sun /> }
 const RECHARGE_TITLE = { short: 'party.rt.short', 'short-one': 'party.rt.shortOne', long: 'party.rt.long' } as const
 
 /**
@@ -32,13 +33,13 @@ export function CharacterResources({ c }: { c: Character }) {
       ))}
       {charged.map((i) => (
         <div key={i.id} className="slot-row">
-          <span className="muted">✦ {i.name}</span>
+          <span className="muted"><Sparkles /> {i.name}</span>
           <UsePips max={i.charges!.max} used={i.charges!.used} label={i.name} onChange={(used) => setItem(i.id, { charges: { ...i.charges!, used } })} />
         </div>
       ))}
       {ammo.map((i) => (
         <div key={i.id} className="slot-row">
-          <span className="muted">➶ {i.name}</span>
+          <span className="muted"><Crosshair /> {i.name}</span>
           <span className={`ammo ${i.qty === 0 ? 'warn' : ''}`}>
             <button aria-label={t('ammo.less')} disabled={i.qty <= 0} onClick={() => setItem(i.id, { qty: i.qty - 1 })}>−</button>
             <strong>{i.qty}</strong>

@@ -1,3 +1,4 @@
+import { BookOpen, Pin } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { Window } from '../components/Window'
 import { useState } from 'react'
@@ -43,7 +44,7 @@ export function JournalPage() {
       <div className="toolbar">
         <h2>{t('journal.title')}</h2>
         <button onClick={() => setNpcOpen(true)}>{t('npc.button')}</button>
-        <button onClick={() => setEditing(blank('session'))}>{t('journal.newSession')}</button>
+        <button onClick={() => setEditing(blank('session'))}><BookOpen /> {t('journal.newSession')}</button>
         <button className="primary" onClick={() => setEditing(blank('note'))}>
           {t('journal.newNote')}
         </button>
@@ -87,7 +88,7 @@ function JournalCard({ e, onEdit }: { e: JournalEntry; onEdit: () => void }) {
           className={e.pinned ? 'selected' : ''}
           onClick={() => updateEntry(e.id!, { pinned: !e.pinned })}
         >
-          📌
+          <Pin />
         </button>
         <button onClick={onEdit}>{t('common.edit')}</button>
         <button className="danger" onClick={async () => (await askConfirm(t('journal.deleteConfirm', { title: e.title || t('journal.thisEntry') }), t('common.delete'))) && deleteEntry(e.id!)}>

@@ -1,5 +1,7 @@
+import { Smartphone, X } from 'lucide-react'
 import { t } from '../lib/i18n'
-import { consumeRoll, KIND_ICON, natOf, useIncomingRolls } from '../lib/rolls'
+import { RollKindIcon } from './KindIcon'
+import { consumeRoll, natOf, useIncomingRolls } from '../lib/rolls'
 import { DieToken } from './DieToken'
 
 /** Everything players have typed on their phones that is still waiting, so nothing gets lost when no panel is open. A new roll lands as a die. */
@@ -9,7 +11,7 @@ export function RollsTray({ names }: { names: Map<string, string> }) {
   return (
     <div className="rolls-tray" aria-label={t('roll.trayTitle')}>
       <div className="roll-tray-head">
-        <strong>📱 {t('roll.trayTitle')}</strong>
+        <strong><Smartphone /> {t('roll.trayTitle')}</strong>
         <span className="chip">{rolls.length}</span>
       </div>
       <div className="roll-tray-list">
@@ -21,12 +23,12 @@ export function RollsTray({ names }: { names: Map<string, string> }) {
               <div className="roll-in-text">
                 <strong className="roll-in-name">{names.get(r.character) ?? `#${r.character}`}</strong>
                 <span>
-                  {KIND_ICON[r.kind]} {t(`roll.kind.${r.kind}`)}
+                  <RollKindIcon kind={r.kind} /> {t(`roll.kind.${r.kind}`)}
                 </span>
                 {nat && <em className="roll-in-nat">{t(nat === 'nat20' ? 'roll.nat20' : 'roll.nat1')}</em>}
               </div>
               <button className="chip-x" title={t('roll.dismiss')} aria-label={t('roll.dismiss')} onClick={() => consumeRoll(r.id)}>
-                ✕
+                <X />
               </button>
             </div>
           )

@@ -4,7 +4,7 @@ import type { Msg } from './types'
 export const admin = {
   'admin.link': ['Administration', 'Administration'],
   'admin.title': ['Administration', 'Administration'],
-  'admin.back': ['← Back to the app', '← Tillbaka till appen'],
+  'admin.back': ['Back to the app', 'Tillbaka till appen'],
 
   'admin.invites': ['Site invites', 'Webbplatsinbjudningar'],
   'admin.invitesNote': [

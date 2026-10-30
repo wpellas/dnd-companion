@@ -1,3 +1,4 @@
+import { Download, Upload } from 'lucide-react'
 import { askConfirm } from '../lib/ask'
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -90,11 +91,11 @@ export function SettingsPage() {
           <p className="muted note-line">{t('settings.backupNote')}</p>
           <div className="row gap wrap">
             <button className="primary" onClick={backup}>
-              {t('settings.download')}
+              <Download /> {t('settings.download')}
             </button>
             <label className="file-button">
               <input ref={file} type="file" accept="application/json,.json" onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} />
-              {t('settings.restore')}
+              <Upload /> {t('settings.restore')}
             </label>
             {days !== undefined && (
               <span className={days === null || days > 7 ? 'warn' : 'muted'}>

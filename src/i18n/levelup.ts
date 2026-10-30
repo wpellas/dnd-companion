@@ -2,7 +2,7 @@ import type { Msg } from './types'
 
 /** The guided level-up. */
 export const levelup = {
-  'lvl.button': ['⬆ Level up', '⬆ Höj nivå'],
+  'lvl.button': ['Level up', 'Höj nivå'],
   'lvl.buttonTitle': ['Guided level-up: hit points, new features and ability score improvements', 'Guidad nivåhöjning: livspoäng, nya förmågor och förmågepoäng'],
   'lvl.title': ['Level up: {name}', 'Nivåhöjning: {name}'],
   'lvl.from': ['Level {from} → {to}', 'Nivå {from} → {to}'],

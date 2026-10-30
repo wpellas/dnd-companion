@@ -1,3 +1,4 @@
+import { Dices, RefreshCw } from 'lucide-react'
 import { Window } from './Window'
 import { Fragment, useState } from 'react'
 import { t, tn } from '../lib/i18n'
@@ -132,12 +133,12 @@ export function RestPanel({ kind, characters, onClose }: Props) {
                         />
                         {settings.allowPlayerAppRolls && (
                           <button disabled={!on || !(spend[id] > 0)} onClick={() => roll(c)}>
-                            🎲
+                            <Dices />
                           </button>
                         )}
                         {notes[id] && <span className="muted">{notes[id]}</span>}
                         {on && shortRestRecharges(c).length > 0 && (
-                          <span className="muted">↻ {shortRestRecharges(c).join(', ')}</span>
+                          <span className="muted"><RefreshCw /> {shortRestRecharges(c).join(', ')}</span>
                         )}
                       </div>
                     </td>

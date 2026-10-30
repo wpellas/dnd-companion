@@ -1,4 +1,5 @@
-import { useId, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { t } from '../lib/i18n'
 
 export interface ComboOption {
@@ -30,6 +31,15 @@ export function Combobox({ options, value, onChange, placeholder = t('common.sea
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const listRef = useRef<HTMLUListElement>(null)
+  const [flip, setFlip] = useState(false)
+  // a wide list opened near the right edge of a window would be cut off: open it to the left instead
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!open || !list) return setFlip(false)
+    const edge = list.closest('dialog')?.getBoundingClientRect().right ?? window.innerWidth
+    setFlip(list.getBoundingClientRect().right > edge - 8)
+  }, [open])
 
   const selected = options.find((o) => o.value === value)
   const q = query.trim().toLowerCase()
@@ -93,10 +103,10 @@ export function Combobox({ options, value, onChange, placeholder = t('common.sea
         onKeyDown={onKeyDown}
       />
       <span className="combobox-caret" aria-hidden>
-        ▾
+        <ChevronDown />
       </span>
       {open && (
-        <ul className="combobox-list" id={listId} role="listbox">
+        <ul ref={listRef} className={`combobox-list ${flip ? 'flip' : ''}`} id={listId} role="listbox">
           {rows.length === 0 && <li className="combobox-empty">{t('common.noMatches')}</li>}
           {rows.map((opt, i) => {
             const heading = opt && opt.group && opt.group !== lastGroup ? opt.group : undefined

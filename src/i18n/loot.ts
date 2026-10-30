@@ -4,8 +4,8 @@ import type { Msg } from './types'
 export const loot = {
   // spotlight ("Showcase")
   'spot.text': [
-    '📺 The players are looking at {who} sheet instead of the fight feed. The fight carries on underneath.',
-    '📺 Spelarna tittar på {who} karaktärsblad i stället för stridsflödet. Striden pågår som vanligt i bakgrunden.',
+    'The players are looking at {who} sheet instead of the fight feed. The fight carries on underneath.',
+    'Spelarna tittar på {who} karaktärsblad i stället för stridsflödet. Striden pågår som vanligt i bakgrunden.',
   ],
   'spot.fallback': ['a character', 'en karaktär'],
   'spot.inventory': ['Include inventory & gold', 'Visa utrustning och guld'],
@@ -25,8 +25,8 @@ export const loot = {
   'reward.giveIt': ['Give it to the party', 'Ge det till sällskapet'],
 
   // award panel
-  'award.title': ['✦ Award XP & gold', '✦ Dela ut XP och guld'],
-  'award.button': ['✦ Award XP & gold', '✦ Dela ut XP och guld'],
+  'award.title': ['Award XP & gold', 'Dela ut XP och guld'],
+  'award.button': ['Award XP & gold', 'Dela ut XP och guld'],
   'award.note': [
     'Totals are split evenly between the ticked characters (any left over goes to the first ones).',
     'Summorna delas lika mellan de ikryssade karaktärerna (det som blir över går till de första).',
@@ -40,21 +40,21 @@ export const loot = {
   'award.share': [' +{xp} XP · +{gp} gp', ' +{xp} XP · +{gp} gp'],
   'award.go': ['Award', 'Dela ut'],
   'award.done': ['Awarded', 'Utdelat'],
-  'award.canLevel': ['⬆ can level up', '⬆ kan stiga i nivå'],
+  'award.canLevel': ['can level up', 'kan stiga i nivå'],
   'award.journalNote': ['It is also in the Journal under Loot & XP.', 'Det finns också i dagboken under Byte och XP.'],
 
   // XP on cards and the inventory editor
   'wealth.gpTitle': ['Everything the coins are worth, in gold pieces', 'Allt mynten är värda, i guldmynt'],
   'wealth.xpTitle': ['Experience points and the XP needed for the next level', 'Erfarenhetspoäng och XP som behövs för nästa nivå'],
-  'wealth.ready': ['⬆ Level {n} ready', '⬆ Nivå {n} redo'],
-  'inv.items': ['🎒 Inventory', '🎒 Inventarie'],
+  'wealth.ready': ['Level {n} ready', 'Nivå {n} redo'],
+  'inv.items': ['Inventory', 'Inventarie'],
   'inv.coinsTitle': ['Coins carried (50 coins weigh a pound)', 'Mynt som bärs (50 mynt väger ett pund)'],
   'inv.xpLabel': ['Experience (XP)', 'Erfarenhet (XP)'],
   'inv.level': ['Level {n}', 'Nivå {n}'],
   'inv.nextAt': [' · next at {xp} XP', ' · nästa vid {xp} XP'],
   'inv.maxLevel': [' (maximum)', ' (högsta)'],
   'inv.xpSays': [' · XP says {n}', ' · XP motsvarar {n}'],
-  'inv.ready': ['⬆ Ready for level {n}', '⬆ Redo för nivå {n}'],
+  'inv.ready': ['Ready for level {n}', 'Redo för nivå {n}'],
   'inv.pick': ['Add from the SRD list: weapons, armor, gear, magic items…', 'Lägg till från SRD-listan: vapen, rustningar, utrustning, magiska föremål…'],
   'inv.pickLoading': ['SRD item list still downloading… add custom items meanwhile', 'SRD-listan laddas fortfarande ner… lägg till egna föremål under tiden'],
   'inv.adding': ['Adding…', 'Lägger till…'],
@@ -67,8 +67,8 @@ export const loot = {
   'inv.newArmor': ['New armor', 'Ny rustning'],
   'inv.done': ['Done', 'Klar'],
   'inv.edit': ['Edit item', 'Redigera föremål'],
-  'inv.editMode': ['✎ Edit', '✎ Redigera'],
-  'inv.viewMode': ['👁 View', '👁 Visa'],
+  'inv.editMode': ['Edit', 'Redigera'],
+  'inv.viewMode': ['View', 'Visa'],
   'inv.windowTitle': ['{who} inventory', '{who} inventarie'],
   'inv.editTitle': ['Edit item', 'Redigera föremål'],
   'inv.editItem': ['Edit {name}', 'Redigera {name}'],

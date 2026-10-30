@@ -75,7 +75,7 @@ export const editors = {
   ],
   'res.uses': ['Uses', 'Användningar'],
   'res.recharges': ['Recharges', 'Laddas om'],
-  'res.official': ['↺ Official', '↺ Officiell'],
+  'res.official': ['Official', 'Officiell'],
   'res.officialTitle': ['Go back to the official count and recharge, and follow level-ups again', 'Gå tillbaka till det officiella antalet och omladdningen, och följ nivåhöjningar igen'],
 
   // actions editor

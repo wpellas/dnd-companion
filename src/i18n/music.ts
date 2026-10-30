@@ -60,6 +60,15 @@ export const music = {
   'music.playNowTitle': ['Switch the music right now to a scene or a single track', 'Byt musik direkt till en scen eller ett enskilt spår'],
   'music.playNowPlaceholder': ['Pick a scene or track...', 'Välj en scen eller ett spår...'],
   'music.combat': ['Combat music', 'Stridsmusik'],
+  'music.root': ['All tracks', 'Alla spår'],
+  'music.dragHint': ['Tip: drag a track onto a folder or the path above to move it. Folders are for this campaign only.', 'Tips: dra ett spår till en mapp eller sökvägen ovanför för att flytta det. Mapparna gäller bara den här kampanjen.'],
+  'music.dragging': ['Moving "{name}": drop it on a folder or on the path above.', 'Flyttar "{name}": släpp det på en mapp eller på sökvägen ovanför.'],
+  'music.after': ['After the fight', 'Efter striden'],
+  'music.afterNone': ['What played before', 'Det som spelades innan'],
+  'music.afterTitle': [
+    'Optional: music that starts when this fight ends, instead of bringing back what played before. It is used once; the next fight starts without one.',
+    'Valfritt: musik som startar när den här striden är slut, i stället för att det som spelades innan kommer tillbaka. Gäller en gång; nästa strid börjar utan.',
+  ],
   'music.combatNone': ['No music', 'Ingen musik'],
   'music.combatTitle': [
     'Pick a scene or a single track before the fight: it starts when you press Start combat, taking over from whatever is playing. Changing it during a fight switches the music right away.',

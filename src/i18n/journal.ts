@@ -7,7 +7,7 @@ export const journal = {
   'jkind.combat': ['Combat', 'Strid'],
   'jkind.loot': ['Loot', 'Byte'],
   'journal.title': ['Journal', 'Dagbok'],
-  'journal.newSession': ['📖 New session recap', '📖 Ny mötessammanfattning'],
+  'journal.newSession': ['New session recap', 'Ny mötessammanfattning'],
   'journal.newNote': ['+ New note', '+ Ny anteckning'],
   'journal.formNew': ['New entry', 'Ny anteckning'],
   'journal.formEdit': ['Edit entry', 'Redigera anteckning'],

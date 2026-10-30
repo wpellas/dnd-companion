@@ -1,3 +1,4 @@
+import { Dices, Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { attackAdvice, effectiveAc, exhaustionPenalty } from '../../lib/conditionRules'
 import { formatMod } from '../../lib/dice'
@@ -113,7 +114,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
               sent.take()
             }}
           >
-            📱 {sent.roll.value}
+            <Smartphone /> {sent.roll.value}
           </button>
         )}
         <span className="bonus-note">
@@ -134,7 +135,7 @@ export function AttackResolver({ attacker, action, target, canRoll, onApply }: P
                 setD20Note(r.note)
               }}
             >
-              {t('res.rollToHit')}
+              <Dices /> {t('res.rollToHit')}
             </button>
             {d20Note && <span className="roll-note">{d20Note}</span>}
           </>

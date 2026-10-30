@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { Backpack, BookOpen, Image as ImageIcon, Map as MapIcon, Music, ScrollText, Settings, Shield, Skull, Swords, TriangleAlert } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import logo from './assets/images/logo-128.png'
 import { GiftNotices } from './components/GiftNotices'
 import { MusicBar } from './components/MusicBar'
@@ -28,6 +29,8 @@ const TABS: Tab[] = ['combat', 'party', 'bestiary', 'items', 'encounters', 'maps
 /** Remembered outside the component: changing the language re-creates the UI, and you should stay on the Settings tab. */
 let lastTab: Tab = 'combat'
 
+const NAV_ICON: Record<string, ReactNode> = { combat: <Swords />, party: <Shield />, bestiary: <Skull />, encounters: <ScrollText />, maps: <MapIcon />, images: <ImageIcon />, music: <Music />, items: <Backpack />, journal: <BookOpen />, settings: <Settings /> }
+
 export default function App() {
   const hash = useHash()
   const [tab, setTab] = useState<Tab>(lastTab)
@@ -43,23 +46,35 @@ export default function App() {
 
   useFightSync(hash !== '#player')
 
+  // the sticky music bar sits just below the sticky nav, whose height changes when its tabs wrap
+  const navRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const set = () => document.documentElement.style.setProperty('--nav-h', `${nav.offsetHeight}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(nav)
+    return () => ro.disconnect()
+  }, [hash])
+
   if (hash === '#player') return <PlayerView />
 
   return (
     <>
       <LiveHost />
-      <nav>
+      <nav ref={navRef}>
         <img className="nav-logo" src={logo} alt={t('app.logoAlt')} />
         <span className="brand">{t('app.brand')}</span>
         {sync.state === 'offline' && (
           <span className="sync-warn" title={t('acct.syncOffline', { n: sync.pending })}>
-            ⚠
+            <TriangleAlert />
           </span>
         )}
         <div className="tabs">
           {TABS.map((id) => (
             <button key={id} className={id === tab ? 'selected' : ''} onClick={() => setTab(id)}>
-              {t(`nav.${id}`)}
+              {NAV_ICON[id]} {t(`nav.${id}`)}
             </button>
           ))}
         </div>

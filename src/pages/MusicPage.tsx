@@ -1,11 +1,14 @@
+import { Folder, GripVertical, Move, Pencil, Play, X } from 'lucide-react'
 import { useState } from 'react'
 import { Combobox } from '../components/Combobox'
 import { CheckField } from '../components/Section'
 import { ApiError } from '../lib/api'
 import { askConfirm, askText } from '../lib/ask'
+import { folderName, inFolder, joinPath, parentPath } from '../lib/maps'
 import { newId } from '../lib/id'
 import { t } from '../lib/i18n'
-import { deleteTrack, loadLibrary, playScene, playTrack, renameTrack, saveMusicSettings, sceneTracks, uploadTrack, useMusic, useMusicSettings, type Scene, type TrackInfo } from '../lib/music'
+import { FolderMoveWindow } from '../components/FolderMoveWindow'
+import { createMusicFolder, deleteMusicFolder, moveTrackToFolder, renameMusicFolder, deleteTrack, loadLibrary, playScene, playTrack, renameTrack, saveMusicSettings, sceneTracks, uploadTrack, useMusic, useMusicSettings, type Scene, type TrackInfo } from '../lib/music'
 
 const megabytes = (bytes: number) => `${(bytes / 1048576).toFixed(1)} MB`
 const SHOWN = 100
@@ -17,7 +20,11 @@ export function MusicPage() {
   const { scenes } = settings
   const [filter, setFilter] = useState('')
   const [uploading, setUploading] = useState('')
-  const save = (next: Scene[], combatSceneId = settings.combatSceneId) => void saveMusicSettings({ scenes: next, combatSceneId })
+  const [path, setPath] = useState('')
+  const [moving, setMoving] = useState<TrackInfo | null>(null)
+  const [drag, setDrag] = useState<TrackInfo | null>(null)
+  const [over, setOver] = useState<string | null>(null)
+  const save = (next: Scene[], combatSceneId = settings.combatSceneId) => void saveMusicSettings({ ...settings, scenes: next, combatSceneId })
   const patch = (id: string, p: Partial<Scene>) => save(scenes.map((s) => (s.id === id ? { ...s, ...p } : s)))
 
   const upload = async (files: File[]) => {
@@ -36,6 +43,39 @@ export function MusicPage() {
 
   const needle = filter.trim().toLowerCase()
   const matches = music.tracks.filter((x) => !needle || x.name.toLowerCase().includes(needle) || (x.uploader ?? '').toLowerCase().includes(needle))
+  const folderOf = (id: number) => settings.trackFolders?.[id] ?? ''
+  const folders = [
+    ...new Set(
+      [...(settings.folders ?? []), ...Object.values(settings.trackFolders ?? {})].flatMap((p) => p.split('/').filter(Boolean).map((_, i, parts) => parts.slice(0, i + 1).join('/'))),
+    ),
+  ].sort((a, b) => a.localeCompare(b))
+  // a search looks through every folder; otherwise the list shows this folder's folders and tracks
+  const subfolders = needle ? [] : folders.filter((f) => parentPath(f) === path)
+  const shownTracks = needle ? matches : matches.filter((x) => folderOf(x.id) === path)
+  const crumbs = path ? path.split('/').map((_, i, parts) => parts.slice(0, i + 1).join('/')) : []
+  // a track dragged onto a folder or a crumb moves there; `data-drop` marks a valid target while dragging, `data-over` the one under the pointer
+  const drop = (target: string) => ({
+    'data-drop': drag && folderOf(drag.id) !== target ? '' : undefined,
+    'data-over': over === target ? '' : undefined,
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault()
+      setOver(target)
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null)
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault()
+      const id = Number(e.dataTransfer.getData('text/plain'))
+      setOver(null)
+      setDrag(null)
+      if (id) void moveTrackToFolder(id, target)
+    },
+  })
+  const newFolder = async () => {
+    const name = (await askText({ title: t('maps.folderName'), value: '', confirm: t('common.save') }))?.replace(/\//g, ' ').trim()
+    if (name) await createMusicFolder(joinPath(path, name))
+  }
   const total = music.tracks.reduce((sum, x) => sum + x.size, 0)
 
   return (
@@ -45,7 +85,7 @@ export function MusicPage() {
       </div>
       <p className="muted">{t('music.intro')}</p>
 
-      <div className="card music-library">
+      <div className={`card music-library ${drag ? 'dragging' : ''}`}>
         <div className="music-folder">
           <span>
             {music.library === 'ready' && t('music.count', { n: music.tracks.length, size: megabytes(total) })}
@@ -54,6 +94,7 @@ export function MusicPage() {
           </span>
           <div className="row gap wrap">
             {music.library === 'error' && <button onClick={() => void loadLibrary()}>{t('music.retry')}</button>}
+            <button onClick={() => void newFolder()}><Folder /> {t('maps.newFolder')}</button>
             <label className={`file-button primary ${uploading ? 'disabled' : ''}`}>
               {t('music.upload')}
               <input
@@ -73,12 +114,47 @@ export function MusicPage() {
         {uploading && <p className="muted small">{uploading}</p>}
         {music.tracks.length > 8 && <input className="inv-filter" type="search" value={filter} placeholder={t('music.search')} onChange={(e) => setFilter(e.target.value)} />}
         {music.library === 'ready' && music.tracks.length === 0 && <p className="muted">{t('music.libraryEmpty')}</p>}
+        {folders.length > 0 && !needle && (
+          <div className="crumbs" role="navigation" aria-label="folders">
+            <button className={path ? '' : 'here'} onClick={() => setPath('')} {...drop('')}>
+              {t('music.root')}
+            </button>
+            {crumbs.map((c) => (
+              <span key={c} className="row gap">
+                <span className="muted">›</span>
+                <button className={c === path ? 'here' : ''} onClick={() => setPath(c)} {...drop(c)}>
+                  {folderName(c)}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {drag ? (
+          <p className="drag-banner" role="status">
+            <Move /> {t('music.dragging', { name: drag.name })}
+          </p>
+        ) : (
+          music.tracks.length > 0 && folders.length > 0 && <p className="muted small"><GripVertical /> {t('music.dragHint')}</p>
+        )}
+        {path && !needle && subfolders.length === 0 && shownTracks.length === 0 && <p className="muted">{t('maps.folderEmpty')}</p>}
         <div className="music-tracks">
-          {matches.slice(0, SHOWN).map((track) => (
-            <TrackRow key={track.id} track={track} />
+          {subfolders.map((f) => (
+            <FolderRow key={f} path={f} count={music.tracks.filter((x) => inFolder(f, folderOf(x.id) || undefined)).length} onOpen={() => setPath(f)} drop={drop(f)} />
           ))}
-          {matches.length > SHOWN && <p className="muted small">{t('music.more', { n: matches.length - SHOWN })}</p>}
+          {shownTracks.slice(0, SHOWN).map((track) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              onMove={() => setMoving(track)}
+              onDragState={(on) => {
+                setDrag(on ? track : null)
+                if (!on) setOver(null)
+              }}
+            />
+          ))}
+          {shownTracks.length > SHOWN && <p className="muted small">{t('music.more', { n: shownTracks.length - SHOWN })}</p>}
         </div>
+        {moving && <FolderMoveWindow name={moving.name} folder={folderOf(moving.id)} folders={folders} root={t('music.root')} onMove={(f) => moveTrackToFolder(moving.id, f)} onClose={() => setMoving(null)} />}
       </div>
 
       <div className="toolbar">
@@ -102,7 +178,7 @@ export function MusicPage() {
               <div className="inv-line">
                 <strong className="grow">{scene.name}</strong>
                 <CheckField label={t('music.shuffle')} checked={!!scene.shuffle} onChange={(on) => patch(scene.id, { shuffle: on || undefined })} />
-                <CheckField label={t('music.combatScene')} title={t('music.combatSceneTitle')} checked={settings.combatSceneId === scene.id} onChange={(on) => void saveMusicSettings({ scenes, combatSceneId: on ? scene.id : undefined, combatTrackId: on ? undefined : settings.combatTrackId })} />
+                <CheckField label={t('music.combatScene')} title={t('music.combatSceneTitle')} checked={settings.combatSceneId === scene.id} onChange={(on) => void saveMusicSettings({ ...settings, scenes, combatSceneId: on ? scene.id : undefined, combatTrackId: on ? undefined : settings.combatTrackId })} />
                 <button className="primary" disabled={!ids.length} onClick={() => void playScene(scene.id, scenes)}>
                   {t('music.play')}
                 </button>
@@ -129,10 +205,10 @@ export function MusicPage() {
                   <div key={id} className="inv-line">
                     <span className={`grow ${gone ? 'warn' : ''}`}>{gone ? t('music.missing') : (track?.name ?? '…')}</span>
                     <button title={t('music.preview')} aria-label={t('music.preview')} disabled={!track} onClick={() => void playTrack(id)}>
-                      ▶
+                      <Play />
                     </button>
                     <button className="danger" title={t('music.removeTrack')} aria-label={t('music.removeTrack')} onClick={() => patch(scene.id, { tracks: ids.filter((x) => x !== id) })}>
-                      ✕
+                      <X />
                     </button>
                   </div>
                 )
@@ -153,9 +229,42 @@ export function MusicPage() {
   )
 }
 
-function TrackRow({ track }: { track: TrackInfo }) {
+function FolderRow({ path, count, onOpen, drop }: { path: string; count: number; onOpen: () => void; drop: object }) {
+  const name = folderName(path)
   return (
-    <div className="inv-line">
+    <div className="inv-line folder-row" {...drop}>
+      <span className="drop-label" aria-hidden>{t('maps.dropHere')}</span>
+      <button className="folder-link grow" onClick={onOpen}>
+        <span aria-hidden><Folder /></span> <strong>{name}</strong> <span className="muted small">{t('maps.folderItems', { count })}</span>
+      </button>
+      <button
+        onClick={async () => {
+          const to = (await askText({ title: t('maps.folderName'), value: name, confirm: t('common.save') }))?.replace(/\//g, ' ').trim()
+          if (to && to !== name) void renameMusicFolder(path, to)
+        }}
+      >
+        {t('maps.rename')}
+      </button>
+      <button className="danger" onClick={async () => (await askConfirm(t('maps.folderDeleteConfirm', { name }), t('common.delete'))) && void deleteMusicFolder(path)}>
+        {t('maps.delete')}
+      </button>
+    </div>
+  )
+}
+
+function TrackRow({ track, onMove, onDragState }: { track: TrackInfo; onMove: () => void; onDragState: (on: boolean) => void }) {
+  return (
+    <div
+      className="inv-line track-row"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', String(track.id))
+        e.dataTransfer.effectAllowed = 'move'
+        onDragState(true)
+      }}
+      onDragEnd={() => onDragState(false)}
+    >
+      <span className="grip-inline" aria-hidden><GripVertical /></span>
       <span className="grow">
         <strong>{track.name}</strong>
         <span className="muted small">
@@ -164,7 +273,10 @@ function TrackRow({ track }: { track: TrackInfo }) {
         </span>
       </span>
       <button title={t('music.preview')} aria-label={t('music.preview')} onClick={() => void playTrack(track.id)}>
-        ▶
+        <Play />
+      </button>
+      <button title={t('maps.move')} aria-label={t('maps.move')} onClick={onMove}>
+        <Folder />
       </button>
       {track.can_edit && (
         <>
@@ -176,10 +288,10 @@ function TrackRow({ track }: { track: TrackInfo }) {
               if (name) void renameTrack(track.id, name)
             }}
           >
-            ✎
+            <Pencil />
           </button>
           <button className="danger" title={t('music.deleteTrack')} aria-label={t('music.deleteTrack')} onClick={async () => (await askConfirm(t('music.deleteTrackConfirm', { name: track.name }), t('common.delete'))) && void deleteTrack(track.id)}>
-            ✕
+            <X />
           </button>
         </>
       )}

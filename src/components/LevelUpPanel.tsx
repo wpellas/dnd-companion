@@ -1,3 +1,4 @@
+import { Dices, Heart, Sparkles, TrendingUp } from 'lucide-react'
 import { Window } from './Window'
 import { useState } from 'react'
 import { usePromise } from '../hooks'
@@ -89,7 +90,7 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
 
       <section className="win-card">
         <h4>
-          <span aria-hidden="true">✨</span> {t('lvl.features')}
+          <Sparkles aria-hidden="true" /> {t('lvl.features')}
         </h4>
         {features.length ? (
           <ul className="lu-features">
@@ -104,7 +105,7 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
 
       <section className="win-card">
         <h4>
-          <span aria-hidden="true">❤</span> {t('lvl.hp')}
+          <Heart aria-hidden="true" /> {t('lvl.hp')}
         </h4>
         <div className="choice-grid">
           <label className="choice-card">
@@ -119,12 +120,12 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
         {useRoll && (
           <div className="win-pickers">
             <input className="narrow" type="number" min={1} max={cls.hit_die} value={rolled} placeholder={t('lvl.hpRollHint', { die: cls.hit_die })} aria-label={t('lvl.hpRoll', { die: cls.hit_die })} onChange={(e) => setRolled(e.target.value)} />
-            {settings.allowPlayerAppRolls && <button onClick={() => setRolled(String(rollDie(cls.hit_die)))}>🎲</button>}
+            {settings.allowPlayerAppRolls && <button onClick={() => setRolled(String(rollDie(cls.hit_die)))}><Dices /></button>}
           </div>
         )}
         {ready && (
           <p className="lu-result">
-            ❤ {t('lvl.hpResult', { n: preview.hpGain, max: preview.character.maxHp })}
+            <Heart /> {t('lvl.hpResult', { n: preview.hpGain, max: preview.character.maxHp })}
             {preview.conRetro > 0 && ` ${t('lvl.conRetro', { n: preview.conRetro })}`}
           </p>
         )}
@@ -133,7 +134,7 @@ export function LevelUpPanel({ c, onClose }: { c: Character; onClose: () => void
       {needsAsi && (
         <section className="win-card">
           <h4>
-            <span aria-hidden="true">📈</span> {t('lvl.asi')}
+            <TrendingUp aria-hidden="true" /> {t('lvl.asi')}
           </h4>
           <div className="choice-grid">
             {(['two', 'split', 'feat'] as const).map((k) => (

@@ -1,3 +1,4 @@
+import { Circle, Hourglass, Play, X } from 'lucide-react'
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
@@ -165,11 +166,11 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
         </label>
         {attacker.id === active.id && (
           <button className="end-turn" disabled={later.length === 0} title={t('turn.delayTitle')} onClick={() => setDelaying((d) => !d)}>
-            {t('turn.delay')}
+            {t('turn.delay')} <Hourglass />
           </button>
         )}
         <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, t('lbl.endTurn'))}>
-          {t('turn.endTurn')}
+          {t('turn.endTurn')} <Play />
         </button>
       </div>
 
@@ -193,7 +194,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
       <div className="economy">
         {ECONOMY.map(({ key, label }) => (
           <button key={key} className={`pill ${attacker.turn?.[key] ? 'used' : ''}`} onClick={() => toggleTurn(key)} title={t('turn.pillTitle', { what: t(label).toLowerCase(), state: t(attacker.turn?.[key] ? 'econ.available' : 'econ.used') })}>
-            {attacker.turn?.[key] ? '✕' : '○'} {t(label)}
+            {attacker.turn?.[key] ? <X /> : <Circle />} {t(label)}
           </button>
         ))}
         {attacker.legendary && (
@@ -367,7 +368,7 @@ export function TurnPanel({ combat }: { combat: CombatState }) {
                     <span className="spell-chip" key={tg.id}>
                       {tg.name}
                       <button className="x" aria-label={t('ui.remove', { what: tg.name })} onClick={() => { setTargetIds((ids) => ids.filter((x) => x !== tg.id)); setNonce((n) => n + 1) }}>
-                        ✕
+                        <X />
                       </button>
                     </span>
                   ))}
@@ -476,7 +477,7 @@ function LairPanel({ combat, lair }: { combat: CombatState; lair: Combatant }) {
       <div className="row gap wrap">
         <h3>{t('turn.lairTitle')}</h3>
         <button className="primary end-turn" onClick={() => mutateCombat(advanceTurn, t('lbl.endTurn'))}>
-          {t('turn.endTurn')}
+          {t('turn.endTurn')} <Play />
         </button>
       </div>
       <p className="muted">{t('turn.lairNote')}</p>

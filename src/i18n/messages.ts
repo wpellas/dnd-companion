@@ -13,6 +13,7 @@ import { spellfind } from './spellfind'
 import { checks } from './checks'
 import { unarmed } from './unarmed'
 import { maps } from './maps'
+import { fog } from './fog'
 import { music } from './music'
 import { glossary } from './glossary'
 import { movement } from './movement'
@@ -35,6 +36,7 @@ import { vocab } from './vocab'
 /** Every message of the app in every language, keyed by name. Each module holds one area of the UI. */
 export const MESSAGES = {
   ...vocab,
+  ...fog,
   ...account,
   ...avatars,
   ...admin,

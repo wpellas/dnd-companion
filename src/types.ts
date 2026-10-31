@@ -243,6 +243,8 @@ export interface Character {
   speed: number
   initiativeBonus: number
   passivePerception: number
+  /** Darkvision in feet (0 / absent = none); used by the fog of war on dark maps */
+  darkvision?: number
   /** Passive Investigation and Insight (10 + bonus), for the DM's check sheet */
   passiveInvestigation?: number
   passiveInsight?: number
@@ -463,6 +465,21 @@ export interface Combatant {
   controlledBy?: string
   /** Free text, used by the lair-actions marker */
   notes?: string
+  /** Size from the stat block ('Large'...): how many squares its token covers (absent = one) */
+  size?: string
+  /** PCs: darkvision in feet (a snapshot of the character's) */
+  darkvision?: number
+  /** A light the creature carries, in feet (bright and dim together); set on the battle map */
+  light?: number
+  /** Its token on a battle map; absent = not on a map. Public: the players see every placed token, so the DM places a creature once the players can see it */
+  pos?: TokenPos
+}
+
+/** A token's square: the top-left one for creatures bigger than a square (columns and rows as in lib/grid.ts) */
+export interface TokenPos {
+  map: number
+  col: number
+  row: number
 }
 
 /** Something the DM has to resolve, shown as a banner above the fight until handled. */
@@ -550,6 +567,45 @@ export interface MapRecord {
   image: Blob
   /** Transparent PNGs at the map's pixel size, stacked in order over `image` (fog of war, secret rooms). `on` = drawn on what the players see; it belongs to the map, so it survives showing / hiding it. */
   layers?: MapLayer[]
+  /** The square grid, set in the Maps tab (maps only); tokens stand on it */
+  grid?: MapGrid
+  /** Walls, doors and windows (drawn in the Maps tab), in fractions of the picture like the grid */
+  walls?: Wall[]
+  /** Lights that stand on the map (braziers, lamps on the wall); they only matter on a dark map */
+  lights?: MapLight[]
+  /** Fog of war follows what the party's tokens can see (needs a grid); what was explored and which doors are open live in kv `fog:<id>` (lib/fog.ts) */
+  fog?: boolean
+  /** A dark place: characters see only within their darkvision or where a light reaches */
+  dark?: boolean
+}
+
+/** A line that stops sight and movement (wall), both while closed (door), or only movement (window). See lib/vision.ts. */
+export interface Wall {
+  id: string
+  a: { x: number; y: number }
+  b: { x: number; y: number }
+  kind: 'wall' | 'door' | 'window'
+}
+
+export interface MapLight {
+  id: string
+  at: { x: number; y: number }
+  /** How far it reaches (bright and dim together) */
+  feet: number
+}
+
+/** A square grid over a map, in fractions of the picture's width / height so it fits the picture at any size (see lib/grid.ts). */
+export interface MapGrid {
+  /** Where a vertical / horizontal grid line runs (0 <= x < w, 0 <= y < h) */
+  x: number
+  y: number
+  /** One square's width and height */
+  w: number
+  h: number
+  /** Feet per square */
+  feet: number
+  /** Draw the lines on the players' screen (off for maps with a grid printed on them) */
+  show: boolean
 }
 
 export interface MapLayer {

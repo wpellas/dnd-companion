@@ -395,6 +395,7 @@ function CharacterForm({ initial, onClose }: { initial: Character; onClose: () =
           <NumberField label={t('form.passive')} value={c.passivePerception} onChange={(n) => set('passivePerception', n)} />
           <NumberField label={t('form.passiveInv')} value={c.passiveInvestigation ?? 10} onChange={(n) => set('passiveInvestigation', n)} />
           <NumberField label={t('form.passiveInsight')} value={c.passiveInsight ?? 10} onChange={(n) => set('passiveInsight', n)} />
+          <NumberField integer min={0} label={t('form.darkvision')} value={c.darkvision ?? 0} onChange={(n) => set('darkvision', Math.max(0, Math.round(n)) || undefined)} />
           <NumberField label={t('form.exhaustion')} value={c.exhaustion ?? 0} min={0} onChange={(n) => set('exhaustion', Math.min(6, Math.max(0, Math.floor(n))))} />
         </div>
       </Section>

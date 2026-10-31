@@ -1,6 +1,7 @@
 import { ABILITIES, type Character, type Combatant, type CombatState, type Condition, type Item, type PublicEvent } from '../types'
 import { hpStatus, type HpStatus } from './combat'
 import { isParty } from './sides'
+import { tokenCells, type FogCover } from './grid'
 import { normalizeCharacter, proficiencyBonus, castingSnapshot, resolveCharacterActions } from './character'
 import { abilityMod, formatMod } from './dice'
 import { canLevelUp, carriedWeight, carryingCapacity, itemsGp, levelForXp, totalGp, XP_FOR_LEVEL, xpForNextLevel } from './inventory'
@@ -35,6 +36,9 @@ export interface PublicCombatant {
   form?: string
   /** Spells and effects running on this creature; only player characters show how many rounds are left */
   effects?: { name: string; rounds?: number }[]
+  /** Its token on the map being shown (only once the DM has placed it) and how many squares across it covers */
+  pos?: Combatant['pos']
+  cells?: number
 }
 
 export interface PublicCombat {
@@ -45,8 +49,11 @@ export interface PublicCombat {
   events: PublicEvent[]
 }
 
-export function toPublic(s: CombatState | undefined): PublicCombat | undefined {
+/** `cover` = the map being shown and its fogged squares: only tokens on that map go out, and an enemy's only while it is not under fog
+ *  (no cover = no map shown = no positions at all). */
+export function toPublic(s: CombatState | undefined, cover?: FogCover | null): PublicCombat | undefined {
   if (!s) return undefined
+  const seen = (c: Combatant) => !!c.pos && !!cover && c.pos.map === cover.map && (isParty(c) || !cover.hides(c.pos, tokenCells(c.size)))
   return {
     round: s.round,
     turnIndex: s.turnIndex,
@@ -64,6 +71,8 @@ export function toPublic(s: CombatState | undefined): PublicCombat | undefined {
         exhaustion: c.exhaustion || undefined,
         concentrating: c.concentrating,
         form: c.form?.name,
+        pos: seen(c) ? c.pos : undefined,
+        cells: seen(c) && tokenCells(c.size) > 1 ? tokenCells(c.size) : undefined,
         effects: c.effects?.length ? c.effects.map((e) => ({ name: e.name, rounds: isParty(c) ? e.rounds : undefined })) : undefined,
       }
       return isParty(c) ? { ...base, ally: c.ally || undefined, hp: c.hp, maxHp: c.maxHp, tempHp: c.tempHp, deathSaves: c.hp === 0 ? c.deathSaves : undefined, inspired: c.inspired || undefined } : base

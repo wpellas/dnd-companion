@@ -12,6 +12,7 @@ import {
   type Effect,
   type PublicFx,
   type MonsterTemplate,
+  type TokenPos,
   type TurnUsed,
 } from '../types'
 import { XP_BY_CR } from '../data/encounterBudget'
@@ -158,6 +159,7 @@ export function pcCombatant(c: Character): Combatant {
     turn: freshTurn(),
     exhaustion: c.exhaustion ?? 0,
     inspired: c.heroicInspiration || undefined,
+    darkvision: c.darkvision || undefined,
   }
 }
 
@@ -196,6 +198,7 @@ export function monsterCombatants(t: MonsterTemplate, count: number, existing: C
       xp: t.xp ?? XP_BY_CR[t.cr],
       templateRef: { srdIndex: t.srdIndex, templateId: t.id, name: t.name },
       ally: ally || undefined,
+      size: t.size,
     }
   })
 }
@@ -927,6 +930,12 @@ export function setController(s: CombatState, ally: Combatant, controllerId: str
 /**
  * Set the Exhaustion level (0-6). The Exhaustion condition follows it; level 6 is death.
  */
+/** Put a creature's token on a battle map square, move it, or (null) take it off. */
+export function placeToken(s: CombatState, id: string, pos: TokenPos | null) {
+  const c = s.combatants.find((x) => x.id === id)
+  if (c) c.pos = pos ?? undefined
+}
+
 export function setExhaustion(s: CombatState, c: Combatant, level: number) {
   const n = Math.max(0, Math.min(6, Math.round(level)))
   c.exhaustion = n

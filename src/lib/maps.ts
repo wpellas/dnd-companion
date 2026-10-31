@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { blobToDataUrl, fitImage, shrinkImage } from './image'
 import { newId } from './id'
-import type { MapLayer, MapRecord } from '../types'
+import { cellBox, tokenSquares, type FogCover } from './grid'
+import type { MapGrid, MapLayer, MapLight, MapRecord, Wall } from '../types'
 
 /**
  * Maps and handouts. The DM keeps them in the Maps tab and can show one to the players, exactly like showing a character sheet (`spotlight.ts`): the player
@@ -87,12 +88,19 @@ export async function deleteMap(id: number) {
   const shown = (await db.kv.get(KEY))?.value as MapShown | undefined
   if (shown?.mapId === id) await stopShowingMap()
   await db.maps.delete(id)
+  await db.kv.delete(`fog:${id}`) // what was explored on it (lib/fog.ts)
 }
 
 /** Layers: the DM adds same-sized overlay pictures (fog of war...) and switches each on or off. They are stored on the map, so the switches are remembered when the map is hidden and shown again. */
-const mapSize = async (map: MapRecord) => {
+const sizes = new WeakMap<Blob, readonly [number, number]>()
+/** The picture's size in pixels (decoded once per picture: the fog of war asks on every move) */
+export const mapSize = async (map: MapRecord) => {
+  const hit = sizes.get(map.image)
+  if (hit) return hit
   const bmp = await createImageBitmap(map.image)
-  return [bmp.width, bmp.height] as const
+  const size = [bmp.width, bmp.height] as const
+  sizes.set(map.image, size)
+  return size
 }
 export async function addLayer(map: MapRecord, file: File) {
   const [w, h] = await mapSize(map)
@@ -118,21 +126,57 @@ export const moveLayer = (mapId: number, layerId: string, dir: -1 | 1) =>
 export const setAllLayers = (mapId: number, on: boolean) => changeLayers(mapId, (ls) => ls.map((l) => ({ ...l, on })))
 export const deleteLayer = (mapId: number, layerId: string) => changeLayers(mapId, (ls) => ls.filter((l) => l.id !== layerId))
 
-/** What the table sees of a map. */
+/** undefined removes the grid */
+export const setGrid = (mapId: number, grid: MapGrid | undefined) => db.maps.update(mapId, { grid })
+/** Walls, lights and the fog switches, from the walls window or the battle map */
+export const setVision = (mapId: number, change: { walls?: Wall[]; lights?: MapLight[]; fog?: boolean; dark?: boolean }) => db.maps.update(mapId, change)
+
+/** Tokens under the map's switched-on layers: a square counts as covered when its centre pixel is mostly opaque, a token when all its squares are (a big creature
+ *  peeking out of the fog is seen). Null without a grid. */
+export async function fogCover(map: MapRecord): Promise<FogCover | null> {
+  const grid = map.grid
+  if (!grid) return null
+  const squares = new Set<string>()
+  const layers = (map.layers ?? []).filter((l) => l.on)
+  if (layers.length) {
+    const bmps = await Promise.all(layers.map((l) => createImageBitmap(l.image))) // layers were stretched to the map's size when added
+    const [w, h] = [bmps[0].width, bmps[0].height]
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const g = canvas.getContext('2d', { willReadFrequently: true })!
+    for (const b of bmps) g.drawImage(b, 0, 0, w, h)
+    const alpha = g.getImageData(0, 0, w, h).data
+    for (let row = 0; cellBox(grid, { col: 0, row }).y < 1; row++)
+      for (let col = 0; cellBox(grid, { col, row }).x < 1; col++) {
+        const b = cellBox(grid, { col, row })
+        const x = Math.min(w - 1, Math.max(0, Math.floor((b.x + b.w / 2) * w)))
+        const y = Math.min(h - 1, Math.max(0, Math.floor((b.y + b.h / 2) * h)))
+        if (alpha[(y * w + x) * 4 + 3] >= 128) squares.add(`${col},${row}`)
+      }
+  }
+  return { map: map.id!, hides: (pos, cells) => tokenSquares(pos, cells).every((c) => squares.has(`${c.col},${c.row}`)) }
+}
+
+/** What the table sees of a map. The grid goes along even with its lines hidden (it is no secret, and tokens will need it). */
 export interface PublicMap {
+  /** Which map it is, so tokens placed on another map stay off it */
+  id?: number
   name: string
   imageData: string
+  grid?: MapGrid
 }
-/** The map with only its switched-on layers painted over it, as ONE picture. Every image is decoded before anything is drawn and the layers that are off never leave the DM's browser,
+/** The map with only its switched-on layers painted over it, and black where the party has not been (`unexplored`: the fog-of-war mask, lib/fog.ts), as ONE picture. Every image is decoded before anything is drawn and the layers that are off never leave the DM's browser,
  *  so a viewer can never get a half-built picture or pull a hidden layer out of the network traffic. */
-export async function publicMap(map: MapRecord): Promise<PublicMap> {
+export async function publicMap(map: MapRecord, unexplored?: string): Promise<PublicMap> {
   const layers = (map.layers ?? []).filter((l) => l.on)
-  if (!layers.length) return { name: map.name, imageData: await blobToDataUrl(map.image) }
-  const [base, ...over] = await Promise.all([map.image, ...layers.map((l) => l.image)].map((b) => createImageBitmap(b)))
+  const grid = { id: map.id, ...(map.grid ? { grid: map.grid } : {}) }
+  if (!layers.length && !unexplored) return { name: map.name, imageData: await blobToDataUrl(map.image), ...grid }
+  const [base, ...over] = await Promise.all([map.image, ...layers.map((l) => l.image), ...(unexplored ? [await (await fetch(unexplored)).blob()] : [])].map((b) => createImageBitmap(b)))
   const canvas = document.createElement('canvas')
   canvas.width = base.width
   canvas.height = base.height
   const g = canvas.getContext('2d')!
   for (const bmp of [base, ...over]) g.drawImage(bmp, 0, 0, base.width, base.height)
-  return { name: map.name, imageData: canvas.toDataURL('image/jpeg', 0.85) }
+  return { name: map.name, imageData: canvas.toDataURL('image/jpeg', 0.85), ...grid }
 }

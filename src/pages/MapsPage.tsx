@@ -1,14 +1,15 @@
-import { ChevronDown, ChevronUp, Folder, GripVertical, Move, X } from 'lucide-react'
+import { BrickWall, Folder, Grid3x3, GripVertical, Move } from 'lucide-react'
 import { useState } from 'react'
-import { CheckField } from '../components/Section'
+import { LayerImg, LayerList } from '../components/LayerList'
 import { FolderMoveWindow } from '../components/FolderMoveWindow'
-import { db } from '../db'
+import { GridWindow } from '../components/GridWindow'
+import { WallsWindow } from '../components/WallsWindow'
 import { useBlobUrl } from '../hooks'
 import { askConfirm, askText } from '../lib/ask'
 import { t } from '../lib/i18n'
 import {
-  addLayer, addMap, allFolders, createFolder, deleteFolder, deleteLayer, deleteMap, setAllLayers, folderName, inFolder, joinPath, moveLayer, moveMap, parentPath, renameFolder, renameMap,
-  showMap, stopShowingMap, toggleLayer, useFolders, useMapShown, useMaps, type PictureKind,
+  addMap, allFolders, createFolder, deleteFolder, deleteMap, folderName, inFolder, joinPath, moveMap, parentPath, renameFolder, renameMap,
+  showMap, stopShowingMap, useFolders, useMapShown, useMaps, type PictureKind,
 } from '../lib/maps'
 import type { MapRecord } from '../types'
 
@@ -143,62 +144,10 @@ function FolderCard({ kind, path, count, onOpen, drop }: { kind: PictureKind; pa
   )
 }
 
-function LayerImg({ blob }: { blob: Blob }) {
-  const url = useBlobUrl(blob)
-  return url ? <img src={url} alt="" /> : null
-}
-
-/** Layers of a map: each switch decides whether the players see it; what is switched on is stacked over the map in the preview, just as the table gets it.
- *  One compact row per layer (a thumbnail says which is which), folded away under a summary so a map with many fog layers does not stretch its card. */
-function LayerList({ map }: { map: MapRecord }) {
-  const layers = map.layers ?? []
-  const on = layers.filter((l) => l.on).length
-  const add = (
-    <label className="file-button">
-      {t('maps.layerAdd')}
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={async (e) => {
-          const files = [...(e.target.files ?? [])]
-          e.target.value = ''
-          for (const f of files) await addLayer((await db.maps.get(map.id!)) ?? map, f).catch(() => alert(t('maps.failed')))
-        }}
-      />
-    </label>
-  )
-  if (!layers.length) return <div className="map-layers">{add}</div>
-  return (
-    <details className="map-layers">
-      <summary>{t('maps.layersSummary', { on, total: layers.length })}</summary>
-      <div className="row gap wrap layer-bulk">
-        <button className="tiny-button" disabled={on === layers.length} onClick={() => void setAllLayers(map.id!, true)}>{t('maps.layersAllOn')}</button>
-        <button className="tiny-button" disabled={on === 0} onClick={() => void setAllLayers(map.id!, false)}>{t('maps.layersAllOff')}</button>
-      </div>
-      {layers.map((l, i) => (
-        <div className="layer-row" key={l.id}>
-          <div className="layer-thumb"><LayerImg blob={l.image} /></div>
-          <CheckField label={l.name} checked={l.on} onChange={() => void toggleLayer(map.id!, l.id)} />
-          <button className="tiny-button" disabled={i === 0} title={t('maps.layerUp')} aria-label={t('maps.layerUp')} onClick={() => void moveLayer(map.id!, l.id, -1)}><ChevronUp /></button>
-          <button className="tiny-button" disabled={i === layers.length - 1} title={t('maps.layerDown')} aria-label={t('maps.layerDown')} onClick={() => void moveLayer(map.id!, l.id, 1)}><ChevronDown /></button>
-          <button
-            className="tiny-button danger"
-            title={t('maps.layerDelete')}
-            aria-label={t('maps.layerDelete')}
-            onClick={async () => (await askConfirm(t('maps.layerDeleteConfirm', { name: l.name }), t('common.delete'))) && void deleteLayer(map.id!, l.id)}
-          >
-            <X />
-          </button>
-        </div>
-      ))}
-      {add}
-    </details>
-  )
-}
-
 function MapCard({ map, showing, onMove, dragged, onDragState }: { map: MapRecord; showing: boolean; onMove: () => void; dragged: boolean; onDragState: (on: boolean) => void }) {
   const url = useBlobUrl(map.image)
+  const [gridOpen, setGridOpen] = useState(false)
+  const [wallsOpen, setWallsOpen] = useState(false)
   return (
     <div
       className={`card map-card ${showing ? 'showing' : ''} ${dragged ? 'is-dragged' : ''}`}
@@ -231,6 +180,16 @@ function MapCard({ map, showing, onMove, dragged, onDragState }: { map: MapRecor
           </button>
         )}
         <button onClick={onMove}>{t('maps.move')}</button>
+        {!map.kind && (
+          <button onClick={() => setGridOpen(true)}>
+            <Grid3x3 /> {map.grid ? t('maps.gridSet', { feet: map.grid.feet }) : t('maps.grid')}
+          </button>
+        )}
+        {!map.kind && (
+          <button onClick={() => setWallsOpen(true)}>
+            <BrickWall /> {t('walls.button')}
+          </button>
+        )}
         <button
           onClick={async () => {
             const name = await askText({ title: t('maps.renamePrompt'), value: map.name, confirm: t('common.save') })
@@ -244,6 +203,8 @@ function MapCard({ map, showing, onMove, dragged, onDragState }: { map: MapRecor
         </button>
       </div>
       {!map.kind && <LayerList map={map} />}
+      {gridOpen && <GridWindow map={map} onClose={() => setGridOpen(false)} />}
+      {wallsOpen && <WallsWindow map={map} onClose={() => setWallsOpen(false)} />}
     </div>
   )
 }

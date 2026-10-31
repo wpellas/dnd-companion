@@ -6,7 +6,9 @@ import heroLogo from '../assets/images/logo-360.png'
 import navLogo from '../assets/images/logo-128.png'
 import { CharacterSheetView } from '../components/CharacterSheetView'
 import { Portrait } from '../components/Portrait'
-import { publicMap, useMapShown, type PublicMap } from '../lib/maps'
+import { useMapShown } from '../lib/maps'
+import { useTableMap } from '../lib/fog'
+import { FogOverlay, MapFrame, MapToken } from '../components/MapFrame'
 import { explainCondition, explainEffect, GLOSSARY } from '../lib/explain'
 import { conditionTone, type Tone } from '../lib/tones'
 import { pictureFor } from '../lib/avatars'
@@ -65,7 +67,11 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
     if (language) setLang(language)
   }, [language])
 
-  const combat: PublicCombat | undefined = remote.combat ?? toPublic(localState)
+  // the DM's own second window builds the public map and fight itself, exactly like the upload (same picture, fog and hidden tokens); a phone has no maps
+  const localShown = useMapShown()
+  const localMap = useLiveQuery(async () => (localShown ? ((await db.maps.get(localShown.mapId)) ?? null) : null), [localShown?.mapId])
+  const local = useTableMap(source ? null : localMap, localState?.combatants)
+  const combat: PublicCombat | undefined = remote.combat ?? toPublic(localState, local.cover)
   const portraitFor = (characterId?: number) => (characterId === undefined ? undefined : remote.portraits[characterId])
   // the DM's own second window has no live view: enemies' pictures come from the local database, by combatant
   const localAvatars = useLiveQuery(async () => {
@@ -147,12 +153,8 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
       : null
   const sheet = remote.sheet !== undefined ? remote.sheet : localSheet
   // a map being shown: from the live view, or (the DM's own second window) from the local database
-  const localMapShown = useMapShown()
-  const localMap = useLiveQuery(async (): Promise<PublicMap | null> => {
-    const m = localMapShown ? await db.maps.get(localMapShown.mapId) : undefined
-    return m ? publicMap(m) : null // composed like the upload, so this window never shows a layer that is switched off
-  }, [localMapShown?.mapId])
-  const map = remote.map !== undefined ? remote.map : localMap
+  const map = remote.map !== undefined ? remote.map : local.view
+  const fog = remote.map !== undefined ? remote.fog : local.fog
   const showingSheet = !!sheet
 
   // tap a badge for what it means, and a "?" for the terms; both are optional help, nothing here asks anything of a spectator
@@ -179,9 +181,39 @@ export function PlayerView({ source, mine, vibrate }: { source?: LiveSource; min
     )
   }
   if (map) {
+    const up = combat?.started ? combat.combatants[combat.turnIndex] : undefined
     return (
       <div className="player map-view">
-        <img src={map.imageData} alt={map.name} />
+        {/* the feed is hidden while a map is up: keep whose turn it is in sight */}
+        {up && (
+          <div className="map-turn" role="status">
+            {t('player.round', { n: combat!.round })} · {t('player.turn', { who: possessive(up.kind === 'lair' ? t('player.lair') : up.name) })}
+          </div>
+        )}
+        {banner && (
+          <div className="turn-banner" key={banner.id} role="status">
+            <span>{t('player.turn', { who: possessive(banner.name) })}</span>
+          </div>
+        )}
+        <MapFrame src={map.imageData} alt={map.name} grid={map.grid} lines={map.grid?.show} maxHeight="100vh - 18px">
+          {fog && <FogOverlay fog={fog} />}
+          {map.grid && combat?.combatants.map((c, i) =>
+            c.pos && c.pos.map === map.id ? (
+              <MapToken
+                key={c.id}
+                name={c.name}
+                src={c.characterId !== undefined ? portraitFor(c.characterId) : remote.portraits[c.id]}
+                image={c.characterId !== undefined ? imageFor(c.characterId) : localAvatars?.get(c.id)}
+                grid={map.grid!}
+                at={c.pos}
+                cells={c.cells}
+                side={c.kind === 'pc' || c.ally ? 'party' : 'enemy'}
+                active={combat.started && i === combat.turnIndex}
+                down={c.hp === 0 || c.status === 'Defeated'}
+              />
+            ) : null,
+          )}
+        </MapFrame>
       </div>
     )
   }

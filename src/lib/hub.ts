@@ -7,7 +7,8 @@ import { toPublic, toPublicSheet, type PublicCombat, type PublicSheet } from './
 import { setLang, useLang, type Lang } from './i18n'
 import { useSession } from './session'
 import { useSpotlight } from './spotlight'
-import { publicMap, useMapShown, type PublicMap } from './maps'
+import { useMapShown, type PublicMap } from './maps'
+import { useTableMap, type PublicFog } from './fog'
 
 /**
  * The live view. The DM's browser (`LiveHost`) uploads the player-safe parts of the fight to the server; players (signed in) and the table's
@@ -41,7 +42,7 @@ async function smallPortrait(blob: Blob, key: string): Promise<string | undefine
 
 /* ---------------------------------------------------------------- host */
 
-type Part = 'combat' | 'portraits' | 'sheet' | 'map' | 'lang' | 'ping'
+type Part = 'combat' | 'portraits' | 'sheet' | 'map' | 'fog' | 'lang' | 'ping'
 const PUSH_MS = 300
 const HEARTBEAT_MS = 20000
 
@@ -81,10 +82,22 @@ export function LiveHost() {
     timer.current = setTimeout(() => void flush(), PUSH_MS)
   }
 
+  // the map the DM is showing (null = none), sent as a finished picture so what is hidden on it can never reach the table; with it the fog masks and which tokens
+  // the players may see (no token goes out until that is known). This device also records what the party explores.
+  const shownMap = mapShown === undefined || !maps ? undefined : ((mapShown && maps.find((x) => x.id === mapShown.mapId)) ?? null)
+  const table = useTableMap(shownMap, combat?.combatants, { write: true })
   useEffect(() => {
-    want('combat', toPublic(combat))
+    want('combat', toPublic(combat, table.cover))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combat, campaignId])
+  }, [combat, table.cover, campaignId])
+  useEffect(() => {
+    if (table.view !== undefined) want('map', table.view)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.view, campaignId])
+  useEffect(() => {
+    want('fog', table.fog ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table.fog, campaignId])
 
   // everyone sees the DM's language
   useEffect(() => {
@@ -101,18 +114,6 @@ export function LiveHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spotlight, characters, combat, campaignId])
 
-  // the map the DM is showing (null = none); sent as a finished picture, so what is hidden on it can never reach the table
-  useEffect(() => {
-    if (mapShown === undefined || !maps) return
-    const m = mapShown ? maps.find((x) => x.id === mapShown.mapId) : undefined
-    let off = false
-    if (!m) want('map', null)
-    else void publicMap(m).then((p) => !off && want('map', p))
-    return () => {
-      off = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapShown, maps, campaignId])
 
   useEffect(() => {
     if (!characters) return
@@ -158,6 +159,8 @@ export interface RemoteView {
   sheet?: PublicSheet | null
   /** The map the DM is showing; null = none, undefined = nothing received yet */
   map?: PublicMap | null
+  /** The fog-of-war masks for that map (null = none) */
+  fog?: PublicFog | null
   /** Data URLs by character id, or by combatant id for enemies */
   portraits: Record<string, string>
   /** The last poll worked */
@@ -194,6 +197,7 @@ export function useRemoteView(source?: LiveSource): RemoteView {
           if (part === 'combat') patch.combat = value as PublicCombat | null
           else if (part === 'sheet') patch.sheet = value as PublicSheet | null
           else if (part === 'map') patch.map = value as PublicMap | null
+          else if (part === 'fog') patch.fog = value as PublicFog | null
           else if (part === 'portraits') patch.portraits = (value as Record<string, string> | null) ?? {}
           else if (part === 'lang' && value) {
             setLang(value as Lang)

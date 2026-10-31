@@ -10,6 +10,7 @@ import { EffectsMenu } from '../components/EffectsEditor'
 import { Window } from '../components/Window'
 import { WildShape } from '../components/WildShape'
 import { HazardPanel } from '../components/HazardPanel'
+import { BattleMap } from '../components/BattleMap'
 import { SpellFinder } from '../components/SpellFinder'
 import { normalizeCharacter } from '../lib/character'
 import { RollsTray } from '../components/RollsTray'
@@ -181,6 +182,7 @@ export function CombatPage({ goTo }: { goTo?: (tab: 'encounters') => void }) {
 
       {!!characters?.length && <SpellFinder characters={characters.map(normalizeCharacter)} />}
       {combatants.length > 0 && <HazardPanel combatants={combatants} settings={settings} />}
+      {combatants.length > 0 && <BattleMap combatants={combatants} activeId={started ? combatants[combat?.turnIndex ?? 0]?.id : undefined} imageFor={imageFor} />}
 
       {!started && <RewardBanner />}
 
